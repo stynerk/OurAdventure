@@ -25,13 +25,13 @@
 </head>
 <body>
 <section id="onboarding" class="onboarding">
- <div class="book"><div class="cover">🏯</div><div class="kicker">GYEONGJU FAMILY QUEST</div><h1>우리 탐험대의<br>이름을 지어줘!</h1><p>동화책 지도를 따라 경주의 여덟 인장을 찾아가는 3일 원정이야.</p><div class="name"><input id="teamInput" maxlength="14" placeholder="예: 별빛 탐험대"><button onclick="start()">시작</button></div></div>
+ <div class="book"><div class="cover">🏯</div><div class="kicker">GYEONGJU FAMILY QUEST</div><h1>우리 탐험대의<br>이름을 지어줘!</h1><p>동화책 지도를 따라 경주의 탐험 인장을 찾아가는 3일 원정이야. 주요 미션 7개와 선택 미션 1개가 있어.</p><div class="name"><input id="teamInput" maxlength="14" placeholder="예: 별빛 탐험대"><button onclick="start()">시작</button></div></div>
 </section>
 <div id="app" class="wrap" hidden>
  <header class="top"><div><div class="tiny">2026.10.09 — 10.11</div><strong id="brand"></strong></div><button class="ghost" onclick="resetAll()">처음부터</button></header>
  <main>
   <section id="home" class="screen on">
-   <div class="hero"><div class="kicker">WELCOME, <span class="team"></span></div><h1>경주의 여덟 인장을<br>찾으러 가자!</h1><p>동화 지도에서 장소를 누르면 오늘의 미션이 열려. 사진을 찍고 스탬프를 모아 우리 가족 원정기를 완성해보자.</p><div class="tiny" style="margin-top:15px">원정 진행도 <b id="progressText">0 / 8</b></div><div class="progress"><span id="bar"></span></div></div>
+   <div class="hero"><div class="kicker">WELCOME, <span class="team"></span></div><h1>경주의 탐험 인장을<br>찾으러 가자!</h1><p>동화 지도에서 장소를 누르면 오늘의 미션이 열려. 사진을 찍고 스탬프를 모아 우리 가족 원정기를 완성해보자.</p><div class="tiny" style="margin-top:15px">주요 미션 <b id="progressText">0 / 7</b></div><div class="progress"><span id="bar"></span></div></div>
    <div class="section"><h2>이야기 지도</h2><small>아이콘 전체를 눌러봐</small></div>
    <div class="map" id="map"></div>
    <div class="section"><h2>다음 Quest</h2><small id="left"></small></div><div id="next"></div>
@@ -48,22 +48,23 @@
 var guideUrl="https://www.gyeongju.go.kr/ebookData/20260902_chi/index.html";
 var quests=[
   {
-    "id": "kimyusin",
+    "id": "kimyusin-tomb",
     "day": 1,
     "order": 1,
-    "icon": "🐎",
-    "place": "황성공원 · 김유신 장군 동상",
-    "mapLabel": "김유신 장군",
-    "title": "말을 탄 장군을 만나러 가자!",
-    "story": "네가 보고 싶었던 장군을 만나러 가자! 황성공원의 작은 동산 위에서 말을 탄 김유신 장군이 우리를 기다려.",
-    "mission": "말을 탄 김유신 장군 동상을 찾아보자. 말과 장군의 자세를 살펴보고, 동상이 보이게 장군 포즈로 사진 한 장을 남기자.",
-    "look": "황성공원 호림정 근처 작은 동산 위에 있어. 장군과 말이 함께 보이는 곳에서 관찰해봐.",
-    "fact": "김유신은 신라의 장군이야. 황성공원에 말을 탄 모습을 담은 기마상이 있어.",
-    "shot": "동상이 배경에 보이게 서서 내가 고른 멋진 장군 포즈로 스냅샷!",
-    "stamp": "장군과의 만남",
-    "memory": "보고 싶었던 김유신 장군 동상을 만나 장군 포즈로 추억을 남겼다.",
-    "photo": "assets/kimyusin-preview.jpg",
-    "source": "https://www.gyeongju.go.kr/tour/page.do?mnu_uid=4736"
+    "icon": "⚔️",
+    "place": "김유신 묘",
+    "mapLabel": "김유신 묘",
+    "title": "장군의 무덤에서 동물 수호대를 찾아라!",
+    "story": "네가 보고 싶었던 김유신 장군의 묘에 왔어. 커다란 무덤 둘레에는 동물 모습이 새겨진 돌이 있어. 어떤 동물을 만날 수 있을까?",
+    "mission": "무덤 둘레의 돌에서 동물 모습 하나를 찾아 가족에게 가리켜보자. 묘역이 보이는 곳에서 함께 스냅샷 한 장을 남기자.",
+    "look": "경주시 충효2길 44-7의 김유신 묘야. 무덤 아래쪽 둘레돌에 새겨진 동물을 눈으로 찾아봐.",
+    "fact": "김유신 묘로 전해지는 이 무덤에는 열두 동물 수호신인 십이지신을 새긴 돌과 돌난간이 있어.",
+    "shot": "묘역이 배경에 보이게 가족 스냅샷! 발견한 동물의 이름도 함께 기억해두자.",
+    "stamp": "장군의 수호대",
+    "memory": "김유신 묘에서 동물 수호신을 찾아 가족과 탐험의 첫 장을 남겼다.",
+    "photo": "assets/kimyusin-tomb-preview.jpg",
+    "source": "https://www.gyeongju.go.kr/tour/page.do?mnu_uid=4736",
+    "visit": "주소: 경주시 충효2길 44-7 · 공식 안내상 10월 관람 09:00–18:00. 도착이 늦으면 다음 날 밝은 시간으로 옮겨도 좋아."
   },
   {
     "id": "eupseong",
@@ -79,28 +80,13 @@ var quests=[
     "shot": "향일문이나 성벽이 보이게 서서 ‘성문 수호대’ 포즈로 한 장!",
     "stamp": "성문 수호대",
     "memory": "향일문과 성벽을 살피며 옛 경주를 지키던 방법을 찾아냈다.",
-    "photo": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Gyeongjueupseong%20Town%20Wall%20Site.jpg?width=1200"
-  },
-  {
-    "id": "daereungwon",
-    "day": 1,
-    "order": 3,
-    "icon": "👑",
-    "place": "대릉원",
-    "title": "왕의 언덕에는 누가 잠들어 있을까?",
-    "story": "초록 언덕처럼 보이는 곳들이 사실은 신라 사람들의 무덤이야. 어떤 무덤은 주인을 알고, 어떤 무덤은 아직 누구의 것인지 알 수 없어.",
-    "mission": "크고 작은 봉분을 비교해 보고, 우리 탐험대가 ‘가장 왕처럼 보인다’고 생각하는 무덤 하나를 골라보자.",
-    "look": "봉분의 높이, 폭, 서로 붙어 있는 모양을 비교해봐. 멀리서 한 번, 가까이서 한 번 보면 느낌이 달라.",
-    "fact": "대릉원에는 미추왕릉과 천마총을 포함해 23기의 신라시대 고분이 모여 있어.",
-    "shot": "가장 마음에 든 봉분을 배경으로 손으로 왕관 모양을 만들어 찍기.",
-    "stamp": "왕의 언덕",
-    "memory": "23기의 고분 사이를 걸으며 가장 왕처럼 보이는 언덕을 골랐다.",
-    "photo": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Daereungwon%20Tomb%20Complex.jpg?width=1200"
+    "photo": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Gyeongjueupseong%20Town%20Wall%20Site.jpg?width=1200",
+    "optional": true
   },
   {
     "id": "bulguksa",
     "day": 2,
-    "order": 4,
+    "order": 3,
     "icon": "🐷",
     "place": "불국사",
     "title": "금돼지를 쓰다듬고 소원을 남겨!",
@@ -118,7 +104,7 @@ var quests=[
   {
     "id": "museum",
     "day": 2,
-    "order": 5,
+    "order": 4,
     "icon": "🏺",
     "place": "국립경주박물관",
     "title": "사라진 신라의 황금빛",
@@ -134,7 +120,7 @@ var quests=[
   {
     "id": "donggung",
     "day": 2,
-    "order": 6,
+    "order": 5,
     "icon": "🌙",
     "place": "동궁과 월지",
     "title": "달이 두 개 뜨는 궁전",
@@ -146,6 +132,22 @@ var quests=[
     "stamp": "달빛 궁전",
     "memory": "월지 위와 물속에서 두 개의 궁전을 한 번에 찾아냈다.",
     "photo": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Donggung%20Palace%20%26%20Wolji%20Pond%2C%20Gyeongju%20-%20Donggung2691.jpg?width=1200"
+  },
+  {
+    "id": "daereungwon",
+    "day": 3,
+    "order": 6,
+    "icon": "👑",
+    "place": "대릉원",
+    "title": "왕의 언덕에는 누가 잠들어 있을까?",
+    "story": "초록 언덕처럼 보이는 곳들이 사실은 신라 사람들의 무덤이야. 어떤 무덤은 주인을 알고, 어떤 무덤은 아직 누구의 것인지 알 수 없어.",
+    "mission": "크고 작은 봉분을 비교해 보고, 우리 탐험대가 ‘가장 왕처럼 보인다’고 생각하는 무덤 하나를 골라보자.",
+    "look": "봉분의 높이, 폭, 서로 붙어 있는 모양을 비교해봐. 멀리서 한 번, 가까이서 한 번 보면 느낌이 달라.",
+    "fact": "대릉원에는 미추왕릉과 천마총을 포함해 23기의 신라시대 고분이 모여 있어.",
+    "shot": "가장 마음에 든 봉분을 배경으로 손으로 왕관 모양을 만들어 찍기.",
+    "stamp": "왕의 언덕",
+    "memory": "23기의 고분 사이를 걸으며 가장 왕처럼 보이는 언덕을 골랐다.",
+    "photo": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Daereungwon%20Tomb%20Complex.jpg?width=1200"
   },
   {
     "id": "cheomseongdae",
@@ -181,12 +183,15 @@ var quests=[
   }
 ];
 var chapterInfo=[
-{title:"왕의 도시로 들어가라",date:"10월 9일",sub:"보고 싶던 장군을 먼저 만나고 성문과 왕의 언덕으로 이어지는 첫날",img:quests.find(function(q){return q.id==="kimyusin"}).photo},
+{title:"장군의 묘에서 탐험을 시작하자",date:"10월 9일",sub:"도착 후 김유신 묘 한 곳만 짧게 탐험하고 쉬는 날. 경주읍성은 여유가 있을 때만!",img:quests.find(function(q){return q.id==="kimyusin-tomb"}).photo},
 {title:"사라진 신라의 빛을 찾아라",date:"10월 10일",sub:"복돼지에게 소원을 남기고 박물관의 보물과 왕실 연못의 달빛을 찾는 날",img:quests.find(function(q){return q.id==="donggung"}).photo},
-{title:"별과 다리를 건너라",date:"10월 11일",sub:"하늘을 보던 첨성대에서 신라의 다리를 건너 마지막 인장을 완성하는 엔딩",img:quests.find(function(q){return q.id==="cheomseongdae"}).photo}
+{title:"왕의 언덕, 별과 다리를 건너라",date:"10월 11일",sub:"대릉원에서 왕의 언덕을 보고 첨성대와 월정교로 이어지는 시내 산책",img:quests.find(function(q){return q.id==="cheomseongdae"}).photo}
 ];
-var state={team:"",done:[],photos:{},memories:{}};
+var state={team:"",done:[],photos:{},memories:{},archivedRecords:[]};
 try{state=JSON.parse(localStorage.getItem("gj-family-quest"))||state}catch(e){}
+state.archivedRecords=Array.isArray(state.archivedRecords)?state.archivedRecords:[];
+// A statue visit is not a tomb visit: preserve the former record, without awarding a tomb stamp.
+if(Array.isArray(state.done)&&state.done.indexOf("kimyusin")>=0&&!state.archivedRecords.some(function(r){return r.id==="kimyusin"}))state.archivedRecords.push({id:"kimyusin",title:"장군 동상 방문 기록",memory:(state.memories||{}).kimyusin||"김유신 장군 동상을 만나 장군 포즈로 추억을 남겼다.",photo:(state.photos||{}).kimyusin||""});
 state.done=Array.isArray(state.done)?state.done.filter(function(id,i,a){return a.indexOf(id)===i&&quests.some(function(q){return q.id===id})}):[];state.photos=state.photos||{};state.memories=state.memories||{};
 // Keep previously completed records truthful after the itinerary update.
 if(state.done.indexOf("bulguksa")>=0&&!state.memories.bulguksa)state.memories.bulguksa="석가탑과 다보탑을 비교하며 서로 다른 아름다움을 발견했다.";
@@ -197,18 +202,25 @@ function resetAll(){if(confirm("탐험대 이름과 모든 스탬프, 사진을 
 function go(id){document.querySelectorAll(".screen").forEach(function(x){x.classList.remove("on")});document.getElementById(id).classList.add("on");document.querySelectorAll(".nav button").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-s")===id)});scrollTo(0,0)}
 function render(){
  document.getElementById("brand").textContent=state.team;document.querySelectorAll(".team").forEach(function(x){x.textContent=state.team});
- var c=state.done.length;document.getElementById("progressText").textContent=c+" / "+quests.length;document.getElementById("bar").style.width=(c/quests.length*100)+"%";document.getElementById("left").textContent=c===quests.length?"모두 완료!":(quests.length-c)+"개 남음";document.getElementById("stampMeta").textContent=c+" / "+quests.length;
- var pos=["n1","n2","n3","n4","n5","n6","n7","n8"];document.getElementById("map").innerHTML=quests.map(function(q,i){return '<div class="node '+pos[i]+' '+(state.done.indexOf(q.id)>=0?"done":"")+'" role="button" tabindex="0" onclick="openQuest(\''+q.id+'\')"><div class="pin">'+q.icon+'</div><b>'+(q.mapLabel||q.place)+'</b></div>'}).join("");
- var n=quests.find(function(q){return state.done.indexOf(q.id)<0});document.getElementById("next").innerHTML=n?questCard(n):'<div class="hero center"><div style="font-size:58px">🏆</div><h1>'+safe(state.team)+' 원정 완료!</h1><p>여덟 인장을 모두 찾았어. 기록 탭에서 우리 사진을 다시 보자.</p></div>';
- document.getElementById("chapters").innerHTML=chapterInfo.map(function(ch,i){return '<article class="chapter" onclick="showChapter('+(i+1)+')"><img src="'+ch.img+'" loading="lazy"><div class="body"><div class="kicker">CHAPTER '+(i+1)+' · '+ch.date+'</div><h3>'+ch.title+'</h3><p>'+ch.sub+' · Quest '+quests.filter(function(q){return q.day===i+1}).length+'개</p><button class="cta">Chapter '+(i+1)+' 열기</button></div></article>'}).join("");
- document.getElementById("stampGrid").innerHTML=quests.map(function(q){var d=state.done.indexOf(q.id)>=0;return '<div class="stamp '+(d?"done":"")+'" onclick="openQuest(\''+q.id+'\')"><div><div class="e">'+q.icon+'</div><b>'+q.stamp+'</b><div class="tiny">'+(d?"획득 완료":"아직 비밀")+'</div></div></div>'}).join("");
+ var core=quests.filter(function(q){return !q.optional});var c=core.filter(function(q){return state.done.indexOf(q.id)>=0}).length;
+ document.getElementById("progressText").textContent=c+" / "+core.length;document.getElementById("bar").style.width=(c/core.length*100)+"%";
+ document.getElementById("left").textContent=c===core.length?"주요 미션 완료!":(core.length-c)+"개 주요 미션 남음";
+ document.getElementById("stampMeta").textContent=state.done.length+" / "+quests.length+" · 선택 1개 포함";
+ var pos=["n1","n2","n3","n4","n5","n6","n7","n8"];document.getElementById("map").innerHTML=quests.map(function(q,i){return '<div class="node '+pos[i]+' '+(state.done.indexOf(q.id)>=0?"done":"")+'" role="button" tabindex="0" onclick="openQuest(\''+q.id+'\')"><div class="pin">'+q.icon+'</div><b>'+(q.mapLabel||q.place)+(q.optional?' · 선택':'')+'</b></div>'}).join("");
+ var n=core.find(function(q){return state.done.indexOf(q.id)<0});document.getElementById("next").innerHTML=n?questCard(n):'<div class="hero center"><div style="font-size:58px">🏆</div><h1>'+safe(state.team)+' 원정 완료!</h1><p>주요 일곱 미션을 마쳤어. 선택 미션을 하지 않아도 멋진 원정이야! 기록 탭에서 우리 사진을 다시 보자.</p></div>';
+
+ document.getElementById("chapters").innerHTML=chapterInfo.map(function(ch,i){return '<article class="chapter" onclick="showChapter('+(i+1)+')"><img src="'+ch.img+'" loading="lazy"><div class="body"><div class="kicker">CHAPTER '+(i+1)+' · '+ch.date+'</div><h3>'+ch.title+'</h3><p>'+ch.sub+' · '+chapterCount(i+1)+'</p><button class="cta">Chapter '+(i+1)+' 열기</button></div></article>'}).join("");
+ document.getElementById("stampGrid").innerHTML=quests.map(function(q){var d=state.done.indexOf(q.id)>=0;return '<div class="stamp '+(d?"done":"")+'" onclick="openQuest(\''+q.id+'\')"><div><div class="e">'+q.icon+'</div><b>'+q.stamp+'</b><div class="tiny">'+(d?"획득 완료":(q.optional?"선택 미션":"아직 비밀"))+'</div></div></div>'}).join("");
  var done=quests.filter(function(q){return state.done.indexOf(q.id)>=0});document.getElementById("memoryList").innerHTML=done.length?done.map(function(q){return '<article class="memory"><div class="kicker">CHAPTER '+q.day+' · '+q.place+'</div><h3>'+q.icon+' '+q.title+'</h3><p>'+safe(state.memories[q.id]||q.memory)+'</p>'+(state.photos[q.id]?'<img src="'+state.photos[q.id]+'">':'<div class="tiny" style="margin-top:8px">📷 사진 없음</div>')+'</article>'}).join(""):'<div class="hero center"><p>아직 기록된 이야기가 없어.<br>첫 Quest를 완료하면 한 장씩 채워져.</p></div>';
+ if(state.archivedRecords.length){if(!done.length)document.getElementById("memoryList").innerHTML="";document.getElementById("memoryList").innerHTML+=state.archivedRecords.map(function(r){return '<article class="memory"><div class="kicker">이전 코스 기록</div><h3>'+safe(r.title)+'</h3><p>'+safe(r.memory)+'</p>'+(r.photo?'<img src="'+safe(r.photo)+'" alt="이전 방문 사진">':'')+'</article>'}).join("")}
+
 }
-function questCard(q){return '<div class="quest" onclick="openQuest(\''+q.id+'\')"><div class="ico">'+q.icon+'</div><div><h3>'+q.title+'</h3><p>'+q.place+' · Chapter '+q.day+'</p></div><div class="go">열기 ›</div></div>'}
-function showChapter(day){go("route");var list=quests.filter(function(q){return q.day===day});document.getElementById("chapters").innerHTML='<button class="secondary" onclick="render()">← 3일 코스로 돌아가기</button><div class="section"><h2>Chapter '+day+'</h2><small>'+chapterInfo[day-1].date+'</small></div><article class="chapter"><img src="'+chapterInfo[day-1].img+'"><div class="body"><h3>'+chapterInfo[day-1].title+'</h3><p>'+chapterInfo[day-1].sub+'</p></div></article>'+list.map(questCard).join("")}
+function chapterCount(day){var list=quests.filter(function(q){return q.day===day});var optional=list.filter(function(q){return q.optional}).length;return "주요 "+(list.length-optional)+"개"+(optional?" · 선택 "+optional+"개":"")}
+function questCard(q){return '<div class="quest" onclick="openQuest(\''+q.id+'\')"><div class="ico">'+q.icon+'</div><div><h3>'+q.title+'</h3><p>'+q.place+' · Chapter '+q.day+(q.optional?' · 선택 방문':'')+'</p></div><div class="go">열기 ›</div></div>'}
+function showChapter(day){go("route");var list=quests.filter(function(q){return q.day===day});document.getElementById("chapters").innerHTML='<button class="secondary" onclick="render()">← 3일 코스로 돌아가기</button><div class="section"><h2>Chapter '+day+'</h2><small>'+chapterInfo[day-1].date+'</small></div><article class="chapter"><img src="'+chapterInfo[day-1].img+'"><div class="body"><h3>'+chapterInfo[day-1].title+'</h3><p>'+chapterInfo[day-1].sub+' · '+chapterCount(day)+'</p></div></article>'+list.map(questCard).join("")}
 function openQuest(id){
  var q=quests.find(function(x){return x.id===id});var d=state.done.indexOf(id)>=0;var ph=state.photos[id];var m=document.getElementById("questModal");
- m.innerHTML='<div style="font-size:54px">'+q.icon+'</div><div class="kicker">CHAPTER '+q.day+' · '+q.place+'</div><h2>'+q.title+'</h2><div class="storyBox"><b>📖 이야기</b>'+q.story+'</div><div class="mission"><b>🔎 오늘의 미션</b><br>'+q.mission+'</div><div class="real"><img src="'+q.photo+'" alt="'+q.place+' 실사 미리보기" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.textContent=\'사진을 불러오지 못했어. 아래 여기 봐! 안내로 찾아보자.\'"><div class="cap"><b>📍 실사 미리보기</b><br>먼저 실제 모습을 눈에 익히고 현장에서 같은 특징을 찾아보자.</div></div><div class="lookBox"><b>👀 여기 봐!</b>'+q.look+'</div><div class="factBox"><b>💡 한 줄 지식</b>'+q.fact+'</div>'+(q.extra?'<div class="lookBox"><b>더 살펴볼까?</b>'+q.extra+'</div>':'')+'<div class="shot"><b>📸 스탬프 사진 아이디어</b><br>'+q.shot+'</div>'+(ph?'<img class="preview" src="'+ph+'"><label class="camera" for="cam-'+id+'">📷 다시 찍기 / 다른 사진</label>':'<label class="camera" for="cam-'+id+'">📷 미션 사진 찍기</label>')+'<input class="cameraInput" id="cam-'+id+'" type="file" accept="image/*" capture="environment" onchange="photo(\''+id+'\',this)"><div class="tiny" style="margin-top:8px">사진은 서버가 아니라 이 기기의 브라우저에만 저장돼.</div>'+(d?'<button class="secondary" onclick="closeQuest()">이미 스탬프 획득 · 닫기</button>':(ph?'<button class="cta" onclick="complete(\''+id+'\')">이 사진으로 스탬프 찍기</button>':'<button class="secondary" onclick="complete(\''+id+'\')">사진 없이 스탬프 찍기</button>'))+'<div class="sourceNote">내용 참고: 경주시 공식 관광안내 자료 · <a href="'+(q.source||guideUrl)+'" target="_blank" rel="noopener">자료 보기 ↗</a></div>';
+ m.innerHTML='<div style="font-size:54px">'+q.icon+'</div><div class="kicker">CHAPTER '+q.day+' · '+q.place+'</div><h2>'+q.title+'</h2>'+(q.optional?'<div class="lookBox"><b>선택 방문</b>여유가 있을 때만 들러도 좋아. 원정 완료에는 포함되지 않아.</div>':'')+(q.visit?'<div class="lookBox"><b>방문 안내</b>'+q.visit+'</div>':'')+'<div class="storyBox"><b>📖 이야기</b>'+q.story+'</div><div class="mission"><b>🔎 오늘의 미션</b><br>'+q.mission+'</div><div class="real"><img src="'+q.photo+'" alt="'+q.place+' 실사 미리보기" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.textContent=\'사진을 불러오지 못했어. 아래 여기 봐! 안내로 찾아보자.\'"><div class="cap"><b>📍 실사 미리보기</b><br>먼저 실제 모습을 눈에 익히고 현장에서 같은 특징을 찾아보자.</div></div><div class="lookBox"><b>👀 여기 봐!</b>'+q.look+'</div><div class="factBox"><b>💡 한 줄 지식</b>'+q.fact+'</div>'+(q.extra?'<div class="lookBox"><b>더 살펴볼까?</b>'+q.extra+'</div>':'')+'<div class="shot"><b>📸 스탬프 사진 아이디어</b><br>'+q.shot+'</div>'+(ph?'<img class="preview" src="'+ph+'"><label class="camera" for="cam-'+id+'">📷 다시 찍기 / 다른 사진</label>':'<label class="camera" for="cam-'+id+'">📷 미션 사진 찍기</label>')+'<input class="cameraInput" id="cam-'+id+'" type="file" accept="image/*" capture="environment" onchange="photo(\''+id+'\',this)"><div class="tiny" style="margin-top:8px">사진은 서버가 아니라 이 기기의 브라우저에만 저장돼.</div>'+(d?'<button class="secondary" onclick="closeQuest()">이미 스탬프 획득 · 닫기</button>':(ph?'<button class="cta" onclick="complete(\''+id+'\')">이 사진으로 스탬프 찍기</button>':'<button class="secondary" onclick="complete(\''+id+'\')">사진 없이 스탬프 찍기</button>'))+'<div class="sourceNote">내용 참고: 경주시 공식 관광안내 자료 · <a href="'+(q.source||guideUrl)+'" target="_blank" rel="noopener">자료 보기 ↗</a></div>';
  document.getElementById("questOverlay").classList.add("show")
 }
 function closeQuest(){document.getElementById("questOverlay").classList.remove("show")}
