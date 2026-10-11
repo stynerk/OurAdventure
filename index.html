@@ -44,6 +44,15 @@
 .name-suggestions{margin-top:18px;text-align:left}.name-suggestions .hint{margin:0 0 9px;font-size:13px;color:var(--muted)}.name-chips{display:flex;flex-wrap:wrap;gap:8px}.name-chip{min-height:44px;padding:9px 12px;border:1px solid var(--line);border-radius:999px;background:#fffaf0;color:var(--ink);font-size:13px;font-weight:700;touch-action:manipulation}.name-chip[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:white}.name-chip:focus-visible,.name input:focus-visible{outline:3px solid var(--sun);outline-offset:3px}.name-status{min-height:20px;margin:8px 0 0;font-size:12px;color:var(--moss)}
 
 .map{height:auto;padding:16px;overflow:visible}.map:before{display:none}.map-chapter+.map-chapter{border-top:1px dashed #a4987b;margin-top:16px;padding-top:16px}.map-chapter h3{margin:0 0 12px;font-size:13px;color:var(--moss)}.map-nodes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.node{position:relative;width:100%;transform:none;left:auto;top:auto;border:1px solid #d7c7a6;background:#fffaf0}.node b{font-size:12px}.timeline{display:grid;gap:10px;margin:16px 0}.schedule-stop{display:block;width:100%;text-align:left;padding:14px;border:1px solid var(--line);border-radius:18px;background:white;color:var(--ink);font-size:13px;line-height:1.5}.schedule-stop time{display:block;color:var(--moss);font-size:12px;font-weight:900}.schedule-stop strong{display:block;margin:4px 0}.schedule-stop p{margin:0;font-size:12px;color:var(--muted)}.schedule-stop .tiny{margin-top:8px;color:var(--moss)}.observation{padding:22px;text-align:center;background:#eef5ea;border-radius:18px;font-size:13px;line-height:1.6}.observation span{display:block;font-size:48px}
+
+.diary-print-actions{margin-top:24px;padding:16px;border:1px solid var(--line);border-radius:22px;background:#eef5ea}.diary-print-actions p{font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 10px}.diary-print-actions button:disabled{opacity:.6;cursor:wait}.diary-preview-image{width:100%;height:auto;display:block;border:1px solid var(--line);background:white;margin:14px 0}.diary-download{text-decoration:none}.print-sheet{display:none}
+@media print{
+ @page{size:A4 portrait;margin:8mm}
+ html,body{background:white!important;margin:0!important;padding:0!important}
+ body.printing-diary>*{display:none!important}
+ body.printing-diary>#diaryPrintSheet{display:block!important;width:190mm;margin:0 auto!important;padding:0!important;break-inside:avoid;page-break-inside:avoid}
+ #diaryPrintSheet img{display:block;width:190mm;height:auto;max-height:277mm;object-fit:contain}
+}
 </style>
 </head>
 <body>
@@ -61,12 +70,15 @@
   </section>
   <section id="route" class="screen"><div class="section"><h2>3일의 이야기</h2><small>챕터 카드 전체 터치</small></div><div id="chapters"></div></section>
   <section id="stamps" class="screen"><div class="section"><h2>스탬프북</h2><small id="stampMeta"></small></div><div class="stamps" id="stampGrid"></div></section>
-  <section id="memory" class="screen"><div class="section"><h2>우리 가족 원정기</h2><small>사진 + 완료 기록</small></div><div id="memoryList"></div></section>
+  <section id="memory" class="screen"><div class="section"><h2>우리 가족 원정기</h2><small>사진 + 완료 기록</small></div><div id="memoryList"></div><div class="diary-print-actions"><p>완료한 사진과 기록을 A4 한 장 카드로 만들어 일기에 붙여보자. 사진 없는 기록과 이전 코스 기록도 포함해.</p><button type="button" id="diaryPrintButton" class="cta" onclick="makeDiaryPrint()">🖨️ 기록 프린트하기</button></div></section>
  </main>
  <nav class="nav"><button data-s="home" onclick="go('home')"><b>🗺️</b>지도</button><button data-s="route" onclick="go('route')"><b>📖</b>코스</button><button data-s="stamps" onclick="go('stamps')"><b>🔴</b>스탬프</button><button data-s="memory" onclick="go('memory')"><b>✨</b>기록</button></nav>
 </div>
 <div id="questOverlay" class="overlay" onclick="if(event.target===this)closeQuest()"><div id="questModal" class="modal"></div></div>
 <div id="stampOverlay" class="overlay"><div id="stampModal" class="modal"></div></div>
+
+<div id="diaryPreview" class="overlay" onclick="if(event.target===this)closeDiaryPrint()"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="diaryPreviewTitle"><h2 id="diaryPreviewTitle">우리 가족 여행 일기</h2><p>A4 한 장에 사진과 기록을 카드로 담았어. 아래 빈 줄에는 내 생각을 직접 써보자.</p><img id="diaryPreviewImage" class="diary-preview-image" alt="A4 가족 여행 일기 미리보기"><button type="button" id="diaryPrintNow" class="cta" onclick="printDiaryImage()">🖨️ A4 인쇄하기</button><a id="diaryDownload" class="secondary diary-download" download="경주-가족여행-일기-A4.png">📥 이미지 저장하기</a><p class="tiny">용지 A4 · 세로 · 배율 ‘페이지에 맞춤’ · 머리글/바닥글 끄기. 아이폰에서 저장 버튼이 이미지를 열면 길게 눌러 저장해줘.</p><button type="button" class="secondary" onclick="closeDiaryPrint()">닫기</button></div></div>
+<div id="diaryPrintSheet" class="print-sheet"><img id="diaryPrintImage" alt="인쇄용 A4 가족 여행 일기"></div>
 <script>
 var guideUrl="https://www.gyeongju.go.kr/ebookData/20260902_chi/index.html";
 var quests=[
@@ -439,6 +451,77 @@ function photo(id,input){
  };r.readAsDataURL(f)
 }
 function complete(id){if(state.done.indexOf(id)<0){state.memories[id]=quests.find(function(q){return q.id===id}).memory;state.done.push(id);state.done.sort(function(a,b){return quests.find(function(q){return q.id===a}).order-quests.find(function(q){return q.id===b}).order});save()}closeQuest();var q=quests.find(function(x){return x.id===id});document.getElementById("stampModal").innerHTML='<div class="center"><div class="seal">'+q.icon+'</div><h2>쾅! '+q.stamp+'</h2><p>새로운 인장을 얻었어!</p><button class="cta" onclick="document.getElementById(\'stampOverlay\').classList.remove(\'show\')">다음 이야기 보기</button></div>';document.getElementById("stampOverlay").classList.add("show");render()}
+// Print/export reads existing records; it never writes or migrates saved data.
+var diaryImageUrl="";
+function diaryRecords(){
+ var records=quests.filter(function(q){return state.done.indexOf(q.id)>=0}).map(function(q){return {place:q.place,label:"탐험 "+q.day+"일차",memory:state.memories[q.id]||q.memory,photo:state.photos[q.id]||""}});
+ return records.concat(state.archivedRecords.map(function(r){return {place:r.title,label:"이전 코스 기록",memory:r.memory||"",photo:r.photo||""}}));
+}
+function diaryLayout(count){
+ var cols=count===1?1:count<=6?2:3,rows=Math.ceil(count/cols),gap=34;
+ return {cols:cols,rows:rows,gap:gap,x:120,y:430,width:2240,cardWidth:(2240-gap*(cols-1))/cols,cardHeight:Math.min(830,(2480-gap*(rows-1))/rows)};
+}
+function diaryLines(ctx,text,width,maxLines){
+ var lines=[],line="",chars=Array.from(String(text||""));
+ for(var i=0;i<chars.length;i++){
+  var ch=chars[i];if(ch==="\n"||ctx.measureText(line+ch).width>width){lines.push(line);line=ch==="\n"?"":ch;if(lines.length===maxLines){var last=lines[maxLines-1];while(last&&ctx.measureText(last+"…").width>width)last=last.slice(0,-1);lines[maxLines-1]=last+"…";return lines}}
+  else line+=ch;
+ }if(line)lines.push(line);return lines.slice(0,maxLines);
+}
+function diaryText(ctx,text,x,y,width,size,maxLines,color,weight){
+ ctx.font=(weight||"400")+" "+size+'px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';ctx.fillStyle=color||"#303a32";
+ diaryLines(ctx,text,width,maxLines).forEach(function(line,i){ctx.fillText(line,x,y+i*size*1.45)});
+}
+function diaryBox(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
+function diaryPhoto(src){return new Promise(function(resolve){if(!src){resolve(null);return}var img=new Image();var timer=setTimeout(function(){resolve(null)},10000);img.onload=function(){clearTimeout(timer);resolve(img)};img.onerror=function(){clearTimeout(timer);resolve(null)};img.src=src})}
+async function diaryCanvas(records,team){
+ if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+ var canvas=document.createElement("canvas");canvas.width=2480;canvas.height=3508;var ctx=canvas.getContext("2d");if(!ctx)throw new Error("Canvas unavailable");ctx.textBaseline="top";
+ ctx.fillStyle="#fffdf7";ctx.fillRect(0,0,2480,3508);
+ ctx.fillStyle="#3f6754";ctx.fillRect(120,100,92,12);
+ diaryText(ctx,"우리 가족 경주 여행 일기",120,147,2240,106,1,"#283b2f","800");
+ diaryText(ctx,team||"우리 가족 탐험대",124,290,2240,56,1,"#3f6754","700");
+ diaryText(ctx,"2026. 10. 9 – 10. 11  ·  "+records.length+"개의 추억",124,365,2240,38,1,"#687166");
+ var layout=diaryLayout(records.length);
+ // Load one photo at a time to keep memory usage modest on phones.
+ for(var i=0;i<records.length;i++){
+  var r=records[i],x=layout.x+(i%layout.cols)*(layout.cardWidth+layout.gap),y=layout.y+Math.floor(i/layout.cols)*(layout.cardHeight+layout.gap),w=layout.cardWidth,h=layout.cardHeight;
+  diaryBox(ctx,x,y,w,h,28);ctx.fillStyle="#ffffff";ctx.fill();ctx.strokeStyle="#d8d5c8";ctx.lineWidth=3;ctx.stroke();
+  var pad=30,photoY=y+pad,photoH=Math.max(100,h*(layout.rows>=4?.43:.53)),photoW=w-pad*2;
+  var img=await diaryPhoto(r.photo);
+  ctx.save();diaryBox(ctx,x+pad,photoY,photoW,photoH,16);ctx.clip();ctx.fillStyle="#eff2e9";ctx.fillRect(x+pad,photoY,photoW,photoH);
+  if(img){var scale=Math.min(photoW/img.width,photoH/img.height),dw=img.width*scale,dh=img.height*scale;ctx.drawImage(img,x+pad+(photoW-dw)/2,photoY+(photoH-dh)/2,dw,dh)}
+  else{ctx.textAlign="center";diaryText(ctx,r.photo?"사진을 불러오지 못했어요":"사진 없이 남긴 추억",x+w/2,photoY+photoH/2-22,photoW,36,1,"#748071");ctx.textAlign="left"}ctx.restore();
+  var ty=photoY+photoH+23,small=layout.cols===3?30:34,title=layout.cols===3?43:50,body=layout.cols===3?34:39;
+  diaryText(ctx,r.label,x+pad,ty,photoW,small,1,"#63806b","600");
+  diaryText(ctx,r.place,x+pad,ty+small*1.4,photoW,title,1,"#283b2f","800");
+  var captionY=ty+small*1.4+title*1.4;var maxLines=Math.max(1,Math.floor((y+h-pad-captionY)/(body*1.45)));
+  diaryText(ctx,r.memory,x+pad,captionY,photoW,body,maxLines,"#555f53");
+ }
+ ctx.strokeStyle="#c7d1c4";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(120,3020);ctx.lineTo(2360,3020);ctx.stroke();
+ diaryText(ctx,"내가 가장 기억에 남는 순간은…",120,3060,2240,53,1,"#3f6754","700");
+ for(var line=0;line<3;line++){ctx.beginPath();ctx.moveTo(120,3200+line*105);ctx.lineTo(2360,3200+line*105);ctx.stroke()}
+ return canvas;
+}
+async function makeDiaryPrint(){
+ var button=document.getElementById("diaryPrintButton");if(button.disabled)return;
+ var records=diaryRecords();if(!records.length){alert("먼저 미션을 완료해줘. 완료한 사진과 기록으로 일기 이미지를 만들 수 있어.");return}
+ button.disabled=true;button.textContent="A4 이미지 만드는 중…";
+ try{
+  var canvas=await diaryCanvas(records,state.team);
+  var blob=await new Promise(function(resolve){canvas.toBlob(resolve,"image/png")});if(!blob)throw new Error("Image export failed");
+  var url=URL.createObjectURL(blob),preview=document.getElementById("diaryPreviewImage"),sheet=document.getElementById("diaryPrintImage");
+  await new Promise(function(resolve,reject){sheet.onload=resolve;sheet.onerror=reject;sheet.src=url});
+  if(diaryImageUrl)URL.revokeObjectURL(diaryImageUrl);diaryImageUrl=url;preview.src=url;
+  var download=document.getElementById("diaryDownload");download.href=url;download.download="경주-가족여행-일기-A4.png";
+  document.getElementById("diaryPreview").classList.add("show");document.getElementById("diaryPrintNow").focus();
+ }catch(error){alert("일기 이미지를 만들지 못했어. 다시 시도해줘. 기존 사진과 기록은 그대로 있어.")}
+ finally{button.disabled=false;button.textContent="🖨️ 기록 프린트하기"}
+}
+function closeDiaryPrint(){document.getElementById("diaryPreview").classList.remove("show");document.body.classList.remove("printing-diary");document.getElementById("diaryPrintButton").focus()}
+function printDiaryImage(){if(!diaryImageUrl)return;document.body.classList.add("printing-diary");try{window.print()}catch(error){document.body.classList.remove("printing-diary");alert("인쇄 창을 열지 못했어. 이미지를 저장한 뒤 인쇄해줘.")}}
+window.addEventListener("afterprint",function(){document.body.classList.remove("printing-diary")});
+
 function safe(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function syncTeamNameChips(){var value=document.getElementById("teamInput").value.trim();document.querySelectorAll(".name-chip").forEach(function(button){button.setAttribute("aria-pressed",String(button.getAttribute("data-team-name")===value))})}
 function chooseTeamName(button){var name=button.getAttribute("data-team-name");document.getElementById("teamInput").value=name;syncTeamNameChips();document.getElementById("nameStatus").textContent=name+"! 마음에 들면 시작을 눌러줘.";}
