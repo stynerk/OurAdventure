@@ -70,14 +70,14 @@
   </section>
   <section id="route" class="screen"><div class="section"><h2>3일의 이야기</h2><small>챕터 카드 전체 터치</small></div><div id="chapters"></div></section>
   <section id="stamps" class="screen"><div class="section"><h2>스탬프북</h2><small id="stampMeta"></small></div><div class="stamps" id="stampGrid"></div></section>
-  <section id="memory" class="screen"><div class="section"><h2>우리 가족 원정기</h2><small>사진 + 완료 기록</small></div><div id="memoryList"></div><div class="diary-print-actions"><p>완료한 사진과 기록을 A4 한 장 카드로 만들어 일기에 붙여보자. 사진 없는 기록과 이전 코스 기록도 포함해.</p><button type="button" id="diaryPrintButton" class="cta" onclick="makeDiaryPrint()">🖨️ 기록 프린트하기</button></div></section>
+  <section id="memory" class="screen"><div class="section"><h2>우리 가족 원정기</h2><small>사진 + 완료 기록</small></div><div id="memoryList"></div><div class="diary-print-actions"><p>인증 사진을 연결한 A4 보물 지도를 만들어보자. 사진 없는 기록과 이전 코스 기록도 포함해.</p><label for="diaryReflection" class="tiny">우리 가족의 여행 한 줄 (선택)</label><input id="diaryReflection" maxlength="80" placeholder="가장 기억에 남는 순간을 적어줘" style="width:100%;padding:12px;margin:8px 0;border:1px solid var(--line);border-radius:12px"><button type="button" id="diaryPrintButton" class="cta" onclick="makeDiaryPrint()">🖨️ 기록 프린트하기</button></div></section>
  </main>
  <nav class="nav"><button data-s="home" onclick="go('home')"><b>🗺️</b>지도</button><button data-s="route" onclick="go('route')"><b>📖</b>코스</button><button data-s="stamps" onclick="go('stamps')"><b>🔴</b>스탬프</button><button data-s="memory" onclick="go('memory')"><b>✨</b>기록</button></nav>
 </div>
 <div id="questOverlay" class="overlay" onclick="if(event.target===this)closeQuest()"><div id="questModal" class="modal"></div></div>
 <div id="stampOverlay" class="overlay"><div id="stampModal" class="modal"></div></div>
 
-<div id="diaryPreview" class="overlay" onclick="if(event.target===this)closeDiaryPrint()"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="diaryPreviewTitle"><h2 id="diaryPreviewTitle">우리 가족 여행 일기</h2><p>A4 한 장에 사진과 기록을 카드로 담았어. 아래 빈 줄에는 내 생각을 직접 써보자.</p><img id="diaryPreviewImage" class="diary-preview-image" alt="A4 가족 여행 일기 미리보기"><button type="button" id="diaryPrintNow" class="cta" onclick="printDiaryImage()">🖨️ A4 인쇄하기</button><a id="diaryDownload" class="secondary diary-download" download="경주-가족여행-일기-A4.png">📥 이미지 저장하기</a><p class="tiny">용지 A4 · 세로 · 배율 ‘페이지에 맞춤’ · 머리글/바닥글 끄기. 아이폰에서 저장 버튼이 이미지를 열면 길게 눌러 저장해줘.</p><button type="button" class="secondary" onclick="closeDiaryPrint()">닫기</button></div></div>
+<div id="diaryPreview" class="overlay" onclick="if(event.target===this)closeDiaryPrint()"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="diaryPreviewTitle"><h2 id="diaryPreviewTitle">우리 가족의 경주 보물 지도</h2><p>인증 사진과 탐험 길로 완성한 A4 이야기 지도야. 이미지로 저장하거나 일기에 붙여보자.</p><img id="diaryPreviewImage" class="diary-preview-image" alt="A4 가족 여행 일기 미리보기"><button type="button" id="diaryPrintNow" class="cta" onclick="printDiaryImage()">🖨️ A4 인쇄하기</button><a id="diaryDownload" class="secondary diary-download" download="경주-가족여행-보물지도-A4.png">📥 이미지 저장하기</a><p class="tiny">용지 A4 · 세로 · 배율 ‘페이지에 맞춤’ · 머리글/바닥글 끄기. 아이폰에서 저장 버튼이 이미지를 열면 길게 눌러 저장해줘.</p><button type="button" class="secondary" onclick="closeDiaryPrint()">닫기</button></div></div>
 <div id="diaryPrintSheet" class="print-sheet"><img id="diaryPrintImage" alt="인쇄용 A4 가족 여행 일기"></div>
 <script>
 var guideUrl="https://www.gyeongju.go.kr/ebookData/20260902_chi/index.html";
@@ -454,7 +454,7 @@ function complete(id){if(state.done.indexOf(id)<0){state.memories[id]=quests.fin
 // Print/export reads existing records; it never writes or migrates saved data.
 var diaryImageUrl="";
 function diaryRecords(){
- var records=quests.filter(function(q){return state.done.indexOf(q.id)>=0}).map(function(q){return {place:q.place,label:"탐험 "+q.day+"일차",memory:state.memories[q.id]||q.memory,photo:state.photos[q.id]||""}});
+ var records=quests.filter(function(q){return state.done.indexOf(q.id)>=0}).map(function(q){return {id:q.id,day:q.day,place:q.place,label:"탐험 "+q.day+"일차",memory:state.memories[q.id]||q.memory,photo:state.photos[q.id]||""}});
  return records.concat(state.archivedRecords.map(function(r){return {place:r.title,label:"이전 코스 기록",memory:r.memory||"",photo:r.photo||""}}));
 }
 function diaryLayout(count){
@@ -474,46 +474,86 @@ function diaryText(ctx,text,x,y,width,size,maxLines,color,weight){
 }
 function diaryBox(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
 function diaryPhoto(src){return new Promise(function(resolve){if(!src){resolve(null);return}var img=new Image();var timer=setTimeout(function(){resolve(null)},10000);img.onload=function(){clearTimeout(timer);resolve(img)};img.onerror=function(){clearTimeout(timer);resolve(null)};img.src=src})}
-async function diaryCanvas(records,team){
+function diaryMapLayout(count){
+ var cols=count===1?1:count<=4?2:3,rows=Math.ceil(count/cols),step=rows===1?0:2200/rows;
+ return {cols:cols,rows:rows,nodes:Array.from({length:count},function(_,i){var row=Math.floor(i/cols),col=i%cols;if(row%2)col=cols-1-col;return {x:cols===1?1240:cols===2?650+1180*col:450+790*col,y:rows===1?1620:600+step*.5+row*step+(col%2?34:-24),width:cols===1?1220:cols===2?900:640,height:rows>=4?240:cols===1?800:cols===2?570:385,angle:[-.035,.025,-.018,.035,-.025,.018][i%6]}})};
+}
+function diaryLandmark(ctx,x,y,type,color){
+ ctx.save();ctx.translate(x,y);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=5;ctx.globalAlpha=.45;
+ if(type==="tower"){
+  ctx.beginPath();ctx.moveTo(-80,100);ctx.lineTo(-55,-105);ctx.lineTo(55,-105);ctx.lineTo(80,100);ctx.closePath();ctx.stroke();ctx.strokeRect(-70,-135,140,30);
+  for(var t=0;t<7;t++){var yy=-85+t*27,ww=59+t*3;ctx.beginPath();ctx.moveTo(-ww,yy);ctx.lineTo(ww,yy);ctx.stroke()}
+  ctx.clearRect(-19,-20,38,38);ctx.strokeRect(-19,-20,38,38);
+ }else if(type==="bridge"){
+  ctx.beginPath();ctx.moveTo(-155,35);ctx.quadraticCurveTo(0,-125,155,35);ctx.stroke();ctx.beginPath();ctx.moveTo(-170,50);ctx.lineTo(170,50);ctx.stroke();
+  for(var b=-120;b<=120;b+=60){ctx.beginPath();ctx.moveTo(b,30);ctx.lineTo(b,85);ctx.stroke()}
+ }else if(type==="crown"){
+  ctx.beginPath();ctx.moveTo(-95,70);ctx.lineTo(-120,-60);ctx.lineTo(-55,-10);ctx.lineTo(0,-100);ctx.lineTo(55,-10);ctx.lineTo(120,-60);ctx.lineTo(95,70);ctx.closePath();ctx.stroke();ctx.strokeRect(-95,70,190,25);
+ }else{
+  ctx.beginPath();ctx.arc(0,0,85,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.ellipse(0,20,38,25,0,0,Math.PI*2);ctx.stroke();[-15,15].forEach(function(px){ctx.beginPath();ctx.arc(px,20,4,0,Math.PI*2);ctx.fill()});
+  [-38,38].forEach(function(px){ctx.beginPath();ctx.arc(px,-20,5,0,Math.PI*2);ctx.fill()});
+ }ctx.restore();
+}
+async function diaryCanvas(records,team,reflection){
  if(document.fonts&&document.fonts.ready)await document.fonts.ready;
  var canvas=document.createElement("canvas");canvas.width=2480;canvas.height=3508;var ctx=canvas.getContext("2d");if(!ctx)throw new Error("Canvas unavailable");ctx.textBaseline="top";
- ctx.fillStyle="#fffdf7";ctx.fillRect(0,0,2480,3508);
- ctx.fillStyle="#3f6754";ctx.fillRect(120,100,92,12);
- diaryText(ctx,"우리 가족 경주 여행 일기",120,147,2240,106,1,"#283b2f","800");
- diaryText(ctx,team||"우리 가족 탐험대",124,290,2240,56,1,"#3f6754","700");
- diaryText(ctx,"2026. 10. 9 – 10. 11  ·  "+records.length+"개의 추억",124,365,2240,38,1,"#687166");
- var layout=diaryLayout(records.length);
- // Load one photo at a time to keep memory usage modest on phones.
+ var colors=["#537b65","#ac694e","#5d7394"];
+ ctx.fillStyle="#faf3e2";ctx.fillRect(0,0,2480,3508);
+ // Subtle contour lines and a river create a story map; no geographic coordinates are implied.
+ ctx.strokeStyle="#d8dfc9";ctx.lineWidth=4;
+ for(var contour=0;contour<4;contour++){ctx.beginPath();ctx.moveTo(-80,620+contour*55);ctx.bezierCurveTo(150,440+contour*35,250,620+contour*65,480,530+contour*80);ctx.stroke();ctx.beginPath();ctx.moveTo(2100,2840+contour*45);ctx.bezierCurveTo(2320,2690+contour*40,2420,2900+contour*45,2600,2680+contour*60);ctx.stroke()}
+ ctx.strokeStyle="#e1ebeb";ctx.lineWidth=84;ctx.beginPath();ctx.moveTo(2240,600);ctx.bezierCurveTo(2000,1500,2580,2110,2240,2980);ctx.stroke();
+ ctx.strokeStyle="#fffaf0";ctx.lineWidth=20;ctx.strokeRect(65,65,2350,3378);ctx.strokeStyle="#d5c9aa";ctx.lineWidth=3;ctx.strokeRect(80,80,2320,3348);
+ diaryText(ctx,"OUR FAMILY ADVENTURE",140,130,1880,36,1,"#8d7954","700");
+ diaryText(ctx,"우리 가족의 경주 보물 지도",140,195,2080,98,1,"#2f4c3c","800");
+ diaryText(ctx,team||"우리 가족 탐험대",145,335,1680,60,1,"#537b65","700");
+ var photos=records.filter(function(r){return !!r.photo}).length;
+ diaryText(ctx,"2026. 10. 9 – 10. 11  ·  "+records.length+"곳의 추억  ·  인증 사진 "+photos+"장",145,426,2000,38,1,"#827451");
+ ctx.save();ctx.translate(2240,370);ctx.strokeStyle="#a69878";ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,72,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(0,-56);ctx.lineTo(18,18);ctx.lineTo(-18,18);ctx.closePath();ctx.fillStyle="#55745f";ctx.fill();ctx.restore();
+ diaryText(ctx,"N",2222,262,80,30,1,"#6f7c66","700");
+ var layout=diaryMapLayout(records.length),nodes=layout.nodes;
+ // Connect numbered photo pins in a winding, chronological path.
+ if(nodes.length>1){ctx.save();ctx.strokeStyle="#ad9160";ctx.lineWidth=9;ctx.setLineDash([14,20]);ctx.lineCap="round";ctx.beginPath();ctx.moveTo(nodes[0].x,nodes[0].y);for(var p=1;p<nodes.length;p++){var prev=nodes[p-1],next=nodes[p];ctx.bezierCurveTo(prev.x,prev.y+(next.y-prev.y)*.6,next.x,next.y-(next.y-prev.y)*.6,next.x,next.y)}ctx.stroke();ctx.restore()}
+ diaryLandmark(ctx,140,1770,"tower","#8ba077");diaryLandmark(ctx,2270,1910,"bridge","#849da2");diaryLandmark(ctx,200,2880,"crown","#b9a56d");
  for(var i=0;i<records.length;i++){
-  var r=records[i],x=layout.x+(i%layout.cols)*(layout.cardWidth+layout.gap),y=layout.y+Math.floor(i/layout.cols)*(layout.cardHeight+layout.gap),w=layout.cardWidth,h=layout.cardHeight;
-  diaryBox(ctx,x,y,w,h,28);ctx.fillStyle="#ffffff";ctx.fill();ctx.strokeStyle="#d8d5c8";ctx.lineWidth=3;ctx.stroke();
-  var pad=30,photoY=y+pad,photoH=Math.max(100,h*(layout.rows>=4?.43:.53)),photoW=w-pad*2;
+  var r=records[i],node=nodes[i],w=node.width,h=node.height,pad=24,color=colors[((r.day||1)-1)%3];
   var img=await diaryPhoto(r.photo);
-  ctx.save();diaryBox(ctx,x+pad,photoY,photoW,photoH,16);ctx.clip();ctx.fillStyle="#eff2e9";ctx.fillRect(x+pad,photoY,photoW,photoH);
-  if(img){var scale=Math.min(photoW/img.width,photoH/img.height),dw=img.width*scale,dh=img.height*scale;ctx.drawImage(img,x+pad+(photoW-dw)/2,photoY+(photoH-dh)/2,dw,dh)}
-  else{ctx.textAlign="center";diaryText(ctx,r.photo?"사진을 불러오지 못했어요":"사진 없이 남긴 추억",x+w/2,photoY+photoH/2-22,photoW,36,1,"#748071");ctx.textAlign="left"}ctx.restore();
-  var ty=photoY+photoH+23,small=layout.cols===3?30:34,title=layout.cols===3?43:50,body=layout.cols===3?34:39;
-  diaryText(ctx,r.label,x+pad,ty,photoW,small,1,"#63806b","600");
-  diaryText(ctx,r.place,x+pad,ty+small*1.4,photoW,title,1,"#283b2f","800");
-  var captionY=ty+small*1.4+title*1.4;var maxLines=Math.max(1,Math.floor((y+h-pad-captionY)/(body*1.45)));
-  diaryText(ctx,r.memory,x+pad,captionY,photoW,body,maxLines,"#555f53");
+  ctx.save();ctx.translate(node.x,node.y);ctx.rotate(node.angle);
+  ctx.shadowColor="#59452726";ctx.shadowBlur=18;ctx.shadowOffsetY=10;ctx.fillStyle="#fffefa";ctx.fillRect(-w/2-pad,-h/2-pad,w+pad*2,h+pad*2+108);ctx.shadowColor="transparent";
+  ctx.fillStyle="#eeeee5";ctx.fillRect(-w/2,-h/2,w,h);
+  if(img){var scale=Math.min(w/img.width,h/img.height),dw=img.width*scale,dh=img.height*scale;ctx.drawImage(img,-dw/2,-dh/2,dw,dh)}
+  else{ctx.textAlign="center";diaryText(ctx,r.photo?"사진을 불러오지 못했어요":"사진 없이도 소중한 추억",0,-18,w-40,34,1,"#889078");ctx.textAlign="left"}
+  ctx.fillStyle="#e2cfa699";ctx.fillRect(-86,-h/2-pad-23,172,46);
+  diaryText(ctx,r.place,-w/2,h/2+24,w,layout.cols===3?44:53,1,"#344e3b","800");
+  ctx.restore();
+  var badgeX=node.x-w/2+14,badgeY=node.y-h/2-40;
+  ctx.beginPath();ctx.arc(badgeX,badgeY,43,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle="#fffaf0";ctx.lineWidth=6;ctx.stroke();ctx.textAlign="center";diaryText(ctx,String(i+1),badgeX,badgeY-25,75,46,1,"#ffffff","800");ctx.textAlign="left";
+  var noteY=node.y+h/2+(layout.rows>=4?112:130),noteX=node.x-w/2;
+  ctx.fillStyle="#faf3e2";ctx.fillRect(noteX-8,noteY-8,w+16,layout.rows>=4?125:layout.rows>=3?155:220);
+  diaryText(ctx,r.label+"  ·  추억 인증",noteX,noteY,w,layout.rows>=4?26:29,1,color,"700");
+  diaryText(ctx,r.memory,noteX,noteY+(layout.rows>=4?38:44),w,layout.rows>=4?28:layout.cols===3?33:39,layout.rows>=3?2:3,"#6e6652");
  }
- ctx.strokeStyle="#c7d1c4";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(120,3020);ctx.lineTo(2360,3020);ctx.stroke();
- diaryText(ctx,"내가 가장 기억에 남는 순간은…",120,3060,2240,53,1,"#3f6754","700");
- for(var line=0;line<3;line++){ctx.beginPath();ctx.moveTo(120,3200+line*105);ctx.lineTo(2360,3200+line*105);ctx.stroke()}
+ ctx.fillStyle="#faf3e2";ctx.fillRect(110,3070,2260,330);
+ ctx.strokeStyle="#c8b994";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(140,3100);ctx.lineTo(2340,3100);ctx.stroke();
+ diaryText(ctx,"우리 가족이 발견한 가장 큰 보물",140,3140,1700,52,1,"#3f6754","800");
+ if(reflection&&reflection.trim())diaryText(ctx,reflection.trim(),140,3220,1780,46,2,"#716044");
+ else{diaryText(ctx,"가장 기억에 남는 순간을 여기에 직접 써보자.",140,3220,1800,36,1,"#97896a");ctx.beginPath();ctx.moveTo(140,3330);ctx.lineTo(1920,3330);ctx.stroke()}
+ ctx.save();ctx.translate(2175,3265);ctx.rotate(-.12);ctx.strokeStyle="#b27459";ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,112,0,Math.PI*2);ctx.stroke();ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,98,0,Math.PI*2);ctx.stroke();ctx.textAlign="center";diaryText(ctx,"함께 남긴",0,-42,190,35,1,"#b27459","700");diaryText(ctx,"우리의 추억",0,11,200,35,1,"#b27459","700");ctx.restore();
+ diaryText(ctx,"방문 기록을 이어 그린 이야기 지도",140,3420,2100,25,1,"#a1957e");
  return canvas;
 }
+
 async function makeDiaryPrint(){
  var button=document.getElementById("diaryPrintButton");if(button.disabled)return;
  var records=diaryRecords();if(!records.length){alert("먼저 미션을 완료해줘. 완료한 사진과 기록으로 일기 이미지를 만들 수 있어.");return}
  button.disabled=true;button.textContent="A4 이미지 만드는 중…";
  try{
-  var canvas=await diaryCanvas(records,state.team);
+  var canvas=await diaryCanvas(records,state.team,document.getElementById("diaryReflection").value);
   var blob=await new Promise(function(resolve){canvas.toBlob(resolve,"image/png")});if(!blob)throw new Error("Image export failed");
   var url=URL.createObjectURL(blob),preview=document.getElementById("diaryPreviewImage"),sheet=document.getElementById("diaryPrintImage");
   await new Promise(function(resolve,reject){sheet.onload=resolve;sheet.onerror=reject;sheet.src=url});
   if(diaryImageUrl)URL.revokeObjectURL(diaryImageUrl);diaryImageUrl=url;preview.src=url;
-  var download=document.getElementById("diaryDownload");download.href=url;download.download="경주-가족여행-일기-A4.png";
+  var download=document.getElementById("diaryDownload");download.href=url;download.download="경주-가족여행-보물지도-A4.png";
   document.getElementById("diaryPreview").classList.add("show");document.getElementById("diaryPrintNow").focus();
  }catch(error){alert("일기 이미지를 만들지 못했어. 다시 시도해줘. 기존 사진과 기록은 그대로 있어.")}
  finally{button.disabled=false;button.textContent="🖨️ 기록 프린트하기"}
