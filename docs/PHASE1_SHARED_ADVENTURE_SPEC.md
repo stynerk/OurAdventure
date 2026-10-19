@@ -115,9 +115,8 @@ Google 로그인한 방장 계정으로 관리 화면 접근 및 재접속
 경주 역사 탐험 · 9개 Quest
 초대받았어요!
 별칭 [씩씩한 탐험가]
-[탐험 시작] — 내부에서 익명 세션 발급 (로그인 UI 없음)
 (학교/개별 제출 선택 시) 번호/참여 코드 [__]
-[탐험 시작]
+[탐험 시작] — 내부에서 익명 Auth 세션 발급 (로그인 UI 없음)
 ~~~
 
 ### UX: 탐험 화면
@@ -163,14 +162,14 @@ interface AdventureRoom {
   title: string;
   mode: Mode;
   status: RoomStatus;
-  ownerId: string;             // Firebase Auth uid
+  ownerId: string;               // Google 인증된 Firebase Auth uid
   joinTokenHash: string;         // 원문 초대 토큰 DB 평문 저장 금지
   createdAt: string;
   closedAt?: string;
 }
 
 interface Participant {
-  id: string;                  // Firebase Auth uid; 게스트는 익명 uid, 리더는 Google uid
+  id: string;                    // Firebase Auth uid; 게스트는 익명 uid, 리더는 Google uid
   roomId: string;
   role: ParticipantRole;       // 인증과 별개로 방별 owner/member
   displayName: string;        // 별칭 입력. Google 프로필 실명/이메일 자동 공개 금지
@@ -210,7 +209,7 @@ interface Submission {
 | Action | 주체 | 응답 / 보안 요구 |
 |---|---|---|
 | createRoom(courseId, mode, title) | Google 인증된 리더 | roomId, 참가 URL, owner = Google uid (익명 Auth는 생성 불가) |
-| joinRoom(joinToken, nickname, optional code) | 내부 익명 인증을 거친 참여자 | 방별 member 멤버십, room summary (로그인 UI 불필요) |
+| joinRoom(joinToken, nickname, optional code) | Firebase 인증 사용자(보통 내부 익명 uid; 기존 Google 세션이면 그대로 이용) | 방별 member 멤버십, room summary (로그인 UI 불필요) |
 | getRoom(roomId) | 참가자 | 코스/방 상태; 권한 밖 참여자 목록 제외 |
 | completeQuest(roomId, questId) | 참가자 | 갱신된 범위의 스탬프 상태 |
 | getProgress(roomId) | 참가자 | shared면 공동, individual이면 본인 |
