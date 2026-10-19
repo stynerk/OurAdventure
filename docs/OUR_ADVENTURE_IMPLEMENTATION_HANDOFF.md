@@ -1,88 +1,108 @@
-# OurAdventure 개발 프로젝트 핸드오프 — Phase 1 / Firebase + Google 로그인
+# OurAdventure 개발 프로젝트 핸드오프 — Phase 1 / Firebase 인증 정책
 
-작성일: 2026-10-19
-이 문서는 **기획 프로젝트에서 합의한 개발 인계 자료**이며, 구현 완료 보고서가 아니다.
+작성일: 2026-10-19 · 상태: 기획 확정사항 및 개발 인계 (미구현)
 
-## 프로젝트 역할 분리 (명시적 합의)
+> **프로젝트 분리:** 현재 '가족여행-경주'에서는 기획/의사결정만 한다. 실제 코드, Firebase 프로젝트 설정, 테스트, PR 병합 및 배포는 별도 **Our Adventure** 개발 프로젝트에서 진행한다. ChatGPT 프로젝트 간 작업은 자동으로 이관되지 않으므로 이 문서를 직접 참조한다.
 
-- **현재 '가족여행-경주' 대화/프로젝트:** 제품 전략, 기획, 요구사항, UX, 우선순위, 검증 기준 결정. 직접 구현·배포하지 않는다.
-- **별도 'Our Adventure' 개발 프로젝트:** GitHub 코드 수정, Firebase 구성, 구현, 테스트, PR, 배포를 맡는다.
-- ChatGPT 프로젝트 간 작업이나 대화는 자동 이동하지 않는다. 개발 프로젝트에서는 이 문서와 링크된 설계서를 직접 읽고 작업을 시작한다.
-- 기존 경주 서비스 URL과 저장된 사용자 기록을 훼손하지 않는다.
+## 1. 확정된 MVP 방향
 
-## 확정된 기획 의사결정
+- 제품: 가족·친구·학교 모두 사용할 수 있는 Shared Adventure.
+- **Phase 1:** 기존 경주 9개 Quest 재사용, 탐험방 생성, 초대 링크, 공동(shared)/개인별(individual) 완료, 진행 현황, individual 최종 제출.
+- **Phase 2:** 코스/미션 신규 생성·수정. Phase 1 개발 범위에서 제외.
+- 배포/구현: 기존 GitHub Pages 루트 `index.html` 및 기존 `gj-family-quest` 기록 보존. 신규 앱은 별도 경로/구성.
+- 사진: 초기 서버 업로드 없음. 기존 로컬 사진 보존; 방장에게 사진 검토 기능을 약속하지 않는다.
 
-1. 제품: 가족·친구·학교를 한 모델로 지원하는 **Shared Adventure**.
-2. **Phase 1**: 기존 경주 9개 Quest를 사용한 탐험방 생성, 초대, 참여, 완료 동기화, 방장 관리 및 (individual 모드) 최종 제출.
-3. **Phase 2**: 코스 생성/편집. Phase 1에 미리 포함하지 않는다.
-4. 인증/회원 인프라: **Firebase Authentication**, 초기 로그인 제공자는 **Google 로그인 단 한 개**. 이메일·비밀번호, 카카오, 네이버 등을 초기 범위에 추가하지 않는다.
-5. 초기 MVP 인증 UX: **리더와 참여자 모두 Google 로그인**으로 실사용 계정을 구분한다. 로그인하지 않은 사용자는 방 관리, 완료 저장·제출을 수행할 수 없다.
-6. 링크는 '어느 방에 참여할지'를 나타내고, Google Auth의 `uid`는 '누구인지'를 나타낸다. `owner/member` 권한은 방별 멤버십으로 구분한다. 한 사용자가 방 A 리더이면서 방 B 멤버일 수 있다.
-7. 진행 방식: `shared` (하나의 공동 스탬프북) / `individual` (참여자별 스탬프·제출). 방 생성 시 선택, 진행 중 변경 불가.
-8. 사진은 초기 서버 업로드하지 않고 기존 기기 로컬에 둔다. **사진 업로드·검토는 Phase 1 P0에서 제외.**
-9. 배포: 기존 `index.html`/GitHub Pages 루트는 보존. 신규 개발은 독립 경로/앱에서. Firebase Hosting으로 전환하는 결정은 후속 협의; GitHub Pages만으로도 정적 클라이언트는 제공 가능하나 Firestore와 규칙이 필요.
+### 2026-10-19 인증 정책 최종 수정 (중요)
 
-## Firebase 인프라 요구사항
+| 구분 | 탐험방 리더(owner) | 일반 참여자(member) |
+|---|---|---|
+| 사용자에게 보이는 로그인 | **Google 로그인 필수** | **로그인/회원가입 화면 없음** |
+| Firebase Auth | Google provider | **Anonymous Authentication(내부 익명 인증)** |
+| 진입 흐름 | Google 로그인 → 방 생성/관리 | 초대 링크 → 별칭 → 익명 세션 → 참여 |
+| ID | Firebase Auth `uid` | Firebase Anonymous Auth `uid` |
+| 기록 복구 | 동일 Google 계정, 여러 기기 | 동일 브라우저의 보존된 세션에서만 기본 복구 |
+| 권한 | 방별 owner + 필요한 경우 Quest 참여 | 방별 member, 자신/공동 기록만 수정 |
 
-- 프로젝트/웹 앱은 **Our Adventure 개발 프로젝트에서** 준비 및 설정. Firebase 프로젝트 ID는 아직 지정되지 않았음(Unknown).
-- Firebase Auth: Google provider 활성화. 허가된 OAuth 도메인에 테스트·배포 호스트 등록. 인증 상태 변화, 로그인 실패/취소, 로그아웃, 재접속 복구 UX.
-- Firestore: `users/{uid}`, `rooms/{roomId}`, `rooms/{roomId}/members/{uid}`, `.../progress`, `.../submissions` 등 개념적 구조를 상세 스펙과 대조하여 확정.
-- 접근 규칙: 관리자 작업은 반드시 해당 방의 `owner`로 판정. 참여자의 개인 진행 및 제출은 소유자 본인만 수정. 관리 현황 읽기는 `owner`로 제한.
-- **초대 URL이나 클라이언트에서 보낸 role만으로 owner를 만들면 안 된다.** 방 생성/가입을 신뢰 가능한 서버 처리 또는 안전하게 검증된 Firestore Security Rules로 구현.
-- 완료/제출: 중복 요청 멱등성, 서버 기록 시간, 방 종료 이후 쓰기 차단, 필수 Quest 검증 필요.
-- 개인정보: 학생 실명/이메일을 다른 방 사용자에게 공개하지 않음. Google 프로필 displayName을 공개 별칭으로 자동 노출하지 말고 별칭을 별도로 선택하도록 설계. 실제 학생 계정 데이터로 파일럿 시작하지 않음.
-- Google 계정이 없거나 계정 사용이 제한된 저연령 학생은 현재 정책에서 참가 불가할 수 있음. 이는 **명시적인 MVP 제약**이므로 교사 인터뷰로 검증, 후속 단계에서 게스트/학교 계정 대안 재평가.
-- 웹 `apiKey` 같은 Firebase 공개 클라이언트 구성과 관리자 비밀 키·서비스 계정은 다르다. 관리자 비밀·서비스 계정 JSON을 GitHub에 절대 커밋하지 않음.
-- GitHub Pages에서 로그인 화면이 작동하는지는 실제 배포 도메인 및 브라우저(iOS Safari/Android Chrome) 테스트 후 확인. 리디렉션/팝업 선택은 Firebase 공식 문서와 배포 도메인 제약에 따라 구현 단계에서 검증.
+- **리더에게만 Google 로그인 UI를 제공한다.** 참여자에게 Google 로그인 팝업/버튼/가입 폼을 강제하지 않는다.
+- Firebase Console에서는 로그인 제공자 **Google + Anonymous 두 종류**를 활성화한다. Anonymous는 사용자에게 보이는 '추가 로그인 수단'이 아니라 서버 권한 판정을 위한 내부 인증이다.
+- 익명 참여의 `uid`는 별칭/출석번호가 아니다. 방별 멤버십은 Auth `uid`와 `roomId`로 판정한다.
+- 이미 Google로 로그인한 리더가 다른 방에 참여하는 경우, 기존 Auth 세션을 유지하면서 **그 방에서는 member** 역할을 가질 수 있다. 멤버 참여를 위해 기존 Google 세션을 익명 세션으로 교체하지 않는다.
+- **Google이 아닌 익명 계정으로는 방을 생성하거나 owner가 될 수 없다.** Firebase Security Rules/신뢰된 서버 로직에서 강제한다.
+- 익명 세션은 기기/브라우저를 바꾸거나 저장 데이터를 삭제하면 복구가 보장되지 않는다. Phase 1에서는 교차기기 참여 기록 이전을 약속하지 않는다. 필요 시 Phase 2 이후 복구 코드/계정 연결을 별도 설계한다.
+- 한 브라우저의 한 Auth 세션이 기본적으로 한 참여자다. 한 기기를 여러 학생이 번갈아 이용하는 운영은 **미지원/미검증**; 조별 참여 등 운영 방식 검증 필요.
 
-## UI/동작 범위
+## 2. Firebase 인프라 요구사항
+
+- Firebase Authentication: Google(리더) + Anonymous(참여자) provider 활성화. 리더 Google OAuth 인증 도메인 구성.
+- 익명 인증은 `signInAnonymously`로 내부 수행한다. 클라이언트는 인증 상태가 준비된 후 멤버 가입/Quest 쓰기를 수행하며, 인증 초기화 동안 중복 익명 계정을 생성하지 않는다.
+- Firebase Auth 세션의 기본 브라우저 지속성(동일 출처) 테스트. Safari 개인정보 보호/시크릿 모드·스토리지 삭제에 대한 실패 상태 표시. Firebase 공식 문서: https://firebase.google.com/docs/auth/web/anonymous-auth
+- Cloud Firestore 권한: 사용자가 로그인했다는 사실만으로 owner가 아니다. `rooms/{roomId}/members/{uid}` 등 방별 멤버십과 owner를 신뢰 가능한 처리/Firestore Security Rules로 검증.
+- 방 생성: 인증된 Google uid만 owner로 지정 가능. 익명 uid 및 클라이언트가 임의로 지정한 role/ownerId로 방장 권한 획득 금지.
+- 초대 링크: room join capability일 뿐 owner 권한이 아님. 무작위 높은 엔트로피 토큰, 링크 재발급/종료 정책, 등록 남용 방지 방안 검토.
+- 가입: 인증된 익명 uid를 member에 바인딩하고 별칭은 표시 용도로만 저장. 일반 참여자에게 타인의 제출 내역/학교 명단/Google 이메일을 공개하지 않음.
+- 스탬프: shared이면 room 스코프, individual이면 member uid 스코프. 중복 기록 방지, 제출 전 필수 Quest 검증, 방 종료 후 쓰기 차단.
+- 데이터 모델(예시): `users/{uid}`(리더 프로필), `rooms/{roomId}`, `rooms/{roomId}/members/{uid}`, `.../progress`, `.../submissions`. 정확한 문서 경로/트랜잭션 설계는 개발 프로젝트에서 확정.
+- 학생 개인정보: 익명 별칭 기본, 실명/이메일/얼굴 사진 불필요. 학교에서 실제 학생 식별/미참여자를 확인하려면 사전 지정 코드/명단 매핑이 별도 필요. 테스트에는 가상 번호만 사용.
+- 공개 Firebase 웹 설정 키는 비밀 관리자 키와 다르다. 서비스 계정 JSON/API 관리자 비밀키를 저장소에 커밋하지 않는다.
+- GitHub Pages는 정적 호스팅만 제공. 공유 데이터는 Firebase/Firestore가 필요. 리더 Google 로그인은 실제 배포 도메인과 iOS Safari/Android Chrome에서 검증한다.
+
+## 3. 사용자 여정 및 화면
 
 ### 리더
-1. Google 로그인 → '내 탐험방' 리스트
-2. 경주 역사 탐험 코스 선택 → 방 제목 입력 → shared/individual 선택 → 만들기
+1. Google 로그인 → '내 탐험방' 목록
+2. 기존 경주 코스 선택 → 방 이름 → shared/individual 선택 → 방 생성
 3. 초대 링크 복사/공유
-4. 참여자 수, 공동 진행도 혹은 개인별 진행/제출 상태 보기
-5. 방 종료
+4. 공동 스탬프 진행 또는 개인별 진행·제출 현황 보기
+5. 방 종료 / 계정 재로그인 후 관리 복구
 
 ### 참여자
-1. 초대 링크 열기 → Google 로그인 → 방 소개 → 별칭 설정 → 참여
-2. 기존 경주 Quest를 순서 제약 없이 진행 → 스탬프 획득 → 여러 기기에서 동기화
-3. individual 모드: 요구된 Quest 완료 후 '제출하기' → 제출 시간/상태 방장에게 표시
-4. 재접속 시 동일 Google 계정으로 이전 기록 복구
+1. 초대 링크 열기 → 방 소개 → 별칭 입력 (**Google 로그인 요청 없음**)
+2. 내부 익명 인증 → 방별 member 가입 → Quest 시작
+3. Quest 수행 및 스탬프 기록. individual 완료 시 별도 제출
+4. 같은 브라우저의 동일 익명 세션에서 새로고침/재접속 시 계속 진행
+5. 새 브라우저·기기·저장소 삭제 시 기존 기록 복구는 초기 MVP에서 보장하지 않음
 
-### 핵심 화면
-- 로그인/진입
-- 내가 만든/참여 중인 탐험방 목록
+### 필수 화면
+- 로그인 진입(방장 전용 Google)
+- '내가 만든 탐험방' 목록(리더)
 - 탐험방 생성
-- 초대 링크/참여 온보딩
-- Quest/스탬프 진행
-- 방장 관리 대시보드
+- 초대 링크 입장(별칭 중심)
+- Quest/스탬프 화면
+- 방장 관리(공동 진행 또는 개인별 제출)
+- 복구 불가/인증 실패/초대 만료/방 종료 오류 상태
 
-## 수용 기준
+## 4. 수용 기준 (Acceptance Criteria)
 
-- 방장: Google 로그인만으로 방 생성/재접속, 같은 계정으로 방장 권한 복구
-- 참여자: Google 로그인 + 초대 링크로 member 가입, 동일 계정으로 이어서 진행
-- 권한 검증: 참여자에게 방 삭제/관리/다른 사람 기록 수정 권한 없음 (UI 숨김뿐 아니라 Firestore 규칙/API에서 차단)
-- shared: A가 완료한 스탬프가 B에게 반영, 동시 중복 처리해도 1개만 기록
-- individual: A/B 진행 데이터 독립. 각자 필수 미션 충족 후 제출만 허용
-- 로그인 상태 회복/로그아웃/다른 계정 로그인 테스트
-- Firebase 설정 전 상태는 '설정 필요' 화면으로 정확히 표시; 실제 연결 전 가짜 완료 상태를 보여주지 않음
-- 실제 교사/학생 개인정보·얼굴 사진을 수집하지 않고 가명 테스트
-- 기존 루트 `index.html` 미변경, 기존 GitHub Pages 동작 유지
-- 진행 완료/PR/배포 결과와 실제 테스트 URL 및 한계를 개발 프로젝트에서 별도 보고
+- [ ] 방 생성 시 Google 로그인이 필수이며 Google 세션에서만 owner 역할 획득 가능
+- [ ] 비로그인 참여자는 초대 링크 → 별칭 입력만으로 입장(내부 Firebase 익명 계정 생성)
+- [ ] 참여 과정 어디에도 Google 로그인 버튼/팝업이 나타나지 않음
+- [ ] 같은 브라우저의 재접속에서 익명 uid/진행 상태 유지(스토리지 삭제 예외)
+- [ ] 다른 브라우저의 익명 참가자에게 기존 기록이 자동 이관되지 않음을 명확히 안내
+- [ ] 동일 닉네임 참가자라도 각기 고유 uid로 진행 상태가 분리됨
+- [ ] 익명 계정에서 방장 만들기/role 변경/관리 API 접근 차단
+- [ ] shared: 참가자 A가 획득한 Quest 스탬프가 B에게 반영되고 중복 완료는 1개만 기록
+- [ ] individual: 개인별 완료/제출 분리, 필수 미션 완료 전에 제출 불가
+- [ ] 계정 보안: invitation URL만으로 타인/owner 권한 획득 불가
+- [ ] 기존 경주 루트 앱, 사용자 로컬 기록 및 공개 배포 유지
+- [ ] 실제 학생 실명·사진 없이 가족 3명/테스트 참가자 5명으로 파일럿
+- [ ] 구현 및 배포 결과/문제점은 Our Adventure 개발 프로젝트에서 보고
 
-## 관련 자료
+## 5. 제외 / 미결정
 
-- 기획 상세: [Phase 1 Shared Adventure 설계](./PHASE1_SHARED_ADVENTURE_SPEC.md)
-- 기존 소스: [root index.html](../index.html)
-- 이전 맥락: [Project Handoff](../PROJECT_HANDOFF.md)
-- 기획 PR: https://github.com/stynerk/OurAdventure/pull/2
+- Phase 1 제외: 코스 빌더, 사진 서버 업로드, 다른 소셜 로그인, 참가자 Google 강제 로그인, 익명 계정 기기 간 복구 기능.
+- Unknown: Firebase 프로젝트 ID/보안 규칙 상세안/데이터 삭제 보관 정책/학교 학급 운영 방식.
+- 중요한 제약: '로그인 없는 참여'는 **익명 Auth를 이용한 무마찰 입장**을 뜻하며, 신원 확인/학생 실명 증명은 제공하지 않는다.
 
-## 개발 프로젝트에 전달할 시작 요청 (복사 가능)
+## 6. 참고 및 개발 요청
 
-> OurAdventure 저장소를 기반으로 Shared Adventure Phase 1 MVP 구현을 시작해줘.
-> 우선 `docs/OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md`와 `docs/PHASE1_SHARED_ADVENTURE_SPEC.md`, 기존 루트 `index.html`을 읽고 실제 코드 구조를 확인해.
-> 기존 경주 공개 사이트는 변경하지 말고, 별도 앱 경로에서 Firebase Authentication Google 로그인 **한 가지**와 Firestore를 활용해 탐험방 생성/초대/참여/진행 동기화/방장 관리/개인별 제출을 구현해.
-> 리더와 참여자 모두 Google 로그인 후 방별 owner/member 권한을 갖도록 해. 중요한 권한 판단은 Firestore Rules/서버에서 검증하고, 닉네임이나 초대 링크만으로 관리 권한을 주면 안 돼.
-> 코스 생성 기능, 사진 서버 업로드, 다른 로그인 제공자는 Phase 1에 넣지 마.
-> Firebase 프로젝트 설정 정보가 필요한 부분은 명확히 구분하고, 우선순위에 따라 단계별로 PR로 진행한 다음 실기기 테스트 및 배포 상태를 보고해.
+- 상세 PRD: [Phase 1 Shared Adventure](./PHASE1_SHARED_ADVENTURE_SPEC.md)
+- 기존 앱: [root index.html](../index.html)
+- 기획 Draft PR: https://github.com/stynerk/OurAdventure/pull/2
+
+### Our Adventure 개발 프로젝트에 보낼 시작 요청
+
+> OurAdventure GitHub 저장소에서 `docs/OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md`와 `docs/PHASE1_SHARED_ADVENTURE_SPEC.md`, 기존 `index.html`을 읽고 Shared Adventure Phase 1 MVP를 구현해줘.
+> **리더만 Firebase Google 로그인 필수**, **참여자는 로그인 UI 없이 초대 링크 + 별칭으로 참여**하고 내부적으로 Firebase Anonymous Authentication을 사용하도록 해.
+> Firestore에는 방별 owner/member 권한, shared/individual 진행 상태, 완료·제출을 저장해. 익명 참가자는 방을 생성/관리할 수 없고 초대 링크나 닉네임만으로 권한 상승할 수 없도록 실제 보안 규칙/서버 로직으로 강제해.
+> 기존 공개 경주 사이트는 보존하고 별도 경로에 구축해. 코스 생성/미션 편집은 Phase 2, 사진 서버 업로드·익명 참가자 교차기기 복구는 이번 범위 밖이야.
+> Firebase 프로젝트 설정이 필요한 부분은 표시하고 PR, 테스트 및 배포 결과를 Our Adventure 개발 프로젝트에서 보고해.
