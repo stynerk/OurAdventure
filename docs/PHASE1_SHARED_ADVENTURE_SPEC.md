@@ -1,6 +1,8 @@
 # OurAdventure Phase 1 — Shared Adventure (탐험방 / 공동 참여)
 
-> 작성: 2026-10-18 · 상태: 제품·UX·데이터 설계안 (구현 및 배포 전)
+> 작성: 2026-10-18 · 수정: 2026-10-19 · 상태: 제품·UX·데이터 설계안 (구현 및 배포 전)
+> 개발 인계: [OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md](./OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md)
+> **현재 프로젝트는 기획만 진행. 실제 Firebase 연동·코드 개발·테스트·배포는 별도 Our Adventure 프로젝트 담당.**
 > 기준: stynerk/OurAdventure main, 기존 index.html과 PROJECT_HANDOFF.md
 > 제품 결정: **코스 생성은 Phase 2**. Phase 1은 기존 경주 Quest의 다인 사용 / 관리 기능을 검증한다.
 
@@ -12,7 +14,7 @@
 
 ### 검증할 가설
 - H1: 방장은 90초 이내에 경주 코스로 탐험방을 만들고 링크를 공유할 수 있다.
-- H2: 초대받은 사람은 계정 가입 없이 45초 이내에 참여할 수 있다.
+- H2: 초대받은 사람은 Google 로그인 후 60초 이내에 방에 참여할 수 있다.
 - H3: 서로 다른 기기에서 퀘스트 완료 및 참여 현황이 올바르게 동기화된다.
 - H4: 방장은 10초 이내에 완료자와 미완료자를 구분할 수 있다.
 
@@ -33,11 +35,11 @@
 1. 기존 경주 코스 선택 후 방 생성
 2. 진행 모드 설정: shared(공동 스탬프) 또는 individual(참여자별 스탬프)
 3. 읽기 가능한 참여 링크 및 QR 공유(최소 초기 버전은 링크 복사부터)
-4. 참가자 닉네임 입력 / 게스트 참여 / 참여 세션 복구
+4. Firebase Google 로그인(리더·참여자 모두) / 참여자 별칭 입력 / 재접속 복구
 5. Quest 완료 → 스탬프 기록 → 서버 동기화 → 다른 기기에 반영
 6. 방장 전용 참여자 목록, 완료율, 최종 완료/제출 현황
 7. 방장만 방 종료 가능; 종료 후 진행상태 읽기 전용
-8. 별도 복구 수단을 가진 방장 인증과 참가자 권한 분리
+8. Google Auth UID와 방별 owner/member 멤버십에 따른 권한 분리
 
 ### Phase 1 P1 (검증 후)
 - QR 이미지 제공(링크 복사로 먼저 검증), 알림/미제출자 독촉, 개인 사진 공유, 오프라인 작업 큐, 조별 멤버십, 닉네임 수정 승인, 완료 결과 CSV
@@ -51,7 +53,7 @@
 
 - **Course**: 재사용 가능한 불변 콘텐츠 묶음. 초기에는 경주 기존 9개 Quest를 버전 고정하여 사용. Course와 Room은 1:N.
 - **AdventureRoom**: 하나의 코스를 함께 진행하는 세션. 코스·진행모드·방장·참가 링크·상태 보유.
-- **Participant**: 방에 소속된 참여 세션. 가입 없는 별칭은 식별자가 아니라 표시 이름.
+- **Participant**: Firebase Authentication Google UID와 연결된 방별 멤버십. 별칭은 표시 이름이며 권한 판정에 사용하지 않는다.
 - **QuestProgress**: 완료 상태 기록. shared이면 room 스코프에 1개, individual이면 participant 스코프에 각자 1개.
 - **Submission**: individual 모드에서 최종 완료 버튼을 눌러 제출한 사건. 완료한 Quest의 합과 구분.
 - **ActivityLog**: 누가 어떤 액션을 언제 기록했는지 간단한 서버 기록(최소 감사 추적).
@@ -77,9 +79,9 @@
 ## 4. 정보 구조(IA) 및 사용자 여정
 
 ### 시작 진입
-- /next/ — '탐험방 만들기' 또는 '초대 링크로 참여하기'
+- /next/ — Google 로그인 → '내 탐험방' / '탐험방 만들기' / '초대 링크로 참여하기'
 - /next/create — 코스 확인 → 방 이름 → 진행 모드 → 생성
-- /next/r/:joinToken — 방 소개 → 참여 별칭(학교 테스트에는 코드/출석번호 포함) → 참여
+- /next/r/:joinToken — 초대받은 방 소개 → Google 로그인 확인 → 참여 별칭(학교 테스트에는 코드/출석번호 포함) → 참여
 - /next/r/:roomId/play — 기존 경주 퀘스트를 Room 데이터에 바인딩하여 사용
 - /next/r/:roomId/progress — 참여자 본인 진행 현황
 - /next/r/:roomId/manage — 방장 전용 요약 / 참여자 및 제출 현황
@@ -104,7 +106,7 @@
 우리 가족 경주 원정     [방장 관리]
 초대 링크   our.../join/xxxx  [복사]
 [참여자 0명]   [퀘스트 시작]
-방장 전용 관리 주소 / 복구 방식은 별도 안내
+Google 로그인한 방장 계정으로 관리 화면 접근 및 재접속
 ~~~
 
 ### UX: 참여자 — 링크 입장
@@ -112,6 +114,7 @@
 [우리 가족 경주 원정]
 경주 역사 탐험 · 9개 Quest
 초대받았어요!
+[Google 계정으로 로그인] (이미 로그인했다면 건너뜀)
 별칭 [씩씩한 탐험가]
 (학교/개별 제출 선택 시) 번호/참여 코드 [__]
 [탐험 시작]
@@ -160,19 +163,18 @@ interface AdventureRoom {
   title: string;
   mode: Mode;
   status: RoomStatus;
-  ownerId: string;
+  ownerId: string;             // Firebase Auth uid
   joinTokenHash: string;         // 원문 초대 토큰 DB 평문 저장 금지
   createdAt: string;
   closedAt?: string;
 }
 
 interface Participant {
-  id: string;
+  id: string;                  // Firebase Auth uid; 방별 멤버십의 주체
   roomId: string;
-  role: ParticipantRole;
-  displayName: string;
-  // 익명 참가자 세션: 별도 opaque secret 또는 서버 세션 사용
-  // 학교에서만 필요한 출석/조 번호는 명시적 동의 및 최소 수집
+  role: ParticipantRole;       // 인증과 별개로 방별 owner/member
+  displayName: string;        // Google 프로필 실명 자동 공개 금지, 별칭 입력
+  // 학교에서만 필요한 출석/조 번호는 최소 수집
   participantCode?: string;
   joinedAt: string;
   lastSeenAt?: string;
@@ -182,7 +184,7 @@ interface QuestProgress {
   roomId: string;
   questId: string;
   scopeType: "room" | "participant";
-  scopeId: string;                // shared: roomId; individual: participantId
+  scopeId: string;                // shared: roomId; individual: participant Auth uid
   completedAt: string;
   completedBy: string;            // shared에서 누가 완료했는지 기록
 }
@@ -207,8 +209,8 @@ interface Submission {
 
 | Action | 주체 | 응답 / 보안 요구 |
 |---|---|---|
-| createRoom(courseId, mode, title) | 방장 | roomId, 참가 URL, 관리자 복구 수단 |
-| joinRoom(joinToken, nickname, optional code) | 게스트 | participant session, room summary |
+| createRoom(courseId, mode, title) | 방장 | roomId, 참가 URL, owner = 로그인 uid |
+| joinRoom(joinToken, nickname, optional code) | Google 로그인 사용자 | 방별 member 멤버십, room summary |
 | getRoom(roomId) | 참가자 | 코스/방 상태; 권한 밖 참여자 목록 제외 |
 | completeQuest(roomId, questId) | 참가자 | 갱신된 범위의 스탬프 상태 |
 | getProgress(roomId) | 참가자 | shared면 공동, individual이면 본인 |
@@ -216,20 +218,24 @@ interface Submission {
 | getManagement(roomId) | 방장 | 참여자별 완료/제출 현황 |
 | closeRoom(roomId) | 방장 | 읽기전용 전환 |
 
-초대 링크는 관리자 권한을 절대로 부여하지 않는다. 관리 URL이나 owner secret을 공유 링크에 합치지 않는다.
+초대 링크는 관리자 권한을 절대로 부여하지 않는다. Firebase Auth uid와 방별 owner/member 권한은 서버/Firestore Rules에서 검증한다.
 
-## 7. 인증·안전·개인정보 정책
+## 7. 인증·안전·개인정보 정책 (2026-10-19 확정)
 
-**회원가입 없는 참여 ≠ 인증 없는 관리.**
-- 참가자: 입장 시 강력한 불투명 세션 토큰을 발급하고 재접속 시 동일 참가자로 복구. 닉네임만으로 본인 판정 금지.
-- 방장: 별도 인증/회복 수단. 초기 프로토타입에서는 관리자 비밀 링크를 사용할 수 있으나 링크 노출 및 분실 리스크를 명시하고, 학교 대상 실사용 전 더 강한 인증 검토.
-- 학생별 식별: 자유/자동 닉네임만으로는 실제 출석부 미참여 인원을 알 수 없음. 학교 테스트는 사전 지정 코드/출석번호 맵이 필요.
-- 사진: 기존 기기 로컬 보관 유지. Phase 1에서 사진 서버 업로드, 얼굴 사진 수집, 타인의 갤러리 노출 금지.
-- 위치: GPS 수집 없음. 인증사진 및 위치 기반 자동 검증 없음.
-- 데이터: 익명 별칭·완료 이벤트 최소 수집. 학생 본명/연락처/위치 수집 기본값 금지.
-- 접근 제어: 방장만 전체 제출 현황 열람; 일반 참여자는 다른 참가자의 개인 완료 내역 열람 불가.
-- 유출 대응: 초대 링크 재발급 / 방 종료 필요 여부 검증. 데이터 보관·삭제 정책 결정 전 실제 학생 정보 수집 금지.
-- '오프라인 가능'은 별도 기능. 일시적 네트워크 오류 시 완료 전송 실패를 명시하고, 서버가 확정하지 않은 스탬프를 동기화 완료로 표시하지 않음.
+**로그인 제공자는 Firebase Authentication의 Google 로그인 한 가지.** 리더와 참여자 모두 Auth uid로 식별하고, 별칭은 표시 용도로만 쓴다. 초기 Guest/익명 참여 방식은 구현 대상에서 제외한다.
+
+- Firebase Auth: Google provider만 활성화. 로그인·로그아웃·세션 복구·오류/취소 처리 필수.
+- 권한: 단순히 Google 로그인했다고 관리자가 되는 것이 아님. 해당 방의 멤버십(owner/member)을 별도로 확인해야 한다.
+- 방장: 생성자의 인증된 uid로 owner 부여, 계정 재로그인으로 관리 권한 복구. 관리자 비밀 링크 단독 인증 방식은 폐기한다.
+- 참여자: 초대 링크 접근 후 Google 로그인 → 별칭 입력 → member 가입. 초대 링크는 방 식별/입장 수단일 뿐 소유권 증명이 아니다.
+- Firestore: 클라이언트 변조 요청만으로 role=owner로 상승할 수 없게 규칙/서버 처리. 타인 기록과 방장 관리 화면 데이터 접근 차단.
+- 학생: Google 계정 사용 불가한 어린 참여자는 현재 MVP에서 제한된다. 학교용 실제 사용성은 교사 인터뷰 후 후속 Guest/학교 계정 대안 검토.
+- 학생 식별: Google 로그인 여부만으로 출석부와 매핑할 수 없음. 학교 테스트에서는 사전 지정 참여 코드/출석번호/조 번호를 별도 매핑하고 실명은 수집하지 않는다.
+- 개인정보: Google 프로필의 실명·이메일을 공개 별칭으로 자동 노출하지 않는다. 사용자 프로필은 최소 저장하고, 데이터 보유·삭제 정책을 정하기 전 실제 학생 정보를 수집하지 않는다.
+- 사진: 기기 로컬 보관 유지. Phase 1에서 사진 서버 업로드, 얼굴 사진 수집, 타인의 갤러리 노출 금지.
+- 위치: GPS 수집 없음. 위치 기반 자동 검증 없음.
+- 오프라인: 서버 전송 실패를 명확히 표시. 서버 확인 전에는 동기화 완료로 표시하지 않음.
+- Firebase 클라이언트 구성 정보는 공개 식별 값일 수 있으나, 서비스 계정 JSON·관리자 비밀키를 저장소에 추가하지 않는다.
 
 ## 8. 기존 v0.5 자산 재사용 및 기술 경계
 
@@ -245,7 +251,7 @@ interface Submission {
 2. 별도 next/ 기반 신규 실험. 코드 복사보다는 Quest 데이터 추출/공통화.
 3. 경주 코스를 1개 immutable seed Course로 등록.
 4. UI 목업(가짜 데이터)과 실제 동기화 테스트는 구분. 목업만으로 '공동 사용 구현 완료'라고 하지 않는다.
-5. GitHub Pages는 프런트 정적 호스팅. 여러 기기 간 공유에는 별도 데이터 저장소/인증/실시간 동기화 계층 필요 (백엔드 기술 스택은 아직 미결정).
+5. GitHub Pages는 프런트 정적 호스팅. 신규 MVP는 Firebase Authentication(Google only) + Cloud Firestore를 데이터/인증 계층으로 사용. Firebase 프로젝트 설정과 배포 검증은 Our Adventure 개발 프로젝트에서 수행.
 6. 모바일 iOS Safari / Android Chrome에서 터치·카메라·동기화 회귀 QA.
 7. 구버전의 화면 숨김 규칙 [hidden]{display:none!important} 회귀 금지.
 
@@ -258,14 +264,14 @@ interface Submission {
 - 같은 Quest 동시 완료 시 1개만 기록
 
 ### Pilot B — 학교 개인 모드 (실학생 데이터 대신 테스트 코드)
-- 교사가 개인 모드 방 생성 → 5명이 서로 다른 번호/코드로 참여
+- 교사가 개인 모드 방 생성 → Google 로그인한 테스트 사용자 5명이 서로 다른 번호/코드로 참여 (실제 학생 정보 사용 금지)
 - 각각 다른 Quest 완료율 유지
 - 9/9 완료 전에는 최종 제출 불가; 완료 이후 제출 가능
 - 방장이 10초 안에 완료/미제출자 구분
 - 일반 참가자 계정으로 관리 API 접근 차단
 
 ### 통과 조건
-- 방 생성 완료 ≤90초 / 참가 완료 ≤45초 (초기 사용성 목표)
+- 방 생성 완료 ≤90초 / 로그인 완료 후 참가 완료 ≤60초 (초기 사용성 목표, 실제 측정 필요)
 - 네트워크 정상 시 새 기기 반영 ≤5초
 - 테스트 8명 중 진행도 섞임·권한 누출·중복 제출 0건
 - 종료 이후 쓰기 요청 차단
@@ -291,7 +297,7 @@ interface Submission {
 | 초대 링크 | 방 단위 1개 | 학교 출석부 매핑 필요 |
 | 닉네임 | 자동 추천 + 수정 | 사전 코드와 결합 필요 |
 | 사진 | 기기 로컬 | 교사가 사진 검토해야 함 |
-| 관리자 인증 | 프로토타입에서 별도 관리자 링크+복구 방법 | 실사용 단계 보안 강화 |
+| 인증/관리자 권한 | Firebase Auth Google 로그인(리더·참여자 모두) + 방별 owner/member | 저연령 학생 계정 제약이 확인되면 별도 참여 수단 재평가 |
 | 코스 | 기존 경주 9개 고정 | 코스 생성 실사용 수요 입증 |
 | 실시간 반영 | 폴링도 초기 허용 | 다인 참여 밀도 증가 |
 
@@ -301,7 +307,7 @@ interface Submission {
 
 - [ ] /next/에 새 화면을 추가하고 루트 경주 사이트에 영향 없음
 - [ ] 가족 shared 및 학교 individual 사용 흐름을 UI에서 구분
-- [ ] 잘못된/만료된 초대 링크, 중복 닉네임, 새로고침, 방 종료 예외 처리
+- [ ] Google 로그인/로그아웃/동일 계정 재접속, 잘못된 초대 링크, 중복 닉네임, 새로고침, 방 종료 예외 처리
 - [ ] 테스트 데이터는 실제 학생 개인정보/사진 대신 가명과 코드 사용
 - [ ] 실제 교차기기 공유/권한 검증 전까지 Prototype(동기화 미구현)으로 표시
 - [ ] iOS/Android 실제 모바일 확인
