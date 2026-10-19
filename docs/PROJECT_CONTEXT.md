@@ -2,14 +2,18 @@
 
 기준일: 2026-10-19 (Asia/Seoul). 이 문서는 기존 공개 앱의 인계 기준이며 신규 기능 구현 완료를 뜻하지 않는다.
 
+## 최신 승인 범위 (2026-10-19 추가)
+
+사용자 승인: 가족·지인 출시 최대10명(리더 포함), 리더1명, 활동공간당 여행·활동1건. 30명(리더 포함)은 후속 확장 검증 목표이며 학교 개인제출·보고서는 그 이후 파일럿. 게시판형 공동 기록과 리더 일기/앨범 정리를 제공한다. 학교는 사용자 확장이며 학급 운영 플랫폼 전체 개발은 제외한다. [최신 PRD 0절](PHASE1_SHARED_ADVENTURE_SPEC.md#0-최신-승인-범위--2026-10-19)을 우선 참조한다. 니즈 확인은 사용자의 MVP 경험 진술이며 외부 반복 사용/학교 수요/수익성 검증과 구분한다.
+
 ## 읽기 순서와 근거
 
-1. 이 문서 → [HANDOFF.md](HANDOFF.md) → [QA.md](QA.md).
+1. 이 문서 → [HANDOFF.md](HANDOFF.md) → [QA.md](QA.md) → [개발 핸드오프](OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md) → [상세 PRD](PHASE1_SHARED_ADVENTURE_SPEC.md).
 2. 기존 실행 소스: main `00e78efe474cd18138871ef085e05188457a63c6`의 `index.html`.
 3. 신규 제품 PRD: 기획 브랜치 `feature/shared-adventure-phase1-plan-20261018`, 커밋 `048c4c10e811fc437b0c27ce62e53353caab46cc`의 `docs/PHASE1_SHARED_ADVENTURE_SPEC.md`, `docs/OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md`.
 4. Drive 실험: `experiment/family-drive-pilot`, `5d4d187722c527d5933be92cf339864da12641a6`의 `experiments/DRIVE_PILOT_SETUP.md`와 `drive-pilot.html`.
 
-3개 원격 브랜치를 재귀 조회했다. main에 PRD.md라는 파일은 없으며 PROJECT_HANDOFF.md / PROJECT_INSTRUCTIONS.md / GYEONGJU_ITINERARY.md가 기존 제품 문서 역할을 한다. 최신 그룹 PRD는 위 기획 브랜치에 있다. PR #2는 기획 문서 2개만 있는 Draft/미병합이며 Firebase·그룹 기능 구현·테스트·배포는 미착수로 명시되어 있다. PR #1은 별도 Drive 실험 Draft다.
+3개 원격 브랜치를 재귀 조회했다. main에 PRD.md라는 파일은 없으며 PROJECT_HANDOFF.md / PROJECT_INSTRUCTIONS.md / GYEONGJU_ITINERARY.md가 기존 제품 문서 역할을 한다. 기획 브랜치 원문은 초기 인계 스냅샷이다. main의 PRD/개발 핸드오프는 이후 사용자 승인에 따라 v1.1로 갱신했으므로 최신 구현 범위는 main을 따른다. PR #2는 기획 문서 2개만 있는 Draft/미병합이며 Firebase·그룹 기능 구현·테스트·배포는 미착수로 명시되어 있다. PR #1은 별도 Drive 실험 Draft다.
 
 공개 URL: https://stynerk.github.io/OurAdventure/
 공개 HTML 직접 조회 결과 main/index.html과 68,564 bytes 전체 일치.
@@ -47,7 +51,7 @@ HTML 일치는 브라우저 실행 QA나 모든 이미지의 로딩 검증을 �
 | 2 | woljeonggyo | 월정교 |
 | 3 | museum | 국립경주박물관 |
 
-구형 문서의 4+4+1 나열에서 동궁과 월지가 누락됐으나 현재 코드는 포함한다. optional 지원 코드만 있고 현재 optional Quest는 없다. 첫 고정 Course의 requiredQuestIds는 위 9개로 구현 계약에 명시할 필요가 있다.
+구형 문서의 4+4+1 나열에서 동궁과 월지가 누락됐으나 현재 코드는 포함한다. optional 지원 코드만 있고 현재 optional Quest는 없다. 첫 고정 Course의 requiredQuestIds는 최신 PRD0절에 위9개로 명시했다.
 
 ## 데이터 및 기술 계약
 
@@ -67,11 +71,11 @@ HTML 일치는 브라우저 실행 QA나 모든 이미지의 로딩 검증을 �
 
 Room 공통 모델, shared(공동)/individual(개인) 완료. 리더 Google 로그인 필수, 일반 참여자는 링크+별칭 및 내부 Anonymous Auth. Google 로그인한 기존 사용자는 다른 방에서 member가 될 때 세션을 익명으로 덮어쓰지 않는다. 권한은 방별 owner/member로 서버/Rules에서 검증한다.
 
-Phase1: 고정 경주 코스·방 생성·초대·진행 동기화·관리·개인 제출·종료. Phase2: 코스 생성/미션 편집. 사진 서버 업로드·익명 교차기기 복구는 제외. 기존 사진 출력 경험을 삭제해도 된다는 뜻은 아니다.
+Phase1: 고정 경주 코스·방 생성·초대·진행 동기화·관리·개인 제출·종료. Phase2: 코스 생성/미션 편집. 익명 교차기기 복구는 제외. 기존의 사진 서버 업로드 제외는 신규 그룹 공유 기록에 대해 철회됐고, 저장 방식·권한·보관삭제·비용은 설계 필요. 기존 사진 출력 경험을 삭제해도 된다는 뜻은 아니다.
 
-학교 전용 플랫폼으로 확정한 것이 아니다. 학교 1인/1조 운영, 명단 매핑, 보관삭제, 초대 정책, 제출 후 수정, Firebase 프로젝트/규칙은 미결정. 명단 없는 방은 미입장 학생을 알 수 없다. 내 탐험방 목록은 개발 핸드오프 필수 화면이나 상세 IA에는 빠져 있으므로 UX 계약에서 정합화한다.
+학교 전용 플랫폼으로 확정한 것이 아니다. 학교 1인/1조 운영, 명단 매핑, 보관삭제, 초대 정책, 제출 후 수정, Firebase 프로젝트/규칙은 미결정. 명단 없는 방은 미입장 학생을 알 수 없다. 내 탐험방 목록 누락은 최신 PRD IA의 /next/mine 추가로 문서상 해소했다.
 
-학교 수요·반복 사용·90초 방생성/45초 입장/5초 반영/10초 현황 파악은 검증 전 가설·목표다.
+사용자의 기존 MVP 니즈 확인과 별개로 학교 수요·외부 반복 사용·90초 방생성/45초 입장/5초 반영/10초 현황 파악은 검증 전 가설·목표다.
 
 ## 구현과 과거 운영 결정의 차이
 
@@ -80,3 +84,7 @@ Phase1: 고정 경주 코스·방 생성·초대·진행 동기화·관리·개�
 ## Drive 실험 격리
 
 drive.file·Google Picker, 장변1600 JPEG 실험. OAuth 설정/실업로드/두 계정 자동조회/실기기 검증 미실행. 폴더 공유만으로 다른 계정 파일 자동 조회를 보장하지 않는다. 현재 main과 구형 기반이 다르므로 통째 병합하지 말고 통과 후 필요한 코드만 선택 통합한다. 신규 Phase1 사진 정책과 별개 R&D다.
+
+## v1.1 실행 순서
+
+1A 가족·지인10명 기록/출력 → 1B 30명 규모 검증 → 1C 학교 제출/보고서. 기존 기술 모델 Course/Room/Participant는 재사용 후보이며 영구 Group 계층 추가는 미승인. shared/individual은 활동 완료 방식이고 신규 공유 게시글과 개인 제출의 데이터 공개 범위는 분리한다. 가입 한도는 서버에서 원자 검증. 전체 서비스 동시 수용 규모·저장량·비용은 Unknown.
