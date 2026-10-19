@@ -4,6 +4,15 @@
 
 Public site: https://stynerk.github.io/OurAdventure/
 
+## 최신 인수인계 (2026-10-19)
+
+- [프로토타입·제품 기준](docs/PROJECT_CONTEXT.md)
+- [Agent 인수인계](docs/HANDOFF.md)
+- [검증 상태와 남은 QA](docs/QA.md)
+- [Phase 1 PRD](docs/PHASE1_SHARED_ADVENTURE_SPEC.md) · [개발 핸드오프](docs/OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md)
+
+아래 여행 소개/일정은 기존 경주 프로토타입의 역사 문맥이다.
+
 ## Start here
 
 새 ChatGPT Project / Work로 이어갈 때는 아래 순서로 읽는다.
