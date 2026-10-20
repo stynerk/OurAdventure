@@ -2,6 +2,12 @@
 
 기준일: 2026-10-19 (Asia/Seoul). 이 문서는 기존 공개 앱의 인계 기준이며 신규 기능 구현 완료를 뜻하지 않는다.
 
+## 2026-10-20 저녁 현황 정정
+
+main·공개 프로토타입과 별도 개발 브랜치를 구분한다. [Draft PR #3](https://github.com/stynerk/OurAdventure/pull/3) (`engineering/shared-adventure-firebase`, `1db524fc`)에 /next 인증·그룹 참여·shared 진행·서버 권한 기반이 구현되어 있다. open/Draft/미병합이며 최신 main과 충돌 해결이 필요하다. [CI39347040711](https://github.com/stynerk/OurAdventure/actions/runs/39347040711)의 npm test·test:integration 성공을 확인했다. SDK/브라우저 결과는 브랜치 문서의 로컬 보고이며 CI 실행 항목과 다르다. 실제 OAuth·운영 Functions·실기기 통과는 아니다. 사진 게시판·공유 사진·리더 출력·캐시는 미구현이다.
+
+콘솔 설정은 2026-10-20 앞선 직접 관찰로 웹 앱/Google·익명 인증/서울 Firestore 생성 완료, 초기 deny-all·Spark 유지가 기록되어 있다. 이번 저녁에는 콘솔을 다시 조작하거나 실시간 재확인하지 않았다. Storage/Blaze·예산은 미승인이다. 상세 설정은 [FIREBASE_SETUP.md](FIREBASE_SETUP.md), 실제 역할 간 반론·수정 기록과 다음 담당은 [HANDOFF.md](HANDOFF.md)를 따른다. 아래 최초 인수 스냅샷의 '미착수' 표현을 별도 브랜치 진행분에 적용하지 않는다.
+
 ## 최신 승인 범위 (2026-10-19 추가)
 
 사용자 승인: 가족·지인 출시 최대10명(리더 포함), 리더1명, 활동공간당 여행·활동1건. 30명(리더 포함)은 후속 확장 검증 목표이며 학교 개인제출·보고서는 그 이후 파일럿. 게시판형 공동 기록과 리더 일기/앨범 정리를 제공한다. 학교는 사용자 확장이며 학급 운영 플랫폼 전체 개발은 제외한다. [최신 PRD 0절](PHASE1_SHARED_ADVENTURE_SPEC.md#0-최신-승인-범위--2026-10-19)을 우선 참조한다. 니즈 확인은 사용자의 MVP 경험 진술이며 외부 반복 사용/학교 수요/수익성 검증과 구분한다.
