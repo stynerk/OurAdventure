@@ -4,6 +4,17 @@
 
 Public site: https://stynerk.github.io/OurAdventure/
 
+## Shared Adventure Phase 1 — 별도 개발 경로
+
+기존 루트 앱과 로컬 기록을 유지하면서 `/next/`에 그룹 탐험 MVP를 개발한다. **Firebase 운영 프로젝트 연결·실서비스 배포 전**이며, 코드 추가만으로 공개 공동 사용이 활성화되는 것은 아니다.
+
+- [구현 구조와 권한](docs/ARCHITECTURE.md)
+- [Firebase 연결·테스트·롤백](docs/FIREBASE_SETUP.md)
+- [검증 상태](docs/QA.md)
+- [Engineering 핸드오프](docs/HANDOFF.md)
+
+리더는 Google, 참여자는 화면에 로그인 절차 없이 내부 Anonymous Auth를 사용한다. 기존 경주 9개 Quest를 재사용하고 shared/individual 진행·제출을 서버에서 분리한다. 코스 편집과 사진 서버 업로드는 이번 범위에 없다.
+
 ## Start here
 
 새 ChatGPT Project / Work로 이어갈 때는 아래 순서로 읽는다.

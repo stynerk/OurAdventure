@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - "index.html"
+      - "assets/**"
+      - "next/**"
+      - "scripts/prepare-pages.mjs"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -31,10 +34,19 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Prepare public files only
+        env:
+          FIREBASE_WEB_CONFIG: ${{ vars.FIREBASE_WEB_CONFIG }}
+        run: node scripts/prepare-pages.mjs
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: public
 
       - name: Deploy to GitHub Pages
         id: deployment
