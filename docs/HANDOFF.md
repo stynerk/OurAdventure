@@ -8,17 +8,17 @@
 |---|---|---|
 | Firebase 프로젝트 | Our Adventures 생성 완료, ID `our-adventures-5ce50`, Spark 무료 요금제 확인 | 프로젝트 개요에서 생성 완료 확인. 유료 전환/결제 연결 없음 |
 | 익명 인증 | 사용 설정됨 확인, 30일 자동 정리 꺼짐 | 실제 앱 로그인·멤버십 권한은 아직 미검증 |
-| Google 로그인 | 설정 폼만 준비, 저장 안 함 | 지원 연락처 공개 승인 필요. 현재 선택 가능한 주소는 계정 이메일 1개이며 공개 문서에는 주소를 추가하지 않음 |
-| Firestore | 생성 안 함 | Standard/서울 `asia-northeast3` 제안. 변경 불가한 리전 선택에 사용자 확인 필요 |
+| Google 로그인 | 활성화·저장 완료 | 사용자 승인 지원 연락처 및 Our Adventures 표시 이름 설정. 실제 앱 로그인 E2E 미실행 |
+| Firestore | 생성 완료 | Standard / `(default)` / 서울 `asia-northeast3`. 게시 규칙 `allow read, write: if false;`, 예약 백업 꺼짐 |
 | 웹 앱 등록 | 완료 확인, App ID `1:601062192289:web:f2783ccb3e9d41d87cece0` | 실제 SDK 앱 연결은 미구현 |
 | 인증 도메인 | `stynerk.github.io` Custom 추가·저장 확인 | 실제 Google 로그인 E2E는 provider 설정 후 검증 |
 | 사진 Storage | 미설정, 콘솔이 요금제 업그레이드 요구 | 과금 사용/예산 결정 필요. SDK의 버킷 문자열만으로 생성 완료 판정 금지 |
 | 제품 계약 | [PHASE1A_PRODUCT_CONTRACT.md](PHASE1A_PRODUCT_CONTRACT.md) 작성·검토 | 글/사진 게시·수정·삭제·권한·출력·실패 처리의 권고안을 구현 계약으로 정합화 |
 | 화면 명세 | [PHASE1A_UX_SPEC.md](PHASE1A_UX_SPEC.md) 작성·검토 | 생성/입장/게시판/작성/리더 출력의 상태·AC를 Engineering/QA에 전달 |
 
-두 신규 문서는 검토 초안이다. 용량·보관 기간·상세 삭제/열람 권한 수치는 승인 정책이나 콘솔 설정으로 취급하지 않는다. 프로젝트 생성/익명 provider는 완료됐으나 Firestore/Storage·앱 연결·보안 규칙·그룹 기능·실연동 테스트는 완료하지 않았다. 생성 과정에서 선택 Gemini와 Google Analytics 연동은 껐다. 개발자 프로그램 선택 가입의 최종 상태는 사용자 수동 진행 후 재검증하지 않았으므로 가입/미가입을 단정하지 않는다.
+두 신규 문서는 검토 초안이다. 용량·보관 기간·상세 삭제/열람 권한 수치는 승인 정책이나 콘솔 설정으로 취급하지 않는다. 프로젝트·웹 앱·Google/익명 provider·Firestore 생성은 완료됐다. Storage·앱 연결·그룹별 보안 규칙·그룹 기능·실연동 테스트는 미완료다. Firestore 초기 차단 규칙은 확인했다. 생성 과정에서 선택 Gemini와 Google Analytics 연동은 껐다. 개발자 프로그램 선택 가입의 최종 상태는 사용자 수동 진행 후 재검증하지 않았으므로 가입/미가입을 단정하지 않는다.
 
-지원 이메일 공개와 Firestore 서울 리전 선택은 자동 승인 검토에서 거부됐다. 거부된 동작을 다른 경로로 우회하지 않는다. 브라우저 연결이 복구된 후 사용자가 열어둔 앱 등록 완료 화면을 확인하고, 인증 도메인 추가와 Storage 조건 확인을 수행했다. 실제 구성·미완료·재개 순서는 [FIREBASE_SETUP.md](FIREBASE_SETUP.md)를 따른다. 콘솔 확인 위치: https://console.firebase.google.com/project/our-adventures-5ce50/overview?hl=ko
+지원 이메일 공개와 Firestore 서울 리전 선택은 이전 자동 승인 검토에서 동의 부족으로 거부됐으나, 2026-10-20 사용자의 명시적 승인 후 적용·검증 완료했다. 결제 연결이나 Blaze 전환은 승인·수행하지 않았다. 브라우저 연결이 복구된 후 사용자가 열어둔 앱 등록 완료 화면을 확인하고, 인증 도메인 추가와 Storage 조건 확인을 수행했다. 실제 구성·미완료·재개 순서는 [FIREBASE_SETUP.md](FIREBASE_SETUP.md)를 따른다. 콘솔 확인 위치: https://console.firebase.google.com/project/our-adventures-5ce50/overview?hl=ko
 
 기존 9Quest 출력기에 임의 개수의 게시글을 그대로 연결하지 않는다. A4 수용량·긴 글·공유 이미지 인증/CORS를 검증하고 선택 제한은 설정 계약으로 명시한다.
 
