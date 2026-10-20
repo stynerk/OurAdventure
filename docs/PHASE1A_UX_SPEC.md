@@ -1,5 +1,7 @@
 # Phase 1A UX & Content — 개발용 화면 명세
 
+최신 통합 검토: [Phase 1 PRD](PHASE1_PRD.md) · [화면 매핑·검증 기록](PHASE1_WIREFRAMES.md) · [클릭형 와이어프레임](wireframes/index.html). 아래는 기존 상세 UX 초안이며 정책 수치의 승인 근거가 아니다.
+
 작성: 2026-10-20 · 담당: UX & Content · 상태: 개발 명세 초안, 제품/기술 정책 확정 및 실행 QA 전
 
 ## 1. 적용 기준과 범위
