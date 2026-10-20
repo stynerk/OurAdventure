@@ -19,7 +19,7 @@ try{
   await owner.goto(origin);
   await owner.getByRole('heading',{name:'함께하는 탐험을 준비하고 있어요'}).waitFor();
   console.log('PASS: missing Firebase configuration has a usable fallback');
-  writeFileSync(configPath,`export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app'};export const useEmulators=true;`);
+  writeFileSync(configPath,`export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app'};export const useEmulators=true;export const enableIndividualPilot=true;`);
   await owner.reload();await owner.getByRole('link',{name:'탐험방 만들기',exact:true}).waitFor();
   // Fake Google credential is accepted only by the Auth emulator; no real account/login.
   await owner.evaluate(async()=>{

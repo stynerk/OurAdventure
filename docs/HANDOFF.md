@@ -1,47 +1,45 @@
-# Engineering → Orchestrator / Product / UX / QA
+# Agent 인수인계 — 2026-10-19
 
-2026-10-19 · Shared Adventure Phase 1
+## v1.1 후속 범위 — 사용자 승인
 
-## Summary / Deliverables
+가족·지인10명 출시 / 30명 확장검증 / 리더1명 / 활동공간당 여행1건. 공동 기록·함께 보기·리더 출력이1A, 학교 개인제출·보고서는1C. 공유 사진은 신규 요구로 포함됐으며 저장소/권한/보관삭제 계약이 선행한다. 과거 사진 업로드 제외보다 최신 PRD0절을 우선한다. 아래 최초 인수 기록은 이전 스냅샷 기준이다. 추가로 이번 실행의 Product·UX·Engineering·QA 서브 에이전트 모두 v1.1 PRD0절 및 관련 문서를 직접 읽고 수신 확인했다. 치명적 범위 오류 없음; 초기 개인 제출 요구보다1A/1B/1C 순서를 우선 적용하며, 구현 착수·실행 QA 통과를 뜻하지 않는다.
 
-- 기존 main root 앱과 기록 저장키를 보존하고 `next/`에 신규 그룹 앱 추가.
-- `next/course.json`, `functions/course.json`: root 경주 9개 Quest 고정 스냅샷.
-- `functions/service.cjs`, `functions/index.cjs`: 생성·초대 확인·가입·완료·제출·종료·초대 재발급.
-- `firestore.rules`: 방별 멤버/방장 읽기 제한, 직접 쓰기 전면 차단.
-- `tests/`, CI: 단위·Rules/동시성·SDK·브라우저 검증과 실행 스크립트.
-- `docs/ARCHITECTURE.md`, `FIREBASE_SETUP.md`, `QA.md`: 설계, 연결/롤백, 검증 근거.
-- Pages workflow를 공개 파일 선별 패키징으로 수정. 운영 Firebase config는 명시적 repository variable로 생성.
+Product: 단계·미결정 정책 / UX: 게시판·기록·리더 출력 / Engineering: 인원 제한·공유저장·권한 / QA:10명 한도·30명 독립세션·권한·출력 검증. 기존 별도 대화 스레드에는 Git 문서 재열람이 필요하다.
 
-## Decisions / 승인된 제품 방향
+## 완료 판정
 
-- 리더 Google / 참여자 로그인 UI 없는 Anonymous Auth, 방별 owner/member 권한.
-- 경주 고정 코스, shared/individual, 개인별 최종 제출, 종료 후 읽기 전용.
-- 사진 업로드·코스 빌더·익명 세션 기기 간 복구 제외.
+**문서·코드 기준 파악 및 이번 실행의 4개 역할 서브 에이전트 인수 완료.** 실기기 QA·Firebase 개발 완료·출시 승인을 의미하지 않는다.
 
-## 구현상 선택 / 제품 확정과 구분
+- [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md): 공개 기능 인벤토리, 3브랜치 기준, 저장 데이터·보존 계약, 최신 결정·미결정.
+- [QA.md](QA.md): 수행 증거·정적 위험·미실행 검증.
+- [PHASE1_SHARED_ADVENTURE_SPEC.md](PHASE1_SHARED_ADVENTURE_SPEC.md), [OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md](OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md): 최초 인계 때048c4c1 원문을 복사했으며, 이후 사용자 승인으로 main 문서를 v1.1로 갱신. 기획 PR #2를 병합하거나 구현 상태를 변경한 것은 아님.
+- 구형 root 인계/지침/시작 프롬프트와 README에 최신 문서 진입 링크 추가. 역사 문서는 삭제하지 않음.
 
-- aggregate member 문서에 개인 progress/submission 저장; 서버 트랜잭션 사용.
-- 독립 `/next/`와 해시 라우터, draft 저장 없이 open 생성.
-- 정원 총 100명(방장 포함), Functions maxInstances=3은 파일럿용 개발 기본값. 부하/비용 검증 후 조정 필요.
-- 개별 제출 요약의 분모는 일반 member만 포함. 방장의 자신의 진행은 별도 행으로 표시.
-- 초대 토큰 원문 복원 불가. 새로고침 후 공유하려면 재발급; 이전 링크는 폐기된다.
+## 인수 확인 기록
 
-## Validation
+| 역할 | 실제 검토 | 공통 문서 직접 열람 | 인수한 책임 |
+|---|---|---|---|
+| Product Strategy | 최신 PRD·개발 인계·Drive 실험 | 확인, 치명적 사실 오류 없음 | 9개 필수 Quest 계약, 내 탐험방 IA, 제출/학교 운영 정책 |
+| UX & Content | main의 화면·사진·추억·템플릿·자산 | 확인, 치명적 사실 오류 없음 | 기존4탭/추억3종 보존, 신규 생성·입장·관리·오류 UX |
+| Engineering | main 코드·저장·workflow·Drive | 확인, 치명적 사실 오류 없음 | 두 저장키·root 보존, 권한·동기화 설계, QA-01/DEP-01 |
+| QA & Research | main 코드·Phase1·검증 경계 | 확인, 치명적 사실 오류 없음 | 모바일/데이터/출력 회귀, 그룹 권한·동시완료 검증 |
 
-- 자동 검사 3개 + Firestore 통합 검사 10개 통과.
-- 실제 callable handler를 로컬 HTTP에서 실행한 SDK/브라우저 흐름 통과. 표준 Functions emulator는 환경 Unix socket 권한 때문에 차단됨.
-- 자세한 범위와 미검증 항목은 QA.md. 실서비스/실제 Google OAuth 통과로 표현하지 않는다.
+각 역할은 PROJECT_CONTEXT.md와 QA.md를 직접 읽고 수신 확인했다. 이것은 이번 Orchestrator 실행에서 생성된 서브 에이전트의 확인이다. 사용자가 별도로 만든 Product/Designer/Engineer/QA 대화 스레드에 메시지가 전달되거나 자동 동기화된 것은 아니다. 해당 스레드는 이 Git 문서를 다시 읽어 같은 기준으로 이어간다. 그 스레드의 수신 완료를 추정하지 않는다.
 
-## Risks / Next Actions
+## 다음 담당과 의존성
 
-| 담당 | 다음 작업 | 완료 기준 |
-|---|---|---|
-| Orchestrator / Engineering | Firebase 프로젝트 ID·요금제·Console 접근권한 확인 | 실제 배포 대상과 책임자 식별 |
-| Engineering | Google/Anonymous 활성화, 허용 도메인, Rules/Functions 및 Pages 연결 | 실제 인증·생성·참여·권한 동작 검증 |
-| Product / Orchestrator | 데이터 보관·삭제, 정원, 요청 제한·App Check 정책 | 공개 파일럿 운영 경계 확정 및 필요한 코드 반영 |
-| UX & Content | 실기기에서 링크 입장·초대 재발급·계정 충돌·오프라인 UX 검토 | 설명 없이 방 생성/참여 및 진행 가능 |
-| QA & Research | 가족 3명 + 가상 참여자 5명 테스트, 모바일 실기기 | 상태 혼합·권한 누출·중복 제출 0건, 목표 시간 측정 |
+1. Orchestrator: 인계 기준 유지, 결정 로그/우선순위 관리. 이번 제안은 승인된 제품 정책으로 취급하지 않음.
+2. Product → UX/Engineering: 필수9개와 내 탐험방 IA는 v1.1에 명시 완료. 제출 후 수정/종료/초대/보관삭제·학교 참여단위 및 공유저장 정책 결정.
+3. UX → Engineering/QA: 방 생성·링크입장·공동/개인 진행·관리·실패 상태 계약.
+4. Engineering → QA: 별도 경로의 인증·Room·권한·동기화, 실제 실행 증거.
+5. QA → Orchestrator/Product: 가족3명/2기기 공동 파일럿, 후속 가상코드5명 개인 제출 검증.
 
-## Release state
+다음 스프린트 권고는 공동 흐름의 end-to-end 검증부터이며, individual을 Phase1 범위에서 삭제한 결정은 아니다. 코스 빌더는 Phase2. 별도 Drive 실험을 그룹 MVP 선행 조건으로 만들지 않는다.
 
-로컬 코드와 테스트가 준비된 상태다. 개발 브랜치/PR 상태는 GitHub에서 확인한다. `main` 병합, 운영 Firebase 설정·배포, Pages 실제 신규 경로 배포 및 사용자 파일럿은 수행하지 않았다. 기존 공개 사이트는 이번 개발 브랜치 작업으로 변경되지 않는다.
+## 변경/검증/남은 위험
+
+이번 변경은 Markdown 문서와 진입 링크만 해당한다. index.html·assets·workflow는 변경하지 않았다. 새 공개 기능 배포는 수행하지 않는다. 공개 HTML의 pinned main 일치·배포 성공 기록·JS 구문 검사·기획 원문 동일성은 최초 인계 시점에 확인했다(최신 v1.1은 이후 승인 변경 반영). 저장 실패 UI·초기화 경계·접근성·Canvas 성능·과거 운영정보 불일치·신규 경로 배포 조건은 QA.md에 남겨 인계했다. 해결되지 않은 QA를 인계 누락과 혼동하지 않는다.
+
+## Engineering 인증·참여 기반 PR (2026-10-20)
+
+개발 PR #3에서 root를 보존한 인증·그룹·참여 기반을 구현/로컬 검증했다. [별도 기록](engineering/HANDOFF_PHASE1_FOUNDATION.md)을 참조한다. 운영 배포·최신1A 공유 기록/출력 완성·출시 승인을 뜻하지 않는다.

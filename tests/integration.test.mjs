@@ -20,13 +20,23 @@ before(async()=>{
   assert.ok(process.env.FIRESTORE_EMULATOR_HOST,'Tests must never use production');
   admin=initializeApp({projectId},'test-admin');db=getFirestore(admin);
   env=await initializeTestEnvironment({projectId,firestore:{host:'127.0.0.1',port:8085,rules:readFileSync('firestore.rules','utf8')}});
-  await env.clearFirestore();service=createService(db,{HttpsError,FieldValue});
+  await env.clearFirestore();service=createService(db,{HttpsError,FieldValue,allowIndividual:true});
 });
 after(async()=>{await env?.cleanup();await db?.terminate();if(admin)await deleteApp(admin);});
 test('Google provider required; client cannot choose another owner or course',async()=>{
   await rejectCode(service.createRoom({title:'x',mode:'shared',courseId:'gyeongju-v1'},a),'permission-denied');
   await rejectCode(service.createRoom({title:'x',mode:'shared',courseId:'invented'},owner),'invalid-argument');
   await rejectCode(service.createRoom({},null),'unauthenticated');
+});
+test('production default blocks individual pilot and includes owner in the ten-member cap',async()=>{
+  const defaults=createService(db,{HttpsError,FieldValue});
+  await rejectCode(defaults.createRoom({title:'학교 후속',mode:'individual',courseId:'gyeongju-v1'},owner),'failed-precondition');
+  const r=await create('shared');
+  assert.equal((await db.doc(`rooms/${r.roomId}`).get()).data().capacity,10);
+  for(let i=0;i<8;i++)await join(r,auth(`limit-${i}`));
+  const result=await Promise.allSettled([join(r,auth('limit-final-a')),join(r,auth('limit-final-b'))]);
+  assert.equal(result.filter(x=>x.status==='fulfilled').length,1);
+  assert.equal((await db.doc(`rooms/${r.roomId}`).get()).data().memberCount,10);
 });
 test('invite preview reveals only safe room summary, invalid and path-injection inputs fail',async()=>{
   const r=await create('shared'), summary=await service.previewInvite({token:r.token});

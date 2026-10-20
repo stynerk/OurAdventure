@@ -1,14 +1,14 @@
 # Shared Adventure — Engineering Architecture
 
-기준: 2026-10-19 · 구현 브랜치 `engineering/shared-adventure-firebase` · 운영 배포 전
+기준: 2026-10-20 · 인증·참여 기반 구현 브랜치 `engineering/shared-adventure-firebase` · 운영 배포 전
 
 ## 근거와 범위
 
 - 확인한 main 기준 커밋: `00e78ef`. 루트 `index.html`, `gj-family-quest` 및 사진/일기 저장 방식은 변경하지 않았다.
-- Phase 1 명세와 인증 핸드오프는 `feature/shared-adventure-phase1-plan-20261018`에서 가져왔다. 해당 기획 PR #2의 병합을 의미하지 않는다.
+- 최신 기준은 main `0eaac19`의 PRD v1.1 0절이다. 구현 도중 갱신된 승인 범위를 다시 읽고 통합했다. 기획 PR #2의 병합을 의미하지 않는다.
 - 최신 사용자 지침의 그룹 확장/인증 방향을 적용한다. 루트의 과거 문서에 있는 ‘로그인 제외’는 기존 가족 앱에만 적용한다.
-- `/next/`: 프레임워크 없는 ES modules, 기존 9개 Quest 콘텐츠의 버전 고정 JSON 재사용. 콘텐츠 생성/편집, 사진 업로드, 익명 계정 기기 간 복구 제외.
-- 이 구현은 기존 화면 전체의 포팅이 아니다. 기존 여행 일기/사진/시간표는 원래 앱에서 계속 제공한다. 새 앱은 그룹 생성·참여·Quest·제출·관리 검증에 집중한다.
+- `/next/`: 프레임워크 없는 ES modules, 기존 9개 Quest 콘텐츠의 버전 고정 JSON 재사용. 코스 생성/편집과 익명 계정 기기 간 복구는 제외. 신규 공유 사진은 최신1A 요구에 포함됐지만 저장/권한/보관 계약이 미결정이라 이번 기반 구현에는 없다.
+- 1A 출시 MVP 완료가 아니다. 공동 글·사진 게시 기록과 리더의 선택·정렬·앨범 출력이 아직 없다. 이 구현은 기존 화면 전체의 포팅이 아니다. 기존 여행 일기/사진/시간표는 원래 앱에서 계속 제공한다. 새 앱은 그룹 생성·참여·공동 Quest·관리에 집중한다. individual/제출 코드는1C 후속 플래그로 격리했다.
 
 ## 구조 / 선택 이유
 
@@ -44,7 +44,7 @@ Callable 요청에는 SDK가 인증 토큰을 첨부한다. 서버는 `request.a
 
 | Function | 인증 / 검사 | 결과 |
 |---|---|---|
-| createRoom | Google provider, 제목 ≤60자, 알려진 courseId, 유효 mode | roomId, 원문 token (일회 응답) |
+| createRoom | Google provider, 제목 ≤60자, 알려진 courseId, 유효 mode, individual은 서버 파일럿 플래그 필요 | roomId, 원문 token (일회 응답) |
 | previewInvite | 높은 엔트로피 token 검증, open 상태 | title/mode/questCount/roomId만. 가입 전 미리보기 |
 | joinRoom | 인증 UID, 유효 초대, open, 정원 | member 생성 또는 기존 member 유지 |
 | completeQuest | 인증 + 멤버십, open, 고정 questId | 공동 또는 본인 스탬프만 갱신 |
@@ -66,7 +66,13 @@ Callable 요청에는 SDK가 인증 토큰을 첨부한다. 서버는 `request.a
 ## 운영 전 미해결 사항
 
 - Unknown: 실제 Firebase 프로젝트 ID, Console 권한, 요금제, OAuth 도메인, 운영 설정. 실제 Google popup/모바일/교차기기 성능은 별도 검증 필요.
-- 서버 함수 정원 100명, 인스턴스 상한 3개는 개발 기본값이며 사용자 승인된 제품 정책이 아니다.
+- 정원10명(방장 포함)은 최신 사용자 승인 규칙이며 가입 트랜잭션에서 강제한다. 30명은 후속 검증 목표로 현재 지원하지 않는다. 인스턴스 상한3개는 개발 기본값이다.
 - App Check, 사용자별 생성/가입 속도 제한, 익명 계정/데이터 정리 및 보관 정책은 아직 미구현이다. 방 정원과 초대 재발급은 남용을 완전히 막지 못한다. 공개 운영 전에 보완해야 한다.
 - 공개 인터넷에 previewInvite를 노출하면 유효한 토큰 보유자는 방 제목을 볼 수 있다. 방 이름에도 실제 학생 정보 입력 금지.
 - 별도 Firebase 프로젝트에서 emulator → 가상 사용자 파일럿 → 운영 배포 순으로 진행한다. 기존 가족 사이트에는 새 앱 진입 CTA를 추가하지 않았다.
+
+## PRD v1.1 차이 / 후속 구현
+
+1A는 가족·지인 공동 기록/사진과 리더 일기·앨범 출력까지 포함한다. 이 PR은 그중 인증·활동공간1건·멤버십·최대10명·공동 진행의 기반만 제공한다. 사진 서버 업로드 제외라는 이전 결정을 신규 그룹 요구에 적용하지 않는다. 게시글/파일의 권한·규격·장수/용량·보관/삭제·실패 처리·비용을 Product와 설계한 뒤 공유 저장과 출력에 착수한다. 학교 보고서는1C다.
+
+기본 생성 화면은 shared만 제공한다. `ENABLE_INDIVIDUAL_PILOT=true` 서버 환경과 `enableIndividualPilot=true` 프런트 설정을 모두 명시한 제한 환경에서만 개인 모드 생성 화면/서버를 활성화한다. 프런트 플래그만 바꿔도 서버 기본값은 individual 생성을 거부한다. 공개 Pages 패키지는 해당 플래그를 생성하지 않는다.

@@ -1,6 +1,7 @@
 const app = document.querySelector('#app'), message = document.querySelector('#message');
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const say = text => {message.textContent = text;};
+let enableIndividualPilot=false;
 let api, auth, db, functions, course, user, room, me, members = [], inviteToken = '', inviteRoomId = '', stops = [], generation = 0, busy = false;
 const configMissing = () => {
   app.innerHTML = '<section class="card"><h1>함께하는 탐험을 준비하고 있어요</h1><p>아직 서비스 연결 설정이 완료되지 않았어요. 기존 경주 가족 탐험은 계속 이용할 수 있어요.</p><a class="button" href="../">경주 탐험 열기</a></section>';
@@ -15,7 +16,7 @@ async function ensureUser() {
 }
 function signOutButton(){return user ? '<button class="secondary" data-action="logout">로그아웃</button>' : '';}
 function home() {
-  app.innerHTML = `<section class="card"><h1>함께 떠나고,<br>발견을 모으는 탐험</h1><p>경주의 아홉 미션을 함께 즐겨요. 하나의 스탬프북을 채우거나 각자의 기록을 모을 수 있어요.</p><a class="button" href="#create">탐험방 만들기</a><p class="muted">방장은 Google 로그인 · 참여자는 초대 링크와 별칭만으로 시작</p></section><section class="card"><h2>초대받았나요?</h2><p>받은 초대 링크를 열어 주세요. 한 브라우저에서 한 명의 기록을 이어갈 수 있어요.</p></section><section class="card"><h2>내가 만든 탐험방</h2><div id="myRooms">${user && !user.isAnonymous?'불러오는 중…':'방장으로 로그인하면 확인할 수 있어요.'}</div><div class="row"><button data-action="login">방장 Google 로그인</button>${signOutButton()}</div></section>`;
+  app.innerHTML = `<section class="card"><h1>함께 떠나고,<br>발견을 모으는 탐험</h1><p>경주의 아홉 미션을 함께 즐겨요. 방장 포함 최대 10명이 하나의 스탬프북을 함께 채울 수 있어요.</p><a class="button" href="#create">탐험방 만들기</a><p class="muted">방장은 Google 로그인 · 참여자는 초대 링크와 별칭만으로 시작</p></section><section class="card"><h2>초대받았나요?</h2><p>받은 초대 링크를 열어 주세요. 한 브라우저에서 한 명의 기록을 이어갈 수 있어요.</p></section><section class="card"><h2>내가 만든 탐험방</h2><div id="myRooms">${user && !user.isAnonymous?'불러오는 중…':'방장으로 로그인하면 확인할 수 있어요.'}</div><div class="row"><button data-action="login">방장 Google 로그인</button>${signOutButton()}</div></section>`;
   if(user && !user.isAnonymous) {
     const version=generation;
     api.getDocs(api.query(api.collection(db,'rooms'),api.where('ownerId','==',user.uid))).then(result=>{
@@ -25,7 +26,7 @@ function home() {
   }
 }
 function createView() {
-  app.innerHTML = `<section class="card"><h1>새 탐험방</h1><p>경주 역사 탐험 · ${course.quests.length}개 미션</p>${!user || user.isAnonymous ? '<p>방을 만들려면 방장 Google 로그인이 필요해요.</p><button data-action="login">Google로 로그인</button>' : `<form id="create"><label>탐험방 이름<input name="title" maxlength="60" required autocomplete="off" placeholder="우리 가족 경주 원정"></label><fieldset><legend>함께하는 방식</legend><label><input type="radio" name="mode" value="shared" checked>함께 완료</label><p class="muted">누가 완료하든 하나의 공동 스탬프북을 채워요.</p><label><input type="radio" name="mode" value="individual">각자 완료</label><p class="muted">각자 스탬프를 모으고 마지막에 결과를 제출해요.</p></fieldset><button>탐험방 만들기</button></form>`}</section>`;
+  app.innerHTML = `<section class="card"><h1>새 탐험방</h1><p>경주 역사 탐험 · ${course.quests.length}개 미션 · 방장 포함 최대 10명</p>${!user || user.isAnonymous ? '<p>방을 만들려면 방장 Google 로그인이 필요해요.</p><button data-action="login">Google로 로그인</button>' : `<form id="create"><label>탐험방 이름<input name="title" maxlength="60" required autocomplete="off" placeholder="우리 가족 경주 원정"></label><fieldset><legend>함께하는 방식</legend><label><input type="radio" name="mode" value="shared" checked>함께 완료</label><p class="muted">누가 완료하든 하나의 공동 스탬프북을 채워요.</p>${enableIndividualPilot?'<label><input type="radio" name="mode" value="individual">각자 완료 (후속 파일럿)</label><p class="muted">각자 스탬프를 모으고 마지막에 결과를 제출해요.</p>':''}</fieldset><button>탐험방 만들기</button></form>`}</section>`;
 }
 async function joinView(token, version) {
   const summary=await call('previewInvite',{token});
@@ -120,6 +121,7 @@ app.addEventListener('click',event=>{
 });
 try {
   const config=await import('./firebase-config.js');
+  enableIndividualPilot=config.enableIndividualPilot===true;
   if(!config.firebaseConfig?.projectId || config.firebaseConfig.projectId==='YOUR_PROJECT')throw new Error('Firebase 연결 설정이 필요해요.');
   const sdk='https://www.gstatic.com/firebasejs/13.0.0/';
   const modules=await Promise.all(['firebase-app.js','firebase-auth.js','firebase-firestore.js','firebase-functions.js'].map(name=>import(sdk+name)));

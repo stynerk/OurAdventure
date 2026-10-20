@@ -4,16 +4,24 @@
 
 Public site: https://stynerk.github.io/OurAdventure/
 
-## Shared Adventure Phase 1 — 별도 개발 경로
+## 최신 인수인계 (2026-10-19)
 
-기존 루트 앱과 로컬 기록을 유지하면서 `/next/`에 그룹 탐험 MVP를 개발한다. **Firebase 운영 프로젝트 연결·실서비스 배포 전**이며, 코드 추가만으로 공개 공동 사용이 활성화되는 것은 아니다.
+- [프로토타입·제품 기준](docs/PROJECT_CONTEXT.md)
+- [Agent 인수인계](docs/HANDOFF.md)
+- [검증 상태와 남은 QA](docs/QA.md)
+- [Phase 1 PRD](docs/PHASE1_SHARED_ADVENTURE_SPEC.md) · [개발 핸드오프](docs/OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md)
 
-- [구현 구조와 권한](docs/ARCHITECTURE.md)
+아래 여행 소개/일정은 기존 경주 프로토타입의 역사 문맥이다.
+
+
+## Engineering 구현 브랜치 — 인증·참여 기반 (운영 배포 전)
+
+기존 루트 앱과 두 로컬 기록 키를 보존하고 `/next/`에 Firebase 인증·탐험방·참여·공동 진행 기반을 추가한다. 최신 PRD v1.1에 맞춰 방장 포함 최대10명으로 제한한다. individual은 후속1C 파일럿 플래그로 격리한다. **1A 공동 글·사진 기록 및 리더 앨범 출력은 미구현이므로 출시 MVP 완료가 아니다.**
+
+- [Engineering 구조/미결정](docs/ARCHITECTURE.md)
 - [Firebase 연결·테스트·롤백](docs/FIREBASE_SETUP.md)
-- [검증 상태](docs/QA.md)
-- [Engineering 핸드오프](docs/HANDOFF.md)
-
-리더는 Google, 참여자는 화면에 로그인 절차 없이 내부 Anonymous Auth를 사용한다. 기존 경주 9개 Quest를 재사용하고 shared/individual 진행·제출을 서버에서 분리한다. 코스 편집과 사진 서버 업로드는 이번 범위에 없다.
+- [이번 구현 검증](docs/engineering/QA_PHASE1_FOUNDATION.md)
+- [Engineering 인수인계](docs/engineering/HANDOFF_PHASE1_FOUNDATION.md)
 
 ## Start here
 

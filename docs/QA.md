@@ -1,57 +1,54 @@
-# Engineering QA — Shared Adventure Phase 1
+# QA — 인수인계 검증 및 남은 실행 검증
 
-2026-10-19 · 테스트 데이터는 가상 별칭/코드 및 demo 프로젝트만 사용
+기준: 2026-10-19, 공개 프로토타입 main 00e78ef / 신규 기획 048c4c1.
 
-## 결과
+## v1.1 추가 검증 계획 (미실행)
 
-| 검사 | 결과 | 범위 / 한계 |
+- 가족 출시 리더포함10명 한도: 10명 상태에서11번째 가입 거부; 9명 상태의 동시가입에서도 최대10명.
+- 30명은 검증 설정에서 독립 세션으로 동시참여·기록 조회/업로드/권한을 확인하고 측정 결과를 기록. 일반 출시 지원 보장 아님.
+- 구성원 게시글/사진 공유와 개인 제출 데이터를 분리하여 방밖/타인 비공개 기록 접근 차단.
+- 리더 기록 선택·순서 변경·일기/앨범 출력과 기존 로컬 데이터 보존.
+- 학교 제출/보고서는1C 진입 후 가상코드로 검증. 사진 저장/용량/보관삭제 정책 확정 전 운영 PASS 불가.
+- 진행 시작 후 모드변경·종료후재오픈 거부, 초대토큰 평문 저장 금지, shared 개인 제출률 미표시 검증.
+
+## 수행 증거 (최초 인계 시점)
+
+- 3개 원격 브랜치의 재귀 파일 목록과 PR #1/#2 상태 확인.
+- main index.html, 저장/사진/추억/출력/퇴역 기록 코드 및 배포 workflow 정적 검토.
+- 공개 HTML 직접 조회: main과 68,564 bytes 동일, SHA-256는 PROJECT_CONTEXT.md 참조.
+- 최근 Pages workflow 성공 확인(00e78ef).
+- inline JavaScript `node --check` 통과(구문 검사 한정). 앱 소스 무변경 및 두 기획 원문 byte 동일성 확인(최초9dc1f44 시점; 이후 main v1.1은 승인 변경을 반영).
+- Product/UX/Engineering/QA 역할별 읽기 검토 수행. 브라우저/실기기/실인쇄/Firebase 실연동은 미실행.
+
+## 이슈 (정적 근거, 사용자 환경 재현 전)
+
+| ID | 심각도 | 근거/재현 절차 | 기대 동작/담당 |
+|---|---|---|---|
+| QA-01 | P1 | localStorage.setItem 실패 조건에서 complete(); state.done 선변경, save 실패 후 성공 UI, 재접속시 이전 저장값 | 영속화 실패를 완료 성공으로 표시하지 않음 / Engineering |
+| QA-02 | P2 | 회고 입력 후 처음부터(resetAll); diary-template 키는 남음 | 초기화 범위 명시 또는 정책 결정 후 수정 / Product+UX |
+| QA-03 | P2 | 코스 화면의 과거 고정 시간·휴관·예약 상태와 실제 여행 변경 대조 | 역사정보/실여행/재사용 코스를 구분 / Product+Content |
+| QA-04 | P2 | questCard/stampGrid onclick div에 키보드 탐색 시도 | 키보드 활성화·dialog 초점 이동 검증 / UX+Engineering |
+| QA-05 | P2 | 저사양 모바일·사진 다수·배경 로딩 실패에서 A4 생성 | 대기·메모리·PNG/인쇄 배치 검증 / QA |
+| DEP-01 | P1(신규 앱 배포 시) | next 또는 assets만 변경해 push; 현 workflow paths 미포함 | 배포 trigger와 실제 산출물 경로 검증 / Engineering |
+
+P1=기록 신뢰성/주요 흐름 문제, P2=일반 기능·사용성 문제. 실행 재현 여부와 심각도는 추후 증거로 갱신.
+
+## 재현 가능한 필수 실행 체크
+
+| 테스트 | 절차 | 통과 기준 |
 |---|---|---|
-| `npm test` | 3/3 통과 | root 파일 해시·9개 Quest 일치, JS 구문·hidden 회귀, 공개 파일만 패키징 |
-| `npm run test:integration` | 10/10 통과 | 실제 Firestore emulator + Rules, Node 22, Java 21, Firebase CLI 15.34.0 |
-| Firebase SDK 3세션 | 통과 | Auth emulator의 Google 테스트 자격/익명 인증, 실제 callable wrapper의 토큰 검증, 가입·공동 스탬프 listener·종료 후 차단 |
-| Chromium 390×844, 3개 격리 context | 통과 | 로그인 UI 없는 참여, 공동 스탬프 반영, 새로고침/익명 세션 유지, 개인별 9개 완료·제출 분리, 방장 관리, 종료 후 UI 차단, 가로 넘침 없음 |
-| 표준 Functions emulator의 HTTP 종단 테스트 | 환경 차단 | Unix socket `listen EPERM /tmp/fire_emu_*.sock`. 배포 환경의 함수 실패로 판정하지 않으며 표준 emulator 통과로 보고하지 않음 |
-| 실제 exported callable handler의 로컬 HTTP 테스트 | 통과 | `tests/callable-http.mjs`: 동일 handler를 Express TCP 서버에서 실행. Auth/Firestore emulator와 실제 SDK 사용. Cloud Functions/Cloud Run 런타임 검증은 아님 |
-| Functions 운영 의존성 audit | 취약점 0 | `npm audit --omit=dev --prefix functions` 실행 시점 기준 |
-| 실제 Google 로그인 팝업 / OAuth 도메인 | 미검증 | 테스트는 Auth emulator의 가짜 Google 자격 사용 |
-| iOS Safari / Android Chrome 실기기 | 미검증 | Chromium 모바일 viewport는 실기기를 대체하지 않음 |
-| 운영 Firebase / 교차기기 5초 SLO / 사용자 파일럿 | 미실행 | 운영 프로젝트 설정이 없고 성능 목표는 아직 가설 |
+| 기존 데이터 보존 | 기존 두 키와 archivedRecords 준비→신규 앱 방문→루트 복귀 | 데이터 동일·과거 사진 유지 |
+| 화면 회귀 | iOS Safari/Android Chrome에서 온보딩·4탭·9Quest 순회 | hidden 화면 노출/막힌 이동 없음 |
+| 사진 | 촬영·파일 선택·취소·지원불가·용량실패·교체 | 이전 기록 보존, 완료와 사진의 독립성 |
+| 추억 | A/B/C 선택, 소감·대표사진·별점, 새로고침 | 선택/입력 유지와 템플릿별 렌더 확인 |
+| 출력 | 사진0/1/9 및 과거 기록으로 PNG·인쇄 | 한장 A4·잘림/누락/무한 대기 없음 |
+| 신규 권한 | 익명 방생성/role조작/타인 기록 및 관리 읽기 시도 | 서버/Rules 거부 |
+| 공동 완료 | 두 기기 동시 같은 Quest 완료·재접속 | 스탬프1개, 정상망5초 이내 반영 목표 |
+| 개인 제출 | 5가상코드 별도 세션, 필수 미완료 제출→완료 후 재제출 | 미완료 차단·개인 격리·중복 제출 방지 |
+| 방 종료 | 종료 후 기존 세션에서 쓰기 시도 | 서버 차단·읽기 전용 |
 
-## 통합 테스트 상세
+인수인계 완료와 위 QA 통과/출시 승인은 별개다. 실제 학생 개인정보·사진을 사용하지 않는다.
 
-1. 익명 계정 방 생성 차단 / Google provider 검사 / 임의 코스 차단.
-2. 초대 미리보기 최소 정보만 반환 / 잘못된 token 및 경로 주입 차단.
-3. 중복 가입 멱등 / 기존 role·이름·진행 보존 / 참여자 수 중복 증가 방지.
-4. 동일 shared Quest 동시 완료 요청 4개 → 스탬프·감사 이벤트 각각 1개.
-5. individual 상태 분리 / 9개 필수 완료 전 제출 거절 / 중복 제출 1개.
-6. 방장만 초대 재발급 / 이전 초대 무효 / 기존 멤버 진행 유지.
-7. 방장만 종료 / 종료 후 완료·제출·가입·재발급 모두 거절.
-8. 정원 경합 시 정원 초과 방지 / 별칭 입력 검증.
-9. 방 ID만 아는 비회원의 변경·관리 차단.
-10. Rules: 비로그인·비멤버·타인 개인 기록·참여자 목록·초대 해시 읽기 차단, 본인/방장 읽기 허용, 방장 포함 모든 직접 쓰기 차단.
+## Engineering 추가 검증 (2026-10-20)
 
-예상된 PERMISSION_DENIED 로그는 위 negative test에서 발생한다.
-
-## 재현
-
-```bash
-npm ci --ignore-scripts
-npm ci --ignore-scripts --prefix functions
-npm test
-npm run test:integration
-npx playwright install chromium --only-shell
-npm run test:callable-http
-```
-
-- Node 22, Java 21 권장. 프런트는 Firebase CDN 13.0.0 고정, 서버 Admin 14.5.0 / Functions 7.4.0.
-- 이 환경의 최신 Chromium 다운로드 파일이 비정상이라 설치 가능한 Chromium 134(headless shell v1161)를 `PLAYWRIGHT_CHROMIUM_EXECUTABLE`로 지정했다. 현재 버전 Chrome 검증으로 간주하지 않는다.
-- E2E runner는 demo Auth + Firestore emulator 안에서만 실행한다. HTTP proxy 사용 환경에서는 브라우저에도 proxy 설정을 전달하며 테스트 context에만 HTTPS 인증서 오류 무시를 적용한다. 제품 코드의 보안 설정은 변경하지 않는다.
-- 원본 변경 방지는 기준 커밋 `00e78ef`의 root SHA-256을 사용한다. 향후 원본의 의도된 수정은 해당 테스트 기준과 코스 버전을 함께 검토해야 한다.
-
-## 출시 전 남은 검증
-
-- 대상 Firebase 설정/Google 허용 도메인 및 실제 로그인·로그아웃·계정 연결 충돌 처리.
-- 실기기 2대 이상, 가족 3명/개별 테스트 5명, 동일 Quest 동시 완료, 중복 별칭, 종료 직전 경합.
-- 실제 학생 정보 없이 테스트. 사전 명단이 없으면 미입장 인원을 보여주지 않는다.
-- App Check/요청 제한 및 데이터 보관·삭제 정책을 확정하고 적용.
-- GitHub Pages와 Firebase Functions/Rules 배포는 각각 결과 확인. 이번 로컬 테스트는 운영 배포 성공을 의미하지 않는다.
+개발 PR #3에서 root를 보존한 인증·그룹·참여 기반을 구현/로컬 검증했다. [별도 기록](engineering/QA_PHASE1_FOUNDATION.md)을 참조한다. 운영 배포·최신1A 공유 기록/출력 완성·출시 승인을 뜻하지 않는다.

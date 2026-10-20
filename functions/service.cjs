@@ -3,7 +3,7 @@ const course = require('./course.json');
 
 // All writes go through this trusted service. Admin SDK bypasses Rules, so every
 // action checks auth, membership, mode and room state inside its transaction.
-function createService(db, {HttpsError, FieldValue}) {
+function createService(db, {HttpsError, FieldValue, allowIndividual = false}) {
   const fail = (code, message) => { throw new HttpsError(code, message); };
   const text = (value, max, label) => {
     if (typeof value !== 'string' || !value.trim() || value.trim().length > max || /[\u0000-\u001f]/.test(value)) fail('invalid-argument', `${label}을 확인해 주세요.`);
@@ -37,11 +37,12 @@ function createService(db, {HttpsError, FieldValue}) {
       if (auth.token?.firebase?.sign_in_provider !== 'google.com') fail('permission-denied', '방장은 Google 로그인이 필요해요.');
       const title = text(data?.title, 60, '탐험방 이름');
       if (!['shared','individual'].includes(data?.mode) || data?.courseId !== course.id) fail('invalid-argument', '코스와 진행 방식을 확인해 주세요.');
+      if (data.mode === 'individual' && !allowIndividual) fail('failed-precondition', '각자 완료는 후속 파일럿에서 사용할 수 있어요.');
       const ref = db.collection('rooms').doc(), token = randomBytes(32).toString('base64url');
       await db.runTransaction(async tx => {
         // Token is returned once; only its hash is stored in a private collection.
         tx.create(ref, {title, mode:data.mode, status:'open', ownerId:uid, courseId:course.id, courseVersion:course.version,
-          questIds:course.questIds, requiredQuestIds:course.requiredQuestIds, sharedDone:[], memberCount:1, capacity:100, createdAt:now(), closedAt:null});
+          questIds:course.questIds, requiredQuestIds:course.requiredQuestIds, sharedDone:[], memberCount:1, capacity:10, createdAt:now(), closedAt:null});
         tx.create(memberRef(ref.id, uid), {role:'owner', displayName:'방장', participantCode:'', done:[], submittedAt:null, joinedAt:now(), lastSeenAt:now()});
         tx.create(db.doc(`invites/${hash(token)}`), {roomId:ref.id});
         tx.create(db.doc(`roomSecrets/${ref.id}`), {inviteHash:hash(token)});
@@ -68,7 +69,7 @@ function createService(db, {HttpsError, FieldValue}) {
         const [rs, ms] = await tx.getAll(roomRef(id), memberRef(id, uid));
         if (!rs.exists || rs.data().status !== 'open') fail('failed-precondition', '종료된 탐험방이에요.');
         if (ms.exists) return {roomId:id}; // Never overwrite existing role, name or progress.
-        if (rs.data().memberCount >= rs.data().capacity) fail('resource-exhausted', '탐험방 정원이 가득 찼어요.');
+        if (rs.data().memberCount >= Math.min(rs.data().capacity, 10)) fail('resource-exhausted', '탐험방은 방장 포함 최대 10명까지 참여할 수 있어요.');
         tx.create(memberRef(id, uid), {role:'member', displayName, participantCode, done:[], submittedAt:null, joinedAt:now(), lastSeenAt:now()});
         tx.update(roomRef(id), {memberCount:rs.data().memberCount + 1});
         log(tx,id,`join-${uid}`,uid,'member-joined');

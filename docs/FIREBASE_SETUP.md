@@ -1,6 +1,6 @@
 # Firebase 연결 / 실행 / 롤백
 
-2026-10-19 · 실제 프로젝트 연결 및 운영 배포 미실행
+2026-10-20 · 인증·참여 기반,1A 공유 기록/출력 미구현 · 실제 프로젝트 연결 및 운영 배포 미실행
 
 ## 로컬 준비
 
@@ -51,7 +51,7 @@ firebase deploy --project YOUR_PROJECT --only firestore:rules,functions
 
 6. 로컬 확인은 ignored `next/firebase-config.js`에 공개 설정을 넣고 `useEmulators=false`로 한다.
 7. GitHub repository variable `FIREBASE_WEB_CONFIG`에 공개 config JSON을 넣는다. Pages workflow는 이 값으로 운영 설정을 생성한다. 설정이 비어 있으면 새 경로는 준비 안내만 표시하고 기존 앱은 유지된다.
-8. Rules와 함수의 배포 버전, Google 실제 로그인, 익명 세션, 관리 권한, closed-room 차단을 확인한다. 코드의 현재 App Check/속도 제한/보관 정책 공백은 ARCHITECTURE.md 참고.
+8. Rules와 함수의 배포 버전, Google 실제 로그인, 익명 세션, 관리 권한, closed-room 차단을 확인한다. 코드의 현재 App Check/속도 제한/보관 정책 공백은 ARCHITECTURE.md 참고. 공유 글/사진 및 리더 출력도 미구현이므로 이 안내는 출시 승인이나 즉시 공개 배포 지시가 아니다.
 9. 개발 PR을 검토·병합한 뒤 Pages deployment 결과와 실제 `/next/` URL을 확인한다. 브랜치 push/PR 생성은 운영 배포가 아니다.
 
 ## 공개 파일 패키징
@@ -64,3 +64,7 @@ firebase deploy --project YOUR_PROJECT --only firestore:rules,functions
 - Firebase 문제: 우선 참여 링크 공유와 새 앱 진입을 중단한다. 이미 공개된 정적 프런트 롤백만으로 함수 접근이 차단되지는 않는다. 함수 비활성화/직전 버전 재배포 또는 대상 방 close 등 서버 대응이 별도로 필요하다.
 - Rules를 느슨하게 만들어 임시 복구하지 않는다. 이전 검증 버전으로 되돌린다.
 - 데이터 삭제·익명 계정 정리는 별도 보관 정책 확정 후 수행한다. 이번 작업에서 실제 사용자 데이터 조작은 하지 않았다.
+
+## 개인 모드 후속 파일럿
+
+운영 기본값은 shared이며 방장 포함10명으로 제한한다. individual은1C용으로 남겨두되 기본 비활성화했다. 제한된 개발 환경에서만 서버 `ENABLE_INDIVIDUAL_PILOT=true`와 프런트 `enableIndividualPilot=true`를 함께 설정한다. 테스트용 HTTP runner는 이를 명시적으로 활성화한다. 30명용 설정이나 그룹 사진 저장은 아직 구현하지 않았다.

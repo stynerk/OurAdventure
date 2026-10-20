@@ -7,7 +7,7 @@
     "test": "node --test tests/course.test.mjs",
     "test:integration": "firebase emulators:exec --project demo-our-adventure --only firestore 'node --test tests/integration.test.mjs'",
     "serve": "python3 -m http.server 8080",
-    "test:browser": "firebase emulators:exec --project demo-our-adventure --only auth,firestore,functions 'node tests/browser.mjs'",
+    "test:browser": "ENABLE_INDIVIDUAL_PILOT=true firebase emulators:exec --project demo-our-adventure --only auth,firestore,functions 'node tests/browser.mjs'",
     "test:client": "firebase emulators:exec --project demo-our-adventure --only auth,firestore,functions 'node tests/client.mjs'",
     "test:callable-http": "firebase emulators:exec --project demo-our-adventure --only auth,firestore 'node tests/callable-http.mjs'"
   },

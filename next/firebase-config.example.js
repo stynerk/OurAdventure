@@ -6,3 +6,5 @@ export const firebaseConfig = {
 };
 export const functionsRegion = 'asia-northeast3';
 export const useEmulators = false; // local localhost development ONLY
+
+export const enableIndividualPilot = false; // Phase 1C only; backend flag also required

@@ -1,3 +1,5 @@
+> **2026-10-19 인계 갱신:** 최신 공개 버전과 그룹 확장 기준은 [docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md), 역할별 인계는 [docs/HANDOFF.md](docs/HANDOFF.md), 검증 상태는 [docs/QA.md](docs/QA.md)를 먼저 읽는다. 아래의 여행 전 지침·일정은 역사 문맥이며 현재 개발 우선순위나 운영정보로 재사용하지 않는다. 최신 기획 원문도 docs/에 보존했다.
+
 # ChatGPT Project Instructions — OurAdventure
 
 이 프로젝트는 `OurAdventure / 가족여행-경주` 모바일 웹 프로토타입을 실제 2026-10-09~10-11 경주 가족여행에서 사용 가능한 수준으로 완성하는 프로젝트다.
