@@ -2,6 +2,7 @@
 
 > 작성: 2026-10-18 · 수정: 2026-10-19 (사용자 승인: 가족·지인 10명 출시 / 30명 확장 검증) · 상태: 범위 확정, 구현·배포 전
 > 개발 인계: [OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md](./OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md)
+> 2026-10-20 구체화 초안: [공동 기록 제품 계약](PHASE1A_PRODUCT_CONTRACT.md) · [개발용 화면 명세](PHASE1A_UX_SPEC.md). 승인된 범위와 권고 기본값을 구분하며, 상세 정책·기술 선택은 아직 확정하지 않았다.
 > **현재 프로젝트는 기획만 진행. 실제 Firebase 연동·코드 개발·테스트·배포는 별도 Our Adventure 프로젝트 담당.**
 > 기준: stynerk/OurAdventure main, 기존 index.html과 PROJECT_HANDOFF.md
 > 제품 결정: **코스 생성은 Phase 2**. Phase 1은 기존 경주 Quest의 다인 사용 / 관리 기능을 검증한다.
