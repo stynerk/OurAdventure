@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function owner(roomId) {
+      return signedIn() && get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerId == request.auth.uid;
+    }
+    function member(roomId) {
+      return signedIn() && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
+    }
+    match /rooms/{roomId} {
+      // Enables the owner's `where(ownerId == uid)` query; participants get known rooms only.
+      allow get: if member(roomId);
+      allow list: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow write: if false;
+      match /members/{uid} {
+        allow get: if owner(roomId) || (member(roomId) && request.auth.uid == uid);
+        allow list: if owner(roomId);
+        allow write: if false;
+      }
+      match /activity/{eventId} {
+        allow read: if owner(roomId);
+        allow write: if false;
+      }
+    }
+    // Invite hashes and everything else are server-only, including reads.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

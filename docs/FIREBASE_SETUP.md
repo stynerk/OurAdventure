@@ -1,5 +1,7 @@
 # Firebase setup — Our Adventures
 
+> 2026-10-23 통합: 아래 실제 콘솔 관찰 기록은 보존했다. PR #3의 로컬 실행·운영 연결·재시도·롤백은 [Engineering 개발 절차](engineering/FIREBASE_FOUNDATION_SETUP.md)로 분리했다. 콘솔 관찰 날짜는 그대로이며 이번에 실시간 재확인하지 않았다.
+
 확인일: 2026-10-20 (Asia/Seoul). 콘솔의 실제 관찰 기준이며 앱 구현·배포·E2E 통과를 뜻하지 않는다.
 
 ## 2026-10-20 저녁 재개 점검

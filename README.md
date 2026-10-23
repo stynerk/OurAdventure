@@ -13,6 +13,16 @@ Public site: https://stynerk.github.io/OurAdventure/
 
 아래 여행 소개/일정은 기존 경주 프로토타입의 역사 문맥이다.
 
+
+## Engineering 구현 브랜치 — 인증·참여 기반 (운영 배포 전)
+
+기존 루트 앱과 두 로컬 기록 키를 보존하고 `/next/`에 Firebase 인증·탐험방·참여·공동 진행 기반을 추가한다. 최신 PRD v1.1에 맞춰 방장 포함 최대10명으로 제한한다. individual은 후속1C 파일럿 플래그로 격리한다. **1A 공동 글·사진 기록 및 리더 앨범 출력은 미구현이므로 출시 MVP 완료가 아니다.**
+
+- [Engineering 구조/미결정](docs/ARCHITECTURE.md)
+- [Firebase 연결·테스트·롤백](docs/FIREBASE_SETUP.md)
+- [이번 구현 검증](docs/engineering/QA_PHASE1_FOUNDATION.md)
+- [Engineering 인수인계](docs/engineering/HANDOFF_PHASE1_FOUNDATION.md)
+
 ## Start here
 
 새 ChatGPT Project / Work로 이어갈 때는 아래 순서로 읽는다.
