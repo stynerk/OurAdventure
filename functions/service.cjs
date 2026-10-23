@@ -38,8 +38,21 @@ function createService(db, {HttpsError, FieldValue, allowIndividual = false}) {
       const title = text(data?.title, 60, '탐험방 이름');
       if (!['shared','individual'].includes(data?.mode) || data?.courseId !== course.id) fail('invalid-argument', '코스와 진행 방식을 확인해 주세요.');
       if (data.mode === 'individual' && !allowIndividual) fail('failed-precondition', '각자 완료는 후속 파일럿에서 사용할 수 있어요.');
+      if (typeof data.requestId !== 'string' || !/^[A-Za-z0-9_-]{16,100}$/.test(data.requestId)) fail('invalid-argument', '생성 요청 ID를 확인해 주세요.');
+      const requestHash = createHash('sha256').update(JSON.stringify([uid,data.requestId])).digest('hex');
+      const requestRef = db.doc(`roomCreationRequests/${requestHash}`);
+      const fingerprint = createHash('sha256').update(JSON.stringify([title,data.mode,course.id])).digest('hex');
       const ref = db.collection('rooms').doc(), token = randomBytes(32).toString('base64url');
-      await db.runTransaction(async tx => {
+      return db.runTransaction(async tx => {
+        const previous = await tx.get(requestRef);
+        if (previous.exists) {
+          const saved = previous.data();
+          if (saved.ownerId !== uid || saved.fingerprint !== fingerprint) fail('failed-precondition', '이 생성 요청의 내용이 달라졌어요. 원래 요청을 확인해 주세요.');
+          await context(tx,saved.roomId,uid,{owner:true,open:false});
+          // Invite plaintext is never retained. A lost response recovers the room;
+          // its owner may explicitly rotate the invite to obtain a new link.
+          return {roomId:saved.roomId,token:null,replayed:true};
+        }
         // Token is returned once; only its hash is stored in a private collection.
         tx.create(ref, {title, mode:data.mode, status:'open', ownerId:uid, courseId:course.id, courseVersion:course.version,
           questIds:course.questIds, requiredQuestIds:course.requiredQuestIds, sharedDone:[], memberCount:1, capacity:10, createdAt:now(), closedAt:null});
@@ -47,16 +60,20 @@ function createService(db, {HttpsError, FieldValue, allowIndividual = false}) {
         tx.create(db.doc(`invites/${hash(token)}`), {roomId:ref.id});
         tx.create(db.doc(`roomSecrets/${ref.id}`), {inviteHash:hash(token)});
         log(tx, ref.id, 'created', uid, 'room-created');
+        tx.create(requestRef,{ownerId:uid,roomId:ref.id,fingerprint,createdAt:now()});
+        return {roomId:ref.id,token,replayed:false};
       });
-      return {roomId:ref.id, token};
     },
-    async previewInvite(data) {
+    async previewInvite(data, auth) {
       const invite = await db.doc(`invites/${hash(data?.token)}`).get();
       if (!invite.exists) fail('not-found', '유효하지 않거나 재발급된 초대 링크예요.');
       const snap = await roomRef(invite.data().roomId).get();
       if (!snap.exists || snap.data().status !== 'open') fail('failed-precondition', '종료된 탐험방이에요.');
       const r = snap.data();
-      return {roomId:snap.id, title:r.title, mode:r.mode, questCount:r.questIds.length};
+      const membership = auth?.uid ? await memberRef(snap.id,auth.uid).get() : null;
+      const capacity = Math.min(r.capacity,10);
+      return {roomId:snap.id, title:r.title, mode:r.mode, questCount:r.questIds.length,
+        memberCount:r.memberCount,capacity,canJoin:r.memberCount<capacity,alreadyJoined:!!membership?.exists};
     },
     async joinRoom(data, auth) {
       const uid = uidOf(auth), inviteRef = db.doc(`invites/${hash(data?.token)}`);

@@ -2,6 +2,7 @@ import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
+import {randomUUID,createHash} from 'node:crypto';
 import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
@@ -14,7 +15,7 @@ let admin,db,env,service;
 const auth=(uid,provider='anonymous')=>({uid,token:{firebase:{sign_in_provider:provider}}});
 const owner=auth('leader','google.com'), a=auth('member-a'), b=auth('member-b');
 const rejectCode=(promise,code)=>assert.rejects(promise,e=>e.code===code);
-const create=mode=>service.createRoom({courseId:'gyeongju-v1',title:'테스트 탐험방',mode},owner);
+const create=mode=>service.createRoom({courseId:'gyeongju-v1',title:'테스트 탐험방',mode,requestId:randomUUID()},owner);
 const join=(room,user=a)=>service.joinRoom({token:room.token,nickname:'같은 별칭',participantCode:'TEST'},user);
 before(async()=>{
   assert.ok(process.env.FIRESTORE_EMULATOR_HOST,'Tests must never use production');
@@ -40,7 +41,7 @@ test('production default blocks individual pilot and includes owner in the ten-m
 });
 test('invite preview reveals only safe room summary, invalid and path-injection inputs fail',async()=>{
   const r=await create('shared'), summary=await service.previewInvite({token:r.token});
-  assert.deepEqual(Object.keys(summary).sort(),['mode','questCount','roomId','title']);
+  assert.deepEqual(Object.keys(summary).sort(),['alreadyJoined','canJoin','capacity','memberCount','mode','questCount','roomId','title']);
   assert.equal(summary.questCount,9);
   await rejectCode(service.previewInvite({token:'wrong'}),'invalid-argument');
   await rejectCode(service.completeQuest({roomId:'../../rooms/x',questId:'museum'},a),'invalid-argument');
@@ -123,5 +124,38 @@ test('Firestore rules deny unauthenticated, nonmember, peer, invite and all dire
   await assertFails(setDoc(doc(member,'rooms/injected'),{ownerId:a.uid}));
   await assertFails(getDocs(collection(leader,'invites')));
   await assertFails(getDoc(doc(leader,`roomSecrets/${r.roomId}`)));
+  await assertFails(getDocs(collection(leader,'roomCreationRequests')));
   await assertFails(getDocs(collection(member,`${roomPath}/activity`)));
+});
+test('same creation request survives concurrent retries without duplicate rooms or plaintext invites',async()=>{
+  const request={title:'중복 생성 방지',mode:'shared',courseId:'gyeongju-v1',requestId:randomUUID()};
+  const before=(await db.collection('rooms').get()).size;
+  const results=await Promise.all(Array.from({length:4},()=>service.createRoom(request,owner)));
+  assert.equal(new Set(results.map(r=>r.roomId)).size,1);
+  assert.equal((await db.collection('rooms').get()).size,before+1);
+  assert.equal(results.filter(r=>r.token).length,1);
+  assert.equal((await db.collection(`rooms/${results[0].roomId}/members`).get()).size,1);
+  const retry=await service.createRoom({...request},owner);
+  assert.equal(retry.roomId,results[0].roomId);assert.equal(retry.token,null);assert.equal(retry.replayed,true);
+  const requestHash=createHash('sha256').update(JSON.stringify([owner.uid,request.requestId])).digest('hex');
+  const saved=(await db.doc(`roomCreationRequests/${requestHash}`).get()).data();
+  assert.deepEqual(Object.keys(saved).sort(),['createdAt','fingerprint','ownerId','roomId']);
+  const leader=env.authenticatedContext(owner.uid).firestore();
+  await assertFails(getDoc(doc(leader,`roomCreationRequests/${requestHash}`)));
+  await rejectCode(service.createRoom({...request,title:'바뀐 이름'},owner),'failed-precondition');
+  await rejectCode(service.createRoom({...request,requestId:'bad'},owner),'invalid-argument');
+  const otherOwner=auth('another-owner','google.com');
+  const other=await service.createRoom(request,otherOwner);assert.notEqual(other.roomId,retry.roomId);
+  const distinct=await service.createRoom({...request,requestId:randomUUID()},owner);assert.notEqual(distinct.roomId,retry.roomId);
+  await service.closeRoom({roomId:retry.roomId},owner);
+  const closedRetry=await service.createRoom(request,owner);assert.equal(closedRetry.roomId,retry.roomId);
+});
+test('a full-room preview still permits an existing member to return',async()=>{
+  const r=await create('shared');await join(r,a);
+  await db.doc(`rooms/${r.roomId}`).update({capacity:2});
+  const outsider=await service.previewInvite({token:r.token},b);
+  assert.equal(outsider.canJoin,false);assert.equal(outsider.alreadyJoined,false);
+  const existing=await service.previewInvite({token:r.token},a);
+  assert.equal(existing.alreadyJoined,true);
+  await join(r,a);assert.equal((await db.doc(`rooms/${r.roomId}`).get()).data().memberCount,2);
 });

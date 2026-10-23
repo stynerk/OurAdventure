@@ -1,3 +1,5 @@
+import {readRoomIds,rememberRoom,readCreateRequest,getCreateRequest,clearCreateRequest,loadAccessibleRooms} from './session.mjs';
+const localState={getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value),removeItem:key=>localStorage.removeItem(key)};
 const app = document.querySelector('#app'), message = document.querySelector('#message');
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const say = text => {message.textContent = text;};
@@ -15,26 +17,51 @@ async function ensureUser() {
   return user;
 }
 function signOutButton(){return user ? '<button class="secondary" data-action="logout">로그아웃</button>' : '';}
+function rememberHere(id) {
+  if(!rememberRoom(localState,user?.uid,id))say('여행은 저장됐지만 이 기기의 여행 목록에 추가하지 못했어요. 현재 여행 주소를 보관해 주세요.');
+}
 function home() {
   app.innerHTML = `<section class="card"><h1>함께 떠나고,<br>발견을 모으는 탐험</h1><p>경주의 아홉 미션을 함께 즐겨요. 방장 포함 최대 10명이 하나의 스탬프북을 함께 채울 수 있어요.</p><a class="button" href="#create">탐험방 만들기</a><p class="muted">방장은 Google 로그인 · 참여자는 초대 링크와 별칭만으로 시작</p></section><section class="card"><h2>초대받았나요?</h2><p>받은 초대 링크를 열어 주세요. 한 브라우저에서 한 명의 기록을 이어갈 수 있어요.</p></section><section class="card"><h2>내가 만든 탐험방</h2><div id="myRooms">${user && !user.isAnonymous?'불러오는 중…':'방장으로 로그인하면 확인할 수 있어요.'}</div><div class="row"><button data-action="login">방장 Google 로그인</button>${signOutButton()}</div></section>`;
+  app.insertAdjacentHTML('beforeend','<section class="card"><h2>내가 참여한 여행</h2><p class="muted">이 브라우저에서 참여한 여행을 다시 열 수 있어요. 다른 기기의 익명 기록 복구를 보장하지 않아요.</p><div id="joinedRooms">참여한 여행을 확인하고 있어요…</div></section>');
+  const homeVersion=generation,homeUid=user?.uid;
+  loadAccessibleRooms(readRoomIds(localState,homeUid),async id=>{
+    const membership=await api.getDocFromServer(api.doc(db,'rooms',id,'members',homeUid));
+    if(!membership.exists())return null;
+    const snapshot=await api.getDocFromServer(api.doc(db,'rooms',id));
+    if(!snapshot.exists() || snapshot.data().ownerId===homeUid)return null;
+    return {id,...snapshot.data()};
+  }).then(({rooms,failed})=>{
+    if(homeVersion!==generation || homeUid!==user?.uid)return;
+    const list=document.querySelector('#joinedRooms');if(!list)return;
+    list.innerHTML=(rooms.length?rooms.map(r=>`<p><a href="#room/${esc(r.id)}">${esc(r.title)} · ${r.status==='closed'?'종료':'진행 중'}</a></p>`).join(''):'참여한 여행이 없거나 현재 접근 권한을 확인할 수 없어요.')+(failed?'<p>일부 여행을 확인하지 못했어요. 연결을 확인한 뒤 다시 열어 주세요.</p>':'');
+  });
   if(user && !user.isAnonymous) {
     const version=generation;
-    api.getDocs(api.query(api.collection(db,'rooms'),api.where('ownerId','==',user.uid))).then(result=>{
+    api.getDocsFromServer(api.query(api.collection(db,'rooms'),api.where('ownerId','==',user.uid))).then(result=>{
       if(version!==generation)return;
       document.querySelector('#myRooms').innerHTML = result.empty?'아직 만든 탐험방이 없어요.':result.docs.map(d=>`<p><a href="#room/${esc(d.id)}">${esc(d.data().title)} · ${d.data().status==='closed'?'종료':'진행 중'}</a></p>`).join('');
-    }).catch(e=>say(e.message));
+    }).catch(e=>{if(version===generation)say(e.message);});
   }
 }
 function createView() {
   app.innerHTML = `<section class="card"><h1>새 탐험방</h1><p>경주 역사 탐험 · ${course.quests.length}개 미션 · 방장 포함 최대 10명</p>${!user || user.isAnonymous ? '<p>방을 만들려면 방장 Google 로그인이 필요해요.</p><button data-action="login">Google로 로그인</button>' : `<form id="create"><label>탐험방 이름<input name="title" maxlength="60" required autocomplete="off" placeholder="우리 가족 경주 원정"></label><fieldset><legend>함께하는 방식</legend><label><input type="radio" name="mode" value="shared" checked>함께 완료</label><p class="muted">누가 완료하든 하나의 공동 스탬프북을 채워요.</p>${enableIndividualPilot?'<label><input type="radio" name="mode" value="individual">각자 완료 (후속 파일럿)</label><p class="muted">각자 스탬프를 모으고 마지막에 결과를 제출해요.</p>':''}</fieldset><button>탐험방 만들기</button></form>`}</section>`;
+  const pending=readCreateRequest(localState,user?.uid);
+  if(pending && document.querySelector('#create')){
+    document.querySelector('#create [name="title"]').value=pending.title;
+    const mode=document.querySelector(`#create [name="mode"][value="${pending.mode}"]`);if(mode)mode.checked=true;
+    say('결과를 확인하지 못한 생성 요청을 이어서 확인할 수 있어요. 같은 이름으로 다시 시도해 주세요.');
+  }
 }
 async function joinView(token, version) {
   const summary=await call('previewInvite',{token});
   if(version!==generation)return;
   app.innerHTML=`<section class="card"><h1>${esc(summary.title)}</h1><p>경주 역사 탐험 · ${summary.questCount}개 미션 · ${summary.mode==='shared'?'함께 완료':'각자 완료'}</p><h2>탐험에 초대받았어요!</h2><form id="join"><label>탐험가 별칭<input name="nickname" required maxlength="24" placeholder="씩씩한 탐험가" autocomplete="off"></label>${summary.mode==='individual'?'<label>참여 코드 / 번호 (선택)<input name="participantCode" maxlength="12" placeholder="사전에 안내받은 가상 코드"></label>':''}<p class="muted">실명 대신 별칭을 사용해 주세요. 기록은 이 브라우저에서 이어갈 수 있어요. 기기를 바꾸거나 브라우저 데이터를 지우면 복구가 어려워요.</p><button>탐험 시작</button></form></section>`;
+  const form=document.querySelector('#join');
+  form.insertAdjacentHTML('afterbegin',`<p>참여 ${summary.memberCount} / ${summary.capacity}명${!summary.canJoin && !summary.alreadyJoined?' · 정원이 모두 찼어요. 리더에게 확인해 주세요.':''}</p>`);
+  if(!summary.canJoin && !summary.alreadyJoined)form.querySelector('button').disabled=true;
 }
 function renderRoom() {
-  if(!room || !me)return;
+  if(!room || !me || !serverConfirmed || !memberConfirmed)return;
   const expanded=new Set([...app.querySelectorAll('details[open]')].map(d=>d.dataset.questId));
   const owner=room.ownerId===user.uid, done=room.mode==='shared'?room.sharedDone:me.done, closed=room.status==='closed';
   const submitted=!!me.submittedAt, ready=room.requiredQuestIds.every(id=>done.includes(id));
@@ -68,7 +95,9 @@ async function route() {
       stops.push(api.onSnapshot(api.doc(db,'rooms',id,'members',user.uid),{includeMetadataChanges:true},snap=>{
         if(version!==generation)return;
         if(!snap.exists())return;
-        me=snap.data();memberConfirmed=!snap.metadata.fromCache;renderRoom();
+        me=snap.data();memberConfirmed=!snap.metadata.fromCache;
+        if(memberConfirmed)rememberHere(id);
+        renderRoom();
         if(me.role==='owner' && !stops.ownerWatch){
           stops.ownerWatch=true;
           stops.push(api.onSnapshot(api.collection(db,'rooms',id,'members'),snapshot=>{if(version!==generation)return;members=snapshot.docs.map(d=>({id:d.id,...d.data()}));renderRoom();},watchError));
@@ -88,10 +117,21 @@ app.addEventListener('submit',event=>{
   event.preventDefault();const form=event.target, data=Object.fromEntries(new FormData(form));
   perform(async()=>{
     if(form.id==='create'){
-      const result=await call('createRoom',{...data,courseId:course.id});inviteToken=result.token;inviteRoomId=result.roomId;location.hash=`room/${result.roomId}`;
+      const uid=user.uid;
+      let request;
+      try{request=getCreateRequest(localState,uid,{...data,courseId:course.id},()=>crypto.randomUUID());}
+      catch(error){throw new Error('생성 요청을 안전하게 보관하지 못했어요. '+error.message);}
+      let result;
+      try{result=await call('createRoom',request);}
+      catch(error){
+        if(error.code==='functions/invalid-argument')clearCreateRequest(localState,uid,request.requestId);
+        throw error;
+      }
+      rememberHere(result.roomId);clearCreateRequest(localState,uid,request.requestId);
+      inviteToken=result.token || '';inviteRoomId=result.roomId;location.hash=`room/${result.roomId}`;
     } else if(form.id==='join'){
       const token=location.hash.slice(1).split('/')[1];await ensureUser();
-      const result=await call('joinRoom',{token,...data});location.hash=`room/${result.roomId}`;
+      const result=await call('joinRoom',{token,...data});rememberHere(result.roomId);location.hash=`room/${result.roomId}`;
     }
   });
 });

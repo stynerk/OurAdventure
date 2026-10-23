@@ -1,8 +1,11 @@
 # OurAdventure PRD v1.1 — 가족·지인 여행 기록과 그룹 확장
 
+> 최신 통합 검토본: [Phase 1 PRD v1.2](PHASE1_PRD.md) · [와이어프레임 명세](PHASE1_WIREFRAMES.md) · [클릭형 와이어프레임](wireframes/index.html). 아래는 승인 범위의 근거와 초기 기획 이력이며, 상세 구현 검토는 통합본의 승인/제안/미결정 구분을 따른다.
+
 > 작성: 2026-10-18 · 수정: 2026-10-19 (사용자 승인: 가족·지인 10명 출시 / 30명 확장 검증) · 상태: 범위 확정, 구현·배포 전
 > 개발 인계: [OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md](./OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md)
-> **현재 프로젝트는 기획만 진행. 실제 Firebase 연동·코드 개발·테스트·배포는 별도 Our Adventure 프로젝트 담당.**
+> 2026-10-20 구체화 초안: [공동 기록 제품 계약](PHASE1A_PRODUCT_CONTRACT.md) · [개발용 화면 명세](PHASE1A_UX_SPEC.md). 승인된 범위와 권고 기본값을 구분하며, 상세 정책·기술 선택은 아직 확정하지 않았다.
+> 현황 정정(2026-10-20): 별도 Draft PR #3에 인증·그룹 기반 구현 및 CI 증거가 있다. main 미병합·운영 미배포이며 게시판·사진·리더 출력은 미구현이다. [최신 인수인계](HANDOFF.md)를 따른다.
 > 기준: stynerk/OurAdventure main, 기존 index.html과 PROJECT_HANDOFF.md
 > 제품 결정: **코스 생성은 Phase 2**. Phase 1은 기존 경주 Quest의 다인 사용 / 관리 기능을 검증한다.
 

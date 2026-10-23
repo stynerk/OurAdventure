@@ -5,6 +5,7 @@ import {getAuth,connectAuthEmulator,signInAnonymously,signInWithCredential,Googl
 import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
 import {getFirestore,connectFirestoreEmulator,doc,onSnapshot,terminate} from 'firebase/firestore';
 import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
 const projectId='demo-our-adventure', sessions=[];
 function session(name){
   const app=initializeApp({projectId,apiKey:'demo-key',authDomain:`${projectId}.firebaseapp.com`},name);
@@ -20,7 +21,10 @@ try{
   await signInWithCredential(leader.auth,GoogleAuthProvider.credential(token));
   await Promise.all([signInAnonymously(a.auth),signInAnonymously(b.auth)]);
   await assert.rejects(a.call('createRoom',{title:'blocked',mode:'shared',courseId:'gyeongju-v1'}),e=>e.code==='functions/permission-denied');
-  const room=await leader.call('createRoom',{title:'SDK 동기화 테스트',mode:'shared',courseId:'gyeongju-v1'});
+  const request={title:'SDK 동기화 테스트',mode:'shared',courseId:'gyeongju-v1',requestId:randomUUID()};
+  const room=await leader.call('createRoom',request);
+  const replay=await leader.call('createRoom',request);
+  assert.equal(replay.roomId,room.roomId);assert.equal(replay.token,null);
   await Promise.all([a,b].map(s=>s.call('joinRoom',{token:room.token,nickname:'가상 탐험가'})));
   let stop;
   const received=new Promise((resolve,reject)=>{

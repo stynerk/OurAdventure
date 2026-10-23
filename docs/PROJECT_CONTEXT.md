@@ -1,6 +1,20 @@
 # Our Adventure — 최신 프로토타입 및 제품 기준
 
+## 2026-10-23 인증·참여 기반 통합
+
+기존 PR #3에서 최신 main·PR #4 검토 문서를 통합하고 생성 중복 방지·참여 여행 재진입·초대 정원 안내를 보완했다. [새 구현·실행 결과](engineering/INTEGRATION_20261023.md)를 우선 확인한다. 기존 root 앱·기록·자산은 보존한다. 로컬 단위7개/Firestore13개·SDK·Chromium 모바일 크기 검증은 실제 Google OAuth·운영·실기기 통과를 뜻하지 않는다. 아래의 과거 PR/콘솔/배포 기록은 날짜별 스냅샷이다. 공동 글/사진·리더 앨범·계정 연결 UX는 여전히 미완료이며 1A 출시 완료가 아니다.
+
 기준일: 2026-10-19 (Asia/Seoul). 이 문서는 기존 공개 앱의 인계 기준이며 신규 기능 구현 완료를 뜻하지 않는다.
+
+## Phase 1 통합 PRD와 화면 검토
+
+[Phase 1 PRD v1.3](PHASE1_PRD.md)는 승인 범위·신규 제안·미결정 정책을 구분한 최신 통합 검토본이다. 기존 승인 근거와 제품 계약을 정합화했으며 FR-01~10, 기능별 AC, 단계별 게이트, 역할·실패·캐시·기존 데이터 보존을 다룬다. [와이어프레임 명세](PHASE1_WIREFRAMES.md) 및 [클릭형 모바일 화면](wireframes/index.html)을 함께 읽는다. 1A 공동 게시판/리더 출력 중심이며 1B/1C는 후속 게이트다. 모형을 실제 API·업로드·캐시·운영 배포 증거로 보지 않는다.
+
+## 2026-10-20 저녁 현황 정정
+
+main·공개 프로토타입과 별도 개발 브랜치를 구분한다. [Draft PR #3](https://github.com/stynerk/OurAdventure/pull/3) (`engineering/shared-adventure-firebase`, `1db524fc`)에 /next 인증·그룹 참여·shared 진행·서버 권한 기반이 구현되어 있다. open/Draft/미병합이며 최신 main과 충돌 해결이 필요하다. [CI39347040711](https://github.com/stynerk/OurAdventure/actions/runs/39347040711)의 npm test·test:integration 성공을 확인했다. SDK/브라우저 결과는 브랜치 문서의 로컬 보고이며 CI 실행 항목과 다르다. 실제 OAuth·운영 Functions·실기기 통과는 아니다. 사진 게시판·공유 사진·리더 출력·캐시는 미구현이다.
+
+콘솔 설정은 2026-10-20 앞선 직접 관찰로 웹 앱/Google·익명 인증/서울 Firestore 생성 완료, 초기 deny-all·Spark 유지가 기록되어 있다. 이번 저녁에는 콘솔을 다시 조작하거나 실시간 재확인하지 않았다. Storage/Blaze·예산은 미승인이다. 상세 설정은 [FIREBASE_SETUP.md](FIREBASE_SETUP.md), 실제 역할 간 반론·수정 기록과 다음 담당은 [HANDOFF.md](HANDOFF.md)를 따른다. 아래 최초 인수 스냅샷의 '미착수' 표현을 별도 브랜치 진행분에 적용하지 않는다.
 
 ## 최신 승인 범위 (2026-10-19 추가)
 

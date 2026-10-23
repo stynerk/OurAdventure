@@ -1,70 +1,98 @@
-# Firebase 연결 / 실행 / 롤백
+# Firebase setup — Our Adventures
 
-2026-10-20 · 인증·참여 기반,1A 공유 기록/출력 미구현 · 실제 프로젝트 연결 및 운영 배포 미실행
+> 2026-10-23 통합: 아래 실제 콘솔 관찰 기록은 보존했다. PR #3의 로컬 실행·운영 연결·재시도·롤백은 [Engineering 개발 절차](engineering/FIREBASE_FOUNDATION_SETUP.md)로 분리했다. 콘솔 관찰 날짜는 그대로이며 이번에 실시간 재확인하지 않았다.
 
-## 로컬 준비
+확인일: 2026-10-20 (Asia/Seoul). 콘솔의 실제 관찰 기준이며 앱 구현·배포·E2E 통과를 뜻하지 않는다.
 
-Node 22, Java 21 및 npm이 필요하다.
+## 2026-10-20 저녁 재개 점검
 
-```bash
-npm ci --ignore-scripts
-npm ci --ignore-scripts --prefix functions
-npm test
-npm run test:integration
-```
+이번에는 Git 문서·Draft PR #3·CI 기록을 재확인했으며 콘솔을 다시 열어 재검증하지 않았다. 콘솔 값은 앞선 직접 관찰 기록이다. PR #3은 main 미병합/충돌 상태의 인증·그룹 기반이며 운영 연결·배포 완료가 아니다. 브랜치의 이전 setup 문서를 main의 실제 설정 기록 위에 덮어쓰지 않는다. Functions v2의 배포 요건·비용도 사진 Storage와 함께 별도 검토한다.
 
-SDK 종단 테스트는 실제 계정 대신 demo Auth 자격 증명을 사용한다.
+캐시 재사용은 사용자 승인 방향이다. 아래 세부 구현 표는 Engineering 검증 요구/후보이며 모든 기술 선택이 사용자 승인된 것으로 보지 않는다. 재개한 실제 전략·개발·UX/QA 토론은 HANDOFF.md에 기록했다. 보관기간·전체 백업·단일본/이중본·해상도/용량은 미결정이다.
 
-```bash
-npm run test:client
-npx playwright install chromium --only-shell
-npm run test:browser
-```
+## 프로젝트 및 웹 앱
 
-표준 Functions emulator가 Unix socket `EPERM`으로 동작하지 않는 제한 환경에서는 `npm run test:callable-http`를 사용한다. 동일한 exported callable handler를 로컬 HTTP 서버에서 실행하고 실제 Auth/Firestore emulator와 연결한다. 이는 표준 Functions emulator 또는 운영 배포 검증을 대신하지 않으며 결과를 구분해서 보고한다.
+| 항목 | 확인 값 |
+|---|---|
+| 프로젝트 | Our Adventures |
+| Project ID | `our-adventures-5ce50` |
+| 프로젝트 번호 / messagingSenderId | `601062192289` |
+| 요금제 | Spark |
+| 웹 App ID | `1:601062192289:web:f2783ccb3e9d41d87cece0` |
+| authDomain | `our-adventures-5ce50.firebaseapp.com` |
+| SDK의 storageBucket 설정값 | `our-adventures-5ce50.firebasestorage.app` |
 
-브라우저 테스트는 로컬 8080 포트를 사용하고, 기존 `next/firebase-config.js`가 있으면 덮어쓰지 않고 중단한다. 새 demo 설정을 만들고 테스트 종료 시 삭제한다. 필요하면 설치된 Chromium 실행 파일을 `PLAYWRIGHT_CHROMIUM_EXECUTABLE`로 지정한다. 실제 운영 키/계정은 테스트에 사용하지 않는다.
+사용자가 열어둔 SDK 추가 화면에서 웹 앱 등록 완료와 앱1개를 확인했다. Firebase 웹 설정은 클라이언트 식별용이다. 관리자 키·서비스 계정·사용자 로그인 자격 증명을 저장하지 않는다. 이 문서에는 API 키를 복사하지 않았다. 앱 연결 시 프로젝트 설정의 해당 App ID와 SDK 구성을 사용한다.
 
-수동 로컬 실행:
+storageBucket 문자열이 SDK에 있다는 사실은 버킷 생성/접근 가능의 증거가 아니다. 현재 Storage 화면은 요금제 업그레이드를 요구하며 버킷은 설정하지 않았다.
 
-```bash
-cp next/firebase-config.example.js next/firebase-config.js
-# demo-our-adventure, demo-key 등 demo 설정 + useEmulators=true로 편집
-npx firebase emulators:start --project demo-our-adventure --only auth,firestore,functions
-# 별도 터미널
-npm run serve
-```
+## 확인된 설정 및 미완료
 
-http://localhost:8080/next/ 로 접속한다. 해시 URL이므로 Pages에서도 동일 경로를 사용한다. 루트 가족 앱의 localStorage는 새 코드에서 읽거나 쓰지 않는다.
+| 영역 | 상태 | 증거/후속 |
+|---|---|---|
+| 웹 앱 등록 | 완료 확인 | SDK 추가 단계에 앱 등록 완료, 개요에1개 앱 |
+| 익명 provider | 활성 확인 | Authentication 로그인 방법에 익명 사용 설정됨 |
+| Google provider | 활성 확인 | Google·익명 모두 사용 설정됨. 공개 이름 Our Adventures 및 사용자가 승인한 지원 연락처 저장 |
+| GitHub Pages 인증 도메인 | 추가 완료 | 승인된 도메인 표에 `stynerk.github.io` Custom 확인 |
+| 기본 인증 도메인 | 유지 | localhost, 프로젝트 firebaseapp.com/web.app |
+| Firestore | 생성 완료 | Standard / `(default)` / `asia-northeast3`(서울). 생성 후 데이터 화면에서 위치 확인 |
+| 사진 Storage | 미설정 | 요금제 업그레이드 요구, 결제 연결 없음 |
+| SDK 앱 연결 | main 미반영 / 별도 Draft 기반 있음 | PR #3에 SDK·서버 기반 구현. 운영 프로젝트 연결·실제 OAuth는 미검증 |
+| 그룹 권한/데이터/사진 E2E | 미실행 | 등록·provider 활성화만으로 완료 처리 금지 |
 
-## 실제 Firebase 프로젝트 연결 (미실행)
+## 승인 및 실행 기록
 
-1. 대상 프로젝트/과금 계정 확인. callable Functions 사용 조건과 예산을 확인한다. 이 저장소에는 실제 프로젝트 ID가 없다.
-2. Firestore 생성 및 위치 선택. 함수 기본 리전은 `asia-northeast3`이므로 DB 위치와 함께 검토한다.
-3. Auth Google + Anonymous 활성화, Google 지원 이메일과 허용 도메인 `stynerk.github.io` 설정.
-4. 웹 앱을 등록하고 공개 web config(apiKey, authDomain, projectId, appId)를 얻는다. 서비스 계정 JSON은 저장소·Pages·브라우저에 넣지 않는다.
-5. Console 접근권한이 있는 환경에서 CLI 로그인 후 대상 ID를 명시하여 배포한다. 아래 명령은 안내이며 이 작업에서는 실행하지 않았다.
+2026-10-20 사용자가 지원 이메일 공개와 Firestore 서울 리전 생성을 명시적으로 승인했다. 이전 자동 승인 검토의 동의 부족은 이 승인으로 해소되었으며, 승인 후 콘솔에서 두 설정을 적용했다. 개인 이메일 주소는 공개 문서에 복사하지 않는다.
 
-```bash
-firebase deploy --project YOUR_PROJECT --only firestore:rules,functions
-```
+- Google 및 익명 provider 모두 사용 설정됨 확인.
+- Standard `(default)` 데이터베이스를 서울 `asia-northeast3`에 생성 완료.
+- 게시된 초기 규칙: `allow read, write: if false;`. 모든 클라이언트 읽기/쓰기 차단. 멤버십 허용 규칙은 아직 구현하지 않았다.
+- 예약 백업은 활성화하지 않았다. Spark 유지, 결제 연결/Blaze 전환 없음.
+- 앱 SDK 연결, 실제 로그인 및 그룹 E2E는 미실행.
 
-6. 로컬 확인은 ignored `next/firebase-config.js`에 공개 설정을 넣고 `useEmulators=false`로 한다.
-7. GitHub repository variable `FIREBASE_WEB_CONFIG`에 공개 config JSON을 넣는다. Pages workflow는 이 값으로 운영 설정을 생성한다. 설정이 비어 있으면 새 경로는 준비 안내만 표시하고 기존 앱은 유지된다.
-8. Rules와 함수의 배포 버전, Google 실제 로그인, 익명 세션, 관리 권한, closed-room 차단을 확인한다. 코드의 현재 App Check/속도 제한/보관 정책 공백은 ARCHITECTURE.md 참고. 공유 글/사진 및 리더 출력도 미구현이므로 이 안내는 출시 승인이나 즉시 공개 배포 지시가 아니다.
-9. 개발 PR을 검토·병합한 뒤 Pages deployment 결과와 실제 `/next/` URL을 확인한다. 브랜치 push/PR 생성은 운영 배포가 아니다.
+## 사진 열람 캐시 — 2026-10-20 사용자 승인
 
-## 공개 파일 패키징
+승인된 동작: 첫 열람 시 필요한 사진을 내려받고 기기에 캐시한다. 이후 같은 계정·그룹·사진 버전을 열람할 때 캐시가 유효하면 재사용한다. 게시판 전체 사진의 선제 일괄 다운로드는 이 결정에 포함하지 않는다.
 
-`node scripts/prepare-pages.mjs`는 root index + assets + next 실행 파일만 `public/`에 넣는다. 서버 함수/문서/테스트/node_modules/개발 config를 복사하지 않는다. 공개 설정은 환경 변수에서 지정한 4개 필드만 생성한다. 기존 workflow의 전체 저장소 업로드를 교체했다.
+| 상황 | 구현 요구 |
+|---|---|
+| 최초 열람 또는 캐시 없음 | 멤버십 확인 후 필요한 이미지 다운로드·캐시 |
+| 동일 사진 재열람 | 유효한 기기 캐시 사용, 이미지 본문 재전송 최소화 |
+| 사진 교체/수정 | 이미지 버전 식별자로 새 버전 다운로드, 이전 캐시 정리 |
+| 사진 삭제/그룹 접근 해제 | 온라인에서 변경 확인 시 표시 중단 및 앱 관리 캐시 정리 |
+| 로그아웃/계정 전환 | 계정별 캐시 격리, 앱 관리 사진 캐시 정리 |
+| 캐시 제거/저장공간 부족/다른 기기 | 재다운로드 가능, 캐시 실패가 게시글 열람 전체를 막지 않도록 처리 |
 
-## 롤백
+세부 설계 조건: 그룹 멤버십·사진 상태 확인과 이미지 바이트 캐시를 구분한다. 캐시 적중은 권한 부여의 근거가 아니다. 브라우저 자동 캐시만으로 로그아웃 정리를 보장하지 않으며, 앱에서 관리 가능한 저장 방식과 인증된 이미지 접근 방식의 호환성을 검증한다. localStorage에 사진 Base64를 누적하는 방식은 신규 캐시 설계에 사용하지 않는다.
 
-- 신규 프런트 문제: 해당 PR의 Pages 관련 변경을 revert 후 main Pages 배포. root 앱 내용과 기존 로컬 기록은 변경되지 않았다.
-- Firebase 문제: 우선 참여 링크 공유와 새 앱 진입을 중단한다. 이미 공개된 정적 프런트 롤백만으로 함수 접근이 차단되지는 않는다. 함수 비활성화/직전 버전 재배포 또는 대상 방 close 등 서버 대응이 별도로 필요하다.
-- Rules를 느슨하게 만들어 임시 복구하지 않는다. 이전 검증 버전으로 되돌린다.
-- 데이터 삭제·익명 계정 정리는 별도 보관 정책 확정 후 수행한다. 이번 작업에서 실제 사용자 데이터 조작은 하지 않았다.
+브라우저가 캐시를 지우거나 사용자가 다른 기기를 쓰면 다시 다운로드하므로 '최초1회 이후 전송 비용 영구0'을 보장하지 않는다. 오프라인 상태에서 이미 저장된 사진의 즉시 원격 회수는 보장할 수 없다. 오프라인 열람 허용 범위·권한 재확인 주기·기기 캐시 한도는 상세 설계에서 결정하며 아직 확정되지 않았다.
 
-## 개인 모드 후속 파일럿
+검증 기준(미실행): 같은 이미지 2회 열람 시 두 번째 이미지 본문 전송량 확인, 버전 교체·삭제 반영, 계정 전환 시 이전 사진 노출 방지, 캐시 유실 후 복구, 모바일 저장공간 부족, 캐시 이미지로 A4 출력/CORS 확인. 브라우저 개발자도구에서 캐시를 비활성화하지 않은 조건으로 측정하고 이미지 전송량과 권한 확인 요청을 각각 기록한다.
 
-운영 기본값은 shared이며 방장 포함10명으로 제한한다. individual은1C용으로 남겨두되 기본 비활성화했다. 제한된 개발 환경에서만 서버 `ENABLE_INDIVIDUAL_PILOT=true`와 프런트 `enableIndividualPilot=true`를 함께 설정한다. 테스트용 HTTP runner는 이를 명시적으로 활성화한다. 30명용 설정이나 그룹 사진 저장은 아직 구현하지 않았다.
+현재 상태는 결정/구현 요구 기록이며 캐시 코드 구현·배포 완료가 아니다. 압축 용량·보관 기간·Storage 공급자·Blaze 전환·예산 승인은 별도다.
+
+## 사진 저장 비용 검토안 — 미승인
+
+Firebase Storage 신규 기본 버킷에는 Blaze가 필요하다. 서울 버킷에 미국 일부 리전의 Always Free를 적용해 무료라고 가정하지 않는다. 비용은 저장 용량·요청·다운로드 전송량으로 산정한다.
+
+계산용 가정(제품 정책 아님): 그룹당 사진100장 × 장당1MiB, 10명이 전체 사진을 월1회 읽기, 90일 보관.
+
+| 월 신규 그룹 | 정상 상태 저장량(3개월분) | 당월 신규 사진 전체를 10명이 읽는 전송량 |
+|---|---|---|
+| 1개 | 약0.293GiB | 약0.977GiB |
+| 10개 | 약2.93GiB | 약9.77GiB |
+| 100개 | 약29.3GiB | 약97.7GiB |
+
+과거 사진 재열람·재시도·썸네일/삭제 보존본·출력 다운로드는 추가 사용량이다. 서울 지역 단가와 한국 대상 전송 단가를 공식 계산기에 반영하기 전에는 월 청구액을 확정하지 않는다. 제안: 소규모 파일럿부터 시작하고 월 예산 검토선 $5, 알림50/80/100%를 두되 이는 강제 지출 상한이 아니다. 업로드 한도·멤버십 검증·비정상 트래픽 차단도 별도 구현해야 한다. 예산·요금제·보관 기간 모두 미승인이다.
+
+공식 근거:
+- https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024
+- https://cloud.google.com/storage/pricing
+- https://firebase.google.com/pricing
+
+## 이후 실행 순서
+
+- 완료된 인증·Firestore 설정을 기준으로 SDK 초기화 및 멤버십 규칙을 코드·테스트로 구현. 초기 deny-all을 검증된 규칙으로 교체하기 전에는 앱에서 DB에 접근할 수 없음.
+- 요금/사진 저장 선택 뒤 버킷·이미지 접근제어·용량·보관삭제 정책 설정.
+- 기존 루트 앱·두 localStorage 키를 보존한 별도 앱에서 SDK 초기화, Google/익명 인증·초대·10명 한도·권한·사진·출력 E2E 검증.
+- GitHub Pages는 기존 배포 유지. 웹 앱 등록 마법사의 Hosting/CLI 안내를 실제 배포 승인이나 배포 완료로 해석하지 않는다.

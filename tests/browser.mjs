@@ -43,12 +43,22 @@ try{
   await a.locator('details').last().locator('summary').click();await a.locator('details').last().getByRole('button').click();
   await Promise.all([waitCount(owner,1),waitCount(a,1),waitCount(b,1)]);
   await b.reload();await waitCount(b,1);
+  await a.goto(origin);await a.getByRole('heading',{name:'내가 참여한 여행'}).waitFor();
+  await a.getByRole('link',{name:'가족 공동 테스트 · 진행 중',exact:true}).click();await waitCount(a,1);
+  await a.evaluate(()=>{
+    const key=Object.keys(localStorage).find(k=>k.startsWith('oa-next-rooms-v1:'));
+    const ids=JSON.parse(localStorage.getItem(key));ids.push('not-a-member-room');localStorage.setItem(key,JSON.stringify(ids));
+  });
+  await a.goto(origin);
+  await a.getByRole('link',{name:'가족 공동 테스트 · 진행 중',exact:true}).waitFor();
+  assert.equal(await a.locator('#joinedRooms a').count(),1);
+  await a.getByRole('link',{name:'가족 공동 테스트 · 진행 중',exact:true}).click();await waitCount(a,1);
   assert.equal(await a.evaluate(()=>document.documentElement.scrollWidth <= innerWidth),true);
   mkdirSync('test-results',{recursive:true});await a.screenshot({path:'test-results/shared-mobile.png',fullPage:true});
   await owner.getByRole('button',{name:'탐험방 종료',exact:true}).click();
   await a.getByText('종료된 탐험방이에요. 기록은 읽기만 할 수 있어요.').waitFor();
   assert.equal(await a.locator('details button:not(:disabled)').count(),0);
-  console.log('PASS: shared stamp sync across three browser sessions, refresh persistence, closed-room UI, mobile width');
+  console.log('PASS: shared stamp sync, refresh and home reentry, unauthorized local hint exclusion, closed-room UI, mobile width');
   url=await create('개인별 제출 테스트','individual');await join(a,url);await join(b,url);
   assert.equal(await a.getByRole('button',{name:'필수 미션을 완료하면 제출할 수 있어요'}).isDisabled(),true);
   for(let i=0;i<9;i++){
