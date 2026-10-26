@@ -1,0 +1,264 @@
+{
+  "kind": "historical_course_reference",
+  "historical_plan_only": true,
+  "destination": "대한민국 경주",
+  "days": 3,
+  "provenance": {
+    "source": "index.html",
+    "itinerarySource": "GYEONGJU_ITINERARY.md",
+    "extractedAt": "2026-10-26",
+    "originalTravelDates": [
+      "2026-10-09",
+      "2026-10-10",
+      "2026-10-11"
+    ]
+  },
+  "notIncluded": [
+    "userPhotos",
+    "userWrittenMemories",
+    "completionState",
+    "confirmedReservations",
+    "currentOperatingConditions"
+  ],
+  "places": [
+    {
+      "legacyPlaceId": "daereungwon",
+      "day": 1,
+      "order": 1,
+      "name": "대릉원",
+      "icon": "👑",
+      "stampName": "왕의 언덕",
+      "contentTitle": "왕의 언덕에는 누가 잠들어 있을까?",
+      "photoIdea": "가장 마음에 든 봉분을 배경으로 손으로 왕관 모양을 만들어 찍기.",
+      "observationReference": "봉분의 높이, 폭, 서로 붙어 있는 모양을 비교해봐. 멀리서 한 번, 가까이서 한 번 보면 느낌이 달라.",
+      "usage": "Historical content reference; not a verified visit or new MVP requirement."
+    },
+    {
+      "legacyPlaceId": "cheomseongdae",
+      "day": 1,
+      "order": 2,
+      "name": "첨성대",
+      "icon": "⭐",
+      "stampName": "별 관찰자",
+      "contentTitle": "별 관찰자의 창",
+      "photoIdea": "손가락 네모 프레임 안에 첨성대의 네모난 창을 넣어 찍기.",
+      "observationReference": "첨성대는 아래가 넓고 위로 갈수록 좁아져. 가운데 창의 위와 아래에 돌이 여러 단으로 쌓인 모습도 함께 살펴봐.",
+      "usage": "Historical content reference; not a verified visit or new MVP requirement."
+    },
+    {
+      "legacyPlaceId": "wolseong",
+      "day": 1,
+      "order": 3,
+      "name": "월성 · 석빙고",
+      "icon": "🧊",
+      "stampName": "얼음 창고",
+      "contentTitle": "신라 궁터에서 얼음 창고를 찾아라!",
+      "photoIdea": "석빙고를 배경으로 손으로 얼음이 꽁꽁 어는 포즈!",
+      "observationReference": "월성 토성의 모양과 해자를 살펴봐. 석빙고 내부로 들어가지 않고 관람 동선에서 관찰하자.",
+      "usage": "Historical content reference; not a verified visit or new MVP requirement."
+    },
+    {
+      "legacyPlaceId": "donggung",
+      "day": 1,
+      "order": 4,
+      "name": "동궁과 월지",
+      "icon": "🌙",
+      "stampName": "달빛 궁전",
+      "contentTitle": "달이 두 개 뜨는 궁전",
+      "photoIdea": "건물과 연못 속 반영이 한 화면에 같이 들어오게 찍기.",
+      "observationReference": "물가의 곡선과 건물의 반영을 같이 봐. 한 걸음씩 옆으로 움직이면 물속 궁전의 모양이 계속 달라져.",
+      "usage": "Historical content reference; not a verified visit or new MVP requirement."
+    },
+    {
+      "legacyPlaceId": "bulguksa",
+      "day": 2,
+      "order": 5,
+      "name": "불국사",
+      "icon": "🐷",
+      "stampName": "복돼지의 인장",
+      "contentTitle": "금돼지를 쓰다듬고 소원을 남겨!",
+      "photoIdea": "한 손으로 복돼지를 살짝 쓰다듬는 모습과 얼굴이 함께 나오게 찍기. 붐비면 복돼지 옆에서 손을 내미는 포즈도 좋아.",
+      "observationReference": "극락전 마당 석등 앞의 돼지 동상이야. 현판 뒤에 숨어 있는 나무 돼지는 눈으로만 찾아봐! 현장에서 만지지 말라는 안내가 있으면 손을 가까이 대는 포즈로 사진을 찍어도 좋아.",
+      "usage": "Historical content reference; not a verified visit or new MVP requirement."
+    },
+    {
+      "legacyPlaceId": "seokguram",
+      "day": 2,
+      "order": 6,
+      "name": "석굴암",
+      "icon": "🪷",
+      "stampName": "돌 속의 미소",
+      "contentTitle": "돌 속의 조용한 부처님",
+      "photoIdea": "석굴암 바깥에서 기억한 손 모양으로 가족 스냅샷!",
+      "observationReference": "주차장부터 관람하는 곳까지 걷는 시간을 포함했어. 내부 촬영은 하지 않고 현장의 관람 안내를 따르자.",
+      "usage": "Historical content reference; not a verified visit or new MVP requirement."
+    },
+    {
+      "legacyPlaceId": "craft",
+      "day": 2,
+      "order": 7,
+      "name": "민속공예촌",
+      "icon": "🎨",
+      "stampName": "우리 손의 보물",
+      "contentTitle": "내 손으로 만드는 신라 보물",
+      "photoIdea": "공방에서 허락한 곳에서 만든 작품과 내 손을 함께 찍기!",
+      "observationReference": "공방과 체험 종류는 아직 미정이야. 예약이 확정되면 안내받은 시간과 장소로 가자.",
+      "usage": "Historical content reference; not a verified visit or new MVP requirement."
+    },
+    {
+      "legacyPlaceId": "woljeonggyo",
+      "day": 2,
+      "order": 8,
+      "name": "월정교",
+      "icon": "🌉",
+      "stampName": "불빛 다리",
+      "contentTitle": "불빛 다리의 야경을 찾아라",
+      "photoIdea": "월정교 전체가 보이는 곳에서 가족이 함께 손으로 하트나 만세 포즈를 만들어 찍기.",
+      "observationReference": "문루와 지붕, 물에 비친 불빛을 봐. 돌다리는 주변에서 관찰하고 밤에는 건너지 않아도 좋아.",
+      "usage": "Historical content reference; not a verified visit or new MVP requirement."
+    },
+    {
+      "legacyPlaceId": "museum",
+      "day": 3,
+      "order": 9,
+      "name": "국립경주박물관",
+      "icon": "🏺",
+      "stampName": "신라 보물",
+      "contentTitle": "사라진 신라의 황금빛",
+      "photoIdea": "촬영 가능한 전시라면 내 보물과 함께, 어렵다면 박물관 밖에서 ‘보물 발견!’ 포즈로 찍기.",
+      "observationReference": "무늬, 동물 모양, 왕관의 장식처럼 아주 작은 부분 하나를 정해서 자세히 봐. 야외에서는 아주 큰 성덕대왕신종도 찾아볼 수 있어.",
+      "usage": "Historical content reference; not a verified visit or new MVP requirement."
+    }
+  ],
+  "plannedSchedule": [
+    [
+      [
+        "11:30–12:30",
+        "점심 식사",
+        "숙소 인근 또는 성동시장 한식골목"
+      ],
+      [
+        "12:30–13:30",
+        "브릭스테이 · 짐 보관",
+        "원화로 311 (제공 주소) · 얼리 체크인 / 짐 보관 가능 여부 숙소 확인"
+      ],
+      [
+        "13:30–15:30",
+        "대릉원 & 황리단길",
+        "천마총 관람 → 한옥 골목·간식",
+        "daereungwon"
+      ],
+      [
+        "15:30–16:30",
+        "첨성대 & 가을꽃",
+        "첨성대와 주변 꽃밭 산책 · 개화 상태는 현장 확인",
+        "cheomseongdae"
+      ],
+      [
+        "16:30–17:45",
+        "월성(반월성) & 석빙고",
+        "토성 숲길·석빙고·해자 관찰",
+        "wolseong"
+      ],
+      [
+        "17:45–19:00",
+        "저녁 식사",
+        "첨성대 / 교촌 인근 · 식당 예약·대기는 별도 확인"
+      ],
+      [
+        "19:00–20:30",
+        "동궁과 월지 야경",
+        "누각과 연못의 반영 찾기",
+        "donggung"
+      ],
+      [
+        "20:30~",
+        "숙소 복귀",
+        "가족 휴식"
+      ]
+    ],
+    [
+      [
+        "08:30–09:15",
+        "숙소 → 불국사",
+        "경주 현지 차량 이동 · 주차 대기 여유"
+      ],
+      [
+        "09:15–11:00",
+        "불국사",
+        "청운교·백운교·두 탑·극락전 복돼지",
+        "bulguksa"
+      ],
+      [
+        "11:00–11:20",
+        "불국사 → 석굴암",
+        "토함산 산길 차량 이동"
+      ],
+      [
+        "11:20–12:40",
+        "석굴암",
+        "주차장부터 도보 왕복 포함 · 조용한 관람",
+        "seokguram"
+      ],
+      [
+        "12:40–14:00",
+        "점심 식사",
+        "보불로 / 하동 인근"
+      ],
+      [
+        "14:00–16:00",
+        "민속공예촌 만들기 체험",
+        "사전 예약 필요 · 공방 / 체험 종류 / 시간 미확정",
+        "craft"
+      ],
+      [
+        "16:00–18:00",
+        "보문관광단지 휴식",
+        "호반 산책 또는 전망 카페"
+      ],
+      [
+        "18:00–19:30",
+        "저녁 식사",
+        "보문단지 또는 시내 · 예약 권장"
+      ],
+      [
+        "19:30–20:30",
+        "월정교 야경",
+        "목조 다리와 강물의 불빛 관찰",
+        "woljeonggyo"
+      ],
+      [
+        "20:30~",
+        "숙소 복귀",
+        "가족 휴식"
+      ]
+    ],
+    [
+      [
+        "09:00–09:30",
+        "체크아웃",
+        "짐 정리와 차량 적재"
+      ],
+      [
+        "09:30–10:00",
+        "박물관 도착 · 관람 준비",
+        "10:00 개관 · 주차 / 입장 준비"
+      ],
+      [
+        "10:00–11:30",
+        "국립경주박물관",
+        "신라역사관·금빛 유물·성덕대왕신종 · 어린이박물관 제외",
+        "museum"
+      ],
+      [
+        "11:30–12:30",
+        "성동시장 점심 & 기념품",
+        "분식·우엉김밥 등 점심과 경주빵 포장"
+      ]
+    ]
+  ],
+  "newTripInitialState": {
+    "records": [],
+    "completions": []
+  }
+}
