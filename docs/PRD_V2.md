@@ -178,14 +178,18 @@ Group (리더, 멤버[], 초대 링크)
 
 이 표의 일부 항목과 F4 AC-4e·4f는 Codex가 작성한 PRD v1.4 초안(2026-10-26)의 수용 기준을 합친 것이다.
 
-## 10. 역할과 진행 방식 (2026-10-26 사용자 동의)
+## 10. 역할과 진행 방식 (2026-10-26 사용자 확정)
 
-| 역할 | 담당 | 산출물 |
+사용자 결정: **기획부터 목업까지는 Claude, 이미지를 포함한 개발 구현은 Codex.** 양쪽이 같은 일을 하지 않는다.
+
+| 단계 | 담당 | 산출물 |
 |---|---|---|
-| PM · Product Strategy | Claude | PRD, 화면 흐름, 수용 기준, 결정 기록 |
-| Designer · Engineer | Codex | 스탬프·결과 이미지 템플릿, 구현, 실행 방법 |
-| QA & Research | 공동 | Claude가 체크리스트 작성, Codex가 실행·결과 보고 |
+| 기획 (PM · Product Strategy) | Claude | PRD, 화면 흐름, 수용 기준, 결정 기록 |
+| 목업 | Claude | 눌러볼 수 있는 화면 목업 ([v2 목업](https://claude.ai/artifact/55N2ouuNnoAtBgRrXJ7XBZ)) |
+| 구현 (이미지 · Designer · Engineer) | Codex | 실제 이미지·스탬프·결과 템플릿 에셋, 앱 구현, 실행 방법 |
+| QA | Claude 기준 작성 → Codex 실행·결과 보고 | 체크리스트, 실기기 결과 |
 
-- 기획 질문은 Claude, 구현·이미지 질문은 Codex를 멘션해 답변 중복을 줄인다.
+- 기획·목업 질문은 Claude, 이미지·구현 질문은 Codex를 멘션한다.
+- Claude는 PRD·목업을 고치고, Codex는 PRD 문서를 직접 고치지 않고 구현 중 발견한 차이를 Claude에게 넘긴다.
 - 공통 기준은 이 저장소다. ChatGPT 스레드의 결정 사항은 `docs/`로 옮긴다.
-- 순서: PRD v2 승인 → Codex가 이미지 템플릿·개발 착수(PR #3 재사용) → 공동 QA → 파일럿.
+- 순서: PRD v2·목업 승인 → Codex가 이미지·개발 착수(PR #3 재사용) → QA → 파일럿.
