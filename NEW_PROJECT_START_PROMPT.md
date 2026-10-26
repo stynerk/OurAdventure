@@ -4,9 +4,9 @@
 
 OurAdventure / 가족여행-경주 프로젝트를 이어서 진행해줘.
 
-먼저 이 repo의 PROJECT_HANDOFF.md와 PROJECT_INSTRUCTIONS.md를 읽고, GitHub connector에서 stynerk/OurAdventure의 main 브랜치 index.html과 .github/workflows/pages.yml을 확인해. 현재 실행 소스는 GitHub가 source of truth이고, stynerk/myaibuilder는 과거 배포 실수이므로 무시해.
+먼저 이 repo의 PROJECT_HANDOFF.md와 PROJECT_INSTRUCTIONS.md를 읽고, GitHub connector에서 stynerk/OurAdventure의 main 브랜치 index.html과 .github/workflows/pages.yml을 확인해. 현재 실행 소스는 GitHub가 source of truth야.
 
-실제 여행은 2026-10-09~10-11이고 주 사용자는 초등학교 2학년 아이야. 제품의 핵심은 “동화 지도 + 짧은 관찰 Quest + 즉시 스탬프 + 사진 기반 가족 원정기”야.
+실제 여행은 2026-10-09~10-11이고 주 사용자는 아이야. 제품의 핵심은 “동화 지도 + 짧은 관찰 Quest + 즉시 스탬프 + 사진 기반 가족 원정기”야.
 
 지금부터는 새 기능을 무작정 늘리기보다 실제 모바일 사이트 수준으로 완성해줘. 우선순위는:
 1) iPhone/Android에서 화면 전환과 터치 영역 QA
