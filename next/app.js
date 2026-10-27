@@ -1,17 +1,23 @@
 import {readRoomIds,rememberRoom,readCreateRequest,getCreateRequest,clearCreateRequest,loadAccessibleRooms} from './session.mjs';
 import {createGroupViews} from './groups.mjs';
+import {createAnalytics} from './analytics.mjs';
 const localState={getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value),removeItem:key=>localStorage.removeItem(key)};
 const app = document.querySelector('#app'), message = document.querySelector('#message');
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const say = text => {message.textContent = text;};
 let enableIndividualPilot=false;
 let groupViews;
+const pendingAnalytics=[];
+let analytics={track:(name,params)=>{if(pendingAnalytics.length<30)pendingAnalytics.push([name,params]);},setAuthType:()=>{}};
 let api, auth, db, functions, course, user, room, me, members = [], inviteToken = '', inviteRoomId = '', stops = [], generation = 0, busy = false;
 const configMissing = () => {
   app.innerHTML = '<section class="card"><h1>함께하는 탐험을 준비하고 있어요</h1><p>아직 서비스 연결 설정이 완료되지 않았어요. 기존 경주 가족 탐험은 계속 이용할 수 있어요.</p><a class="button" href="../">경주 탐험 열기</a></section>';
 };
 function clearListeners() {stops.forEach(stop=>stop());stops=[];room=null;me=null;members=[];}
-async function call(name, data) {return (await api.httpsCallable(functions,name)(data)).data;}
+async function call(name, data) {
+  try{return (await api.httpsCallable(functions,name)(data)).data;}
+  catch(error){analytics.track('operation_error',{operation:name,error_code:error.code});throw error;}
+}
 async function ensureUser() {
   await auth.authStateReady();
   if (!auth.currentUser) await api.signInAnonymously(auth);
@@ -80,6 +86,7 @@ async function route() {
   clearListeners();say('');
   if(location.hash !== `#room/${inviteRoomId}`){inviteToken='';inviteRoomId='';}
   const [view,id,tripId]=location.hash.slice(1).split('/');
+  analytics.track('page_view',{screen_name:view||'groups'});
   app.innerHTML='<section class="card"><p>탐험을 불러오고 있어요…</p></section>';
   try {
     if(groupViews && (!view || groupViews.handles(view)))await groupViews.open({view:view||'groups',groupId:id,tripId},version);
@@ -150,10 +157,10 @@ app.addEventListener('click',event=>{
       // Linking preserves the anonymous participant's UID rather than discarding progress.
       if(auth.currentUser?.isAnonymous)await api.linkWithPopup(auth.currentUser,new api.GoogleAuthProvider());
       else await api.signInWithPopup(auth,new api.GoogleAuthProvider());
-      user=auth.currentUser;await route();
+      user=auth.currentUser;analytics.setAuthType('google');analytics.track('login',{method:'google'});await route();
     } else if(action==='logout'){
       if(!confirm('로그아웃할까요? 익명 참여 기록은 이 브라우저에서도 다시 연결하지 못할 수 있어요.'))return;
-      clearListeners();await api.signOut(auth);user=null;inviteToken='';location.hash='';await route();
+      clearListeners();await api.signOut(auth);analytics.setAuthType(null);analytics.track('logout');user=null;inviteToken='';location.hash='';await route();
     } else if(action==='copy'){
       await navigator.clipboard.writeText(inviteUrl(inviteToken));alert('초대 링크를 복사했어요.');
     } else if(action==='rotate'){
@@ -178,11 +185,18 @@ try {
     api.connectAuthEmulator(auth,'http://127.0.0.1:9099');api.connectFirestoreEmulator(db,'127.0.0.1',8085);api.connectFunctionsEmulator(functions,'127.0.0.1',5001);
   }
   await api.setPersistence(auth,api.browserLocalPersistence);await auth.authStateReady();user=auth.currentUser;
-  groupViews=createGroupViews({app,api,db,getUser:()=>user,call,perform,say,isCurrent:version=>version===generation,storage:localState});
+  // Load measurement independently: a blocked Google tag must not hold the UI open.
+  void createAnalytics({app:firebaseApp,config,loadSdk:()=>import(sdk+'firebase-analytics.js'),location:new URL('./',import.meta.url).href,debug:config.analyticsDebug===true}).then(ready=>{
+    analytics=ready;
+    analytics.setAuthType(user?(user.isAnonymous?'anonymous':'google'):null);
+    for(const [name,params] of pendingAnalytics.splice(0))analytics.track(name,params);
+  });
+  groupViews=createGroupViews({app,api,db,getUser:()=>user,call,perform,say,isCurrent:version=>version===generation,storage:localState,track:(name,params)=>analytics.track(name,params)});
   course=await fetch('./course.json').then(r=>{if(!r.ok)throw new Error('코스를 읽을 수 없어요.');return r.json();});
   window.addEventListener('hashchange',route);
   window.addEventListener('online',updateSync);window.addEventListener('offline',updateSync);
   api.onAuthStateChanged(auth,current=>{
+    analytics.setAuthType(current?(current.isAnonymous?'anonymous':'google'):null);
     if(user?.uid !== current?.uid){clearListeners();user=current;route();}
   });
   await route();

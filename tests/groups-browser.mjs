@@ -9,7 +9,7 @@ import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw Error('Demo emulators required');
 const root=process.cwd(),origin='http://127.0.0.1:8080/next/';
-const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','creation-requests.mjs','course.json']);
+const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','creation-requests.mjs','analytics.mjs','course.json']);
 const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app'};export const useEmulators=true;";
 const server=createServer((req,res)=>{
   const name=new URL(req.url,origin).pathname.replace(/^\/next\//,'');
