@@ -82,6 +82,7 @@ async function route() {
   const [view,id,tripId]=location.hash.slice(1).split('/');
   app.innerHTML='<section class="card"><p>탐험을 불러오고 있어요…</p></section>';
   try {
+    if(view==='group-join'){await ensureUser();if(version!==generation)return;}
     if(groupViews && (!view || groupViews.handles(view)))await groupViews.open({view:view||'groups',groupId:id,tripId},version);
     else if(view==='create')createView();
     else if(view==='join' && id)await joinView(id,version);

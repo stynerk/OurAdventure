@@ -1,4 +1,4 @@
-const {createHash} = require('node:crypto');
+const {createHash,randomBytes} = require('node:crypto');
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const LIMITS = Object.freeze({members:10, places:10, feeling:60});
@@ -58,8 +58,54 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
   }
   const open = trip => {if(trip.status!=='open')fail('failed-precondition','종료된 여행은 읽기만 할 수 있어요.');};
   const coordinates = data => ({g:id(data?.groupId,'그룹 ID'),t:id(data?.tripId,'여행 ID')});
+  const tokenHash = token => typeof token==='string' && /^[A-Za-z0-9_-]{43}$/.test(token)?hash(['group-invite',token]):null;
+  async function inviteContext(tx,key,uid) {
+    if(!key)return null;
+    const invite=await tx.get(db.doc(`v2Invites/${key}`));
+    if(!invite.exists)return null;
+    const g=invite.data().groupId;
+    const [group,member,secret]=await tx.getAll(groupRef(g),groupRef(g).collection('members').doc(uid),db.doc(`v2GroupSecrets/${g}`));
+    if(!group.exists || !secret.exists || secret.data().inviteHash!==key)return null;
+    return {g,group:group.data(),member:member.exists?member.data():null};
+  }
 
   const callables = {
+    async createGroupInvite(data,auth) {
+      const uid=google(auth),g=id(data?.groupId,'그룹 ID'),token=randomBytes(32).toString('base64url'),key=tokenHash(token);
+      await db.runTransaction(async tx=>{
+        await groupContext(tx,g,uid,true);
+        const secretRef=db.doc(`v2GroupSecrets/${g}`),prior=await tx.get(secretRef);
+        if(prior.exists)tx.delete(db.doc(`v2Invites/${prior.data().inviteHash}`));
+        tx.create(db.doc(`v2Invites/${key}`),{groupId:g,createdAt:now()});
+        tx.set(secretRef,{inviteHash:key,createdAt:now()});
+      });
+      return {token};
+    },
+    async previewGroupInvite(data,auth) {
+      const uid=uidOf(auth),key=tokenHash(data?.token);
+      return db.runTransaction(async tx=>{
+        const context=await inviteContext(tx,key,uid);
+        if(!context)return {state:'invalid'};
+        if(context.member)return {state:'member',groupId:context.g};
+        if(context.group.memberCount>=LIMITS.members || context.group.memberIds.length>=LIMITS.members)return {state:'full'};
+        // Only a valid non-full invitation may reveal its group introduction.
+        return {state:'ready',title:context.group.title};
+      });
+    },
+    async joinGroup(data,auth) {
+      const uid=uidOf(auth),key=tokenHash(data?.token),nickname=text(data?.nickname,24,'별칭');
+      return db.runTransaction(async tx=>{
+        const context=await inviteContext(tx,key,uid);
+        if(!context)fail('not-found','유효하지 않은 초대 링크예요. 리더에게 새 링크를 요청해주세요.');
+        const {g,group,member}=context;
+        if(member)return {groupId:g,replayed:true};
+        if(group.memberCount>=LIMITS.members || group.memberIds.length>=LIMITS.members)fail('resource-exhausted','그룹 정원 10명이 모두 찼어요. 리더에게 문의해주세요.');
+        if(group.memberCount!==group.memberIds.length || group.memberIds.includes(uid))fail('failed-precondition','참여 상태를 확인하지 못했어요. 리더에게 문의해주세요.');
+        tx.create(groupRef(g).collection('members').doc(uid),{role:'member',displayName:nickname,joinedAt:now()});
+        tx.update(groupRef(g),{memberIds:[...group.memberIds,uid],memberCount:group.memberCount+1});
+        return {groupId:g,replayed:false};
+      });
+    },
     async createGroup(data,auth) {
       const uid=google(auth),title=text(data?.title,60,'그룹 이름'),request=requestId(data);
       const replayRef=db.doc(`v2Requests/${hash(['group',uid,request])}`),fingerprint=hash([title]);

@@ -17,7 +17,7 @@ let app,db,env,service;
 const reject=(promise,code)=>assert.rejects(promise,e=>e.code===code);
 const group=()=>service.callables.createGroup({title:'테스트 그룹',requestId:randomUUID()},owner);
 const trip=(g,changes={})=>service.callables.createTrip({groupId:g,requestId:randomUUID(),title:'새 여행',destination:'경주',startDate:'2026-10-27',endDate:'2026-10-28',places:[{name:'대릉원'},{name:'첨성대'}],...changes},owner);
-// T6 invite flow is not implemented here; membership is a trusted test fixture.
+// Independent T2 photo tests use a trusted fixture. T6 tests below use actual invite callables.
 async function member(g,user) {
   await db.runTransaction(async tx=>{
     const ref=db.doc(`groups/${g}`),snap=await tx.get(ref);
@@ -157,4 +157,70 @@ test('only published posts are readable and membership loss also removes old-tri
   await db.doc(`groups/${g}/members/${a.uid}`).delete();
   await assertFails(getDoc(doc(memberDb,path)));
   await reject(publish(g,t,null,a),'permission-denied');
+});
+
+test('AC-3a: two simultaneous joins at nine members commit exactly one final seat',async()=>{
+  const g=(await group()).groupId,{token}=await service.callables.createGroupInvite({groupId:g},owner);
+  for(let i=0;i<8;i++)await service.callables.joinGroup({token,nickname:'멤버'},auth(`seat-${i}`));
+  const contenders=[auth('seat-a'),auth('seat-b')];
+  const results=await Promise.allSettled(contenders.map(user=>service.callables.joinGroup({token,nickname:'마지막 자리'},user)));
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  const failure=results.find(r=>r.status==='rejected').reason;assert.equal(failure.code,'resource-exhausted');
+  const saved=(await db.doc(`groups/${g}`).get()).data();
+  assert.equal(saved.memberCount,10);assert.equal(saved.memberIds.length,10);assert.equal(new Set(saved.memberIds).size,10);
+  assert.equal((await db.collection(`groups/${g}/members`).get()).size,10);
+  const loser=contenders[results.findIndex(r=>r.status==='rejected')];
+  assert.deepEqual(await service.callables.previewGroupInvite({token},loser),{state:'full'});
+  await assertFails(getDoc(doc(env.authenticatedContext(loser.uid).firestore(),`groups/${g}`)));
+});
+
+test('AC-3b: concurrent duplicate reentry never increases membership or overwrites nickname, even when full',async()=>{
+  const g=(await group()).groupId,{token}=await service.callables.createGroupInvite({groupId:g},owner),user=auth('returning-member');
+  const results=await Promise.all(Array.from({length:5},()=>service.callables.joinGroup({token,nickname:'처음 별칭'},user)));
+  assert.equal(results.filter(r=>!r.replayed).length,1);
+  assert.equal((await db.doc(`groups/${g}`).get()).data().memberCount,2);
+  for(let i=0;i<8;i++)await service.callables.joinGroup({token,nickname:'처음 별칭'},auth(`reentry-seat-${i}`));
+  assert.deepEqual(await service.callables.previewGroupInvite({token},user),{state:'member',groupId:g});
+  const retry=await service.callables.joinGroup({token,nickname:'바뀐 별칭',uid:outsider.uid,role:'owner'},user);
+  assert.deepEqual(retry,{groupId:g,replayed:true});
+  assert.equal((await db.doc(`groups/${g}`).get()).data().memberCount,10);
+  assert.equal((await db.doc(`groups/${g}/members/${user.uid}`).get()).data().displayName,'처음 별칭');
+  assert.equal((await db.doc(`groups/${g}/members/${user.uid}`).get()).data().role,'member');
+});
+
+test('AC-3c: invalid and full links reveal only state; raw invite and group secrets cannot be read or forged',async()=>{
+  const g=(await group()).groupId,{token}=await service.callables.createGroupInvite({groupId:g},owner);
+  assert.deepEqual(await service.callables.previewGroupInvite({token},a),{state:'ready',title:'테스트 그룹'});
+  for(const invalid of ['',null,'../secret','x'.repeat(43),g]){
+    assert.deepEqual(await service.callables.previewGroupInvite({token:invalid},outsider),{state:'invalid'});
+    await reject(service.callables.joinGroup({token:invalid,nickname:'별칭'},outsider),'not-found');
+  }
+  const ownerDb=env.authenticatedContext(owner.uid).firestore();
+  for(const name of ['v2Invites','v2GroupSecrets']){
+    await assertFails(getDocs(collection(ownerDb,name)));
+    await assertFails(setDoc(doc(ownerDb,`${name}/forged`),{groupId:g}));
+  }
+  await assertFails(getDoc(doc(ownerDb,`v2GroupSecrets/${g}`)));
+  const invites=await db.collection('v2Invites').where('groupId','==',g).get();
+  assert.equal(invites.size,1);assert.equal(JSON.stringify(invites.docs[0].data()).includes(token),false);
+  await assertFails(getDoc(doc(ownerDb,`v2Invites/${invites.docs[0].id}`)));
+});
+
+test('only leader can regenerate links; old links are invalidated without removing members or old-trip access',async()=>{
+  const g=(await group()).groupId,first=await service.callables.createGroupInvite({groupId:g},owner);
+  await service.callables.joinGroup({token:first.token,nickname:'같은 별칭'},a);
+  const t=(await trip(g)).tripId;
+  await reject(service.callables.createGroupInvite({groupId:g},a),'permission-denied');
+  await reject(service.callables.createGroupInvite({groupId:g},auth('other-leader','google.com')),'permission-denied');
+  const second=await service.callables.createGroupInvite({groupId:g},owner);assert.notEqual(first.token,second.token);
+  assert.deepEqual(await service.callables.previewGroupInvite({token:first.token},outsider),{state:'invalid'});
+  await reject(service.callables.joinGroup({token:first.token,nickname:'별칭'},outsider),'not-found');
+  assert.deepEqual(await service.callables.previewGroupInvite({token:second.token},a),{state:'member',groupId:g});
+  await service.callables.joinGroup({token:second.token,nickname:'같은 별칭',groupId:'forged',ownerId:b.uid},b);
+  const saved=(await db.doc(`groups/${g}`).get()).data();assert.equal(saved.memberCount,3);assert.equal(saved.ownerId,owner.uid);
+  const memberDb=env.authenticatedContext(a.uid).firestore();
+  await assertSucceeds(getDoc(doc(memberDb,`groups/${g}/trips/${t}`)));
+  await assertSucceeds(getDocs(query(collection(memberDb,'groups'),where('memberIds','array-contains',a.uid))));
+  const next=(await trip(g,{title:'다음 여행'})).tripId;
+  await assertSucceeds(getDoc(doc(memberDb,`groups/${g}/trips/${next}`)));
 });
