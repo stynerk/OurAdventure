@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function member(g) {
+      return request.auth != null && firestore.exists(/databases/(default)/documents/groups/$(g)/members/$(request.auth.uid));
+    }
+    function openTrip(g,t) {
+      return firestore.get(/databases/(default)/documents/groups/$(g)/trips/$(t)).data.status == 'open';
+    }
+    function published(g,t,uid,photo) {
+      return firestore.exists(/databases/(default)/documents/groups/$(g)/trips/$(t)/uploads/$(uid)/items/$(photo))
+        && firestore.get(/databases/(default)/documents/groups/$(g)/trips/$(t)/uploads/$(uid)/items/$(photo)).data.status == 'published';
+    }
+    match /groups/{g}/trips/{t}/uploads/{uid}/{photo} {
+      allow get: if member(g) && (request.auth.uid == uid || published(g,t,uid,photo));
+      allow create: if resource == null && member(g) && request.auth.uid == uid && openTrip(g,t)
+        && photo.matches('[A-Za-z0-9_-]{16,128}') && request.resource.size > 0
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType in ['image/jpeg','image/png','image/webp'];
+      // Immutable uploads close the upload/verify/publish overwrite race.
+      allow update, delete, list: if false;
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

@@ -9,15 +9,16 @@ import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw Error('Demo emulators required');
 const root=process.cwd(),origin='http://127.0.0.1:8080/next/';
-const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','course.json']);
-const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app'};export const useEmulators=true;";
+const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','analytics.mjs','analytics-source.mjs','course.json']);
+const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app',storageBucket:'demo-our-adventure.firebasestorage.app'};export const useEmulators=true;";
 const server=createServer((req,res)=>{
   const name=new URL(req.url,origin).pathname.replace(/^\/next\//,'');
   if(name==='firebase-config.js'){res.writeHead(200,{'Content-Type':'text/javascript'});res.end(config);return;}
+  if(name==='analytics.mjs'){res.writeHead(200,{'Content-Type':'text/javascript'});res.end("export {countBucket,daysBucket} from './analytics-source.mjs';export async function createAnalytics(){return {setAuthType:()=>{},track:(name,params)=>{(window.__photoEvents||=[]).push({name,params});}};}");return;}
   const file=name===''?'index.html':name;
   if(!files.has(file)){res.writeHead(404);res.end();return;}
   res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':'text/javascript'});
-  res.end(readFileSync(resolve(root,'next',file)));
+  res.end(readFileSync(resolve(root,'next',file==='analytics-source.mjs'?'analytics.mjs':file)));
 }).listen(8080,'127.0.0.1');
 await once(server,'listening');
 const admin=initializeApp({projectId:'demo-our-adventure'},'groups-browser'),db=getFirestore(admin);
@@ -175,6 +176,60 @@ try {
   console.log('PASS: both roles retain four closed-trip tabs; UID-based stamp progress differs, only published memories display and member management is denied');
   console.log('PASS: illustrated map pins and dotted path, next stamp, closed management hidden, direct closed route read-only and 320/390px content clearance');
 
+  // Real Storage upload + trusted finalizer, failure before/after commit, no optimistic stamps.
+  const photoTrip=(await db.doc(`groups/${groupId}/trips/${openTripId}`).get()).data(),photoPlace=photoTrip.placeIds[0],photoRoot=`groups/${groupId}/trips/${openTripId}`;
+  await owner.goto(origin+`#trip/${groupId}/${openTripId}/stamp/${photoPlace}`);
+  await owner.getByRole('button',{name:'사진 저장하고 스탬프 받기',exact:true}).waitFor();
+  await owner.waitForFunction(()=>!document.querySelector('#photo-stamp fieldset')?.disabled && !document.querySelector('#photo-stamp button')?.disabled);
+  const imageData=await owner.evaluate(()=>{const c=document.createElement('canvas');c.width=600;c.height=400;const x=c.getContext('2d');x.fillStyle='#ddeacc';x.fillRect(0,0,600,400);x.fillStyle='#e7bd57';x.beginPath();x.arc(455,90,45,0,Math.PI*2);x.fill();x.fillStyle='#7b9b77';x.fillRect(0,260,600,140);x.fillStyle='#fffdf7';x.font='32px sans-serif';x.fillText('Our Adventure',145,325);return c.toDataURL('image/png').split(',')[1];});
+  const image={name:'test-landscape.png',mimeType:'image/png',buffer:Buffer.from(imageData,'base64')};
+  await owner.locator('input[name=gallery]').setInputFiles(image);
+  await owner.getByLabel('한 줄 느낌 (선택)',{exact:true}).fill('테스트 사진의 한 줄 느낌');
+  await owner.screenshot({path:'test-results/photo-selected-mobile.png',fullPage:true});
+  let firstFinalize,releaseFinalize;const finalizeSeen=new Promise(resolve=>{firstFinalize=resolve;}),gate=new Promise(resolve=>{releaseFinalize=resolve;});
+  let requestBody,finalizeCount=0;
+  await owner.route('**/finalizePhoto',async route=>{if(route.request().method()!=='POST'){await route.continue();return;}finalizeCount++;requestBody=route.request().postDataJSON().data;firstFinalize();await gate;await route.abort('failed');});
+  await owner.getByRole('button',{name:'사진 저장하고 스탬프 받기',exact:true}).click();
+  await Promise.race([finalizeSeen,new Promise((_,reject)=>{const timer=setTimeout(async()=>{console.error('Photo stage:',await owner.locator('#photo-status').textContent());await owner.screenshot({path:'test-results/photo-stage-failure.png',fullPage:true});reject(Error('Photo did not reach finalization within 20s'));},20000);finalizeSeen.then(()=>clearTimeout(timer));})]);
+  await owner.locator('#photo-stamp').evaluate(form=>{for(let i=0;i<3;i++)form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});
+  assert.equal(finalizeCount,1);assert.equal((await db.collection(photoRoot+'/posts').get()).size,0);assert.equal((await db.collection(photoRoot+'/completions').get()).size,0);
+  assert.equal(await owner.locator('[data-own-stamp]').textContent(),'내 스탬프 미완료');
+  const objectPath=`${photoRoot}/uploads/${ownerUid}/${requestBody.uploadId}`;
+  const readPhoto=async(page,path)=>page.evaluate(async path=>{const s=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-storage.js');try{return {size:(await s.getBlob(s.ref(s.getStorage(),path))).size};}catch(error){return {code:error.code};}},path);
+  assert.equal((await readPhoto(peer,objectPath)).code,'storage/unauthorized');
+  await owner.screenshot({path:'test-results/photo-awaiting-confirmation-mobile.png',fullPage:true});
+  releaseFinalize();await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).waitFor();await owner.unroute('**/finalizePhoto');
+  const beforeReloadEvents=await owner.evaluate(()=>window.__photoEvents||[]);
+  await owner.reload();await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).waitFor();
+  assert.equal(await owner.getByLabel('한 줄 느낌 (선택)',{exact:true}).inputValue(),'테스트 사진의 한 줄 느낌');assert.equal(await owner.locator('#photo-preview img').count(),1);
+  let finalizationReply;
+  await owner.route('**/finalizePhoto',async route=>{if(route.request().method()!=='POST'){await route.continue();return;}assert.deepEqual(route.request().postDataJSON().data,requestBody);const response=await route.fetch();finalizationReply=await response.json();await route.abort('failed');});
+  await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).click();
+  await owner.waitForFunction(()=>document.querySelector('#photo-status')?.textContent.startsWith('저장하지 못했어요') && !document.querySelector('#photo-stamp button')?.disabled);
+  assert.equal((await db.collection(photoRoot+'/posts').get()).size,1,JSON.stringify(finalizationReply));
+  await owner.unroute('**/finalizePhoto');await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).click();
+  await owner.getByText('사진과 스탬프가 저장됐어요.',{exact:true}).waitFor();
+  assert.equal((await db.collection(photoRoot+'/posts').get()).size,1);assert.equal((await db.collection(photoRoot+'/completions').get()).size,1);
+  assert.ok((await readPhoto(peer,objectPath)).size>0);
+  assert.equal(await owner.locator('[data-trip-post-count]').textContent(),'1');
+  await owner.screenshot({path:'test-results/photo-complete-mobile.png',fullPage:true});
+  await peer.goto(origin+`#trip/${groupId}/${openTripId}/stamps`);await peer.getByRole('heading',{name:'내 스탬프 0/1',exact:true}).waitFor();
+  // Camera input, a failed Storage request and an empty feeling: photo two, same one stamp.
+  await owner.locator('input[name=camera]').setInputFiles(image);
+  await owner.route('**/v0/b/**',route=>route.abort('failed'));
+  await owner.locator('#photo-stamp button[type=submit]').click();
+  await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).waitFor();await owner.unroute('**/v0/b/**');
+  assert.equal(await owner.locator('#photo-preview img').count(),1);await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).click();
+  await owner.getByText('사진과 스탬프가 저장됐어요.',{exact:true}).waitFor();
+  const savedPhotos=await db.collection(photoRoot+'/posts').get(),completion=(await db.collection(photoRoot+'/completions').get()).docs[0].data();
+  assert.equal(savedPhotos.size,2);assert.equal(completion.uid,ownerUid);assert.equal(completion.photoCount,2);assert.ok(savedPhotos.docs.some(d=>d.data().feeling===''));
+  const events=[...beforeReloadEvents,...await owner.evaluate(()=>window.__photoEvents||[])].filter(e=>['photo_select','stamp_complete','stamp_complete_fail','photo_add'].includes(e.name));
+  assert.equal(events.filter(e=>e.name==='stamp_complete').length,1);assert.equal(events.filter(e=>e.name==='photo_add').length,1);
+  assert.ok(events.some(e=>e.name==='photo_select' && e.params.source==='camera'));assert.ok(events.some(e=>e.name==='stamp_complete_fail' && e.params.reason==='upload'));
+  assert.doesNotMatch(JSON.stringify(events),/test-landscape|테스트 사진의|objectPath|uploadId|requestId/);
+  console.log('PASS: actual Storage upload stays private until server confirmation; failed upload/save preserves input; lost-response and repeated submits make one photo/stamp');
+  console.log('PASS: A completes without changing B, empty feeling works, second photo keeps one stamp, camera/gallery and safe GA event sequence verified');
+
   const invoke=async(page,name,data)=>page.evaluate(async({name,data})=>{
     const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-functions.js');
     try{return {data:(await sdk.httpsCallable(sdk.getFunctions(undefined,'asia-northeast3'),name)(data)).data};}catch(error){return {code:error.code};}
@@ -197,7 +252,7 @@ try {
   for(const page of [owner,peer]){
     await page.goto(origin+`#trip/${groupId}/${openTripId}/map`);await page.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();
     const nav=page.getByRole('navigation',{name:'여행 화면'});
-    for(const [label,heading] of [['코스','여행 코스'],['스탬프','내 스탬프 0/1'],['추억','함께 남긴 추억'],['지도','여행 지도']]){
+    for(const [label,heading] of [['코스','여행 코스'],['스탬프',page===owner?'내 스탬프 1/1':'내 스탬프 0/1'],['추억','함께 남긴 추억'],['지도','여행 지도']]){
       await nav.getByRole('link',{name:label,exact:true}).click();await page.getByRole('heading',{name:heading,exact:true}).waitFor();
       assert.equal(await page.getByRole('link',{name:'여행 관리',exact:true}).count(),0);
       assert.equal(await page.locator('form,input[type=file],button[data-trip-action="end"]').count(),0);

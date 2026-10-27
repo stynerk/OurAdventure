@@ -9,6 +9,7 @@ import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw new Error('Run only inside demo Auth and Firestore emulators');
 process.env.GCLOUD_PROJECT='demo-our-adventure';
+if(process.env.FIREBASE_STORAGE_EMULATOR_HOST)process.env.PHOTO_STORAGE_BUCKET='demo-our-adventure.firebasestorage.app';
 process.env.ENABLE_INDIVIDUAL_PILOT='true'; // Explicit test-only Phase 1C coverage.
 const require=createRequire(import.meta.url),functionRequire=createRequire(new URL('../functions/index.cjs',import.meta.url)),handlers=require('../functions/index.cjs');
 const serverApp=express();serverApp.use(express.json());

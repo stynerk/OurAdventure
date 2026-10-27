@@ -4,3 +4,5 @@ node_modules/
 next/firebase-config.js
 test-results/
 public/
+hs_err_pid*.log
+replay_pid*.log

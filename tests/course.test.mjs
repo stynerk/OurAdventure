@@ -26,7 +26,7 @@ test('Pages packages only public files and emits production-only config from exp
   assert.equal(existsSync('public/docs'),false);
   assert.equal(existsSync('public/node_modules'),false);
   assert.equal(readFileSync('public/next/session.mjs','utf8'),readFileSync('next/session.mjs','utf8'));
-  for(const file of ['groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs'])assert.equal(readFileSync('public/next/'+file,'utf8'),readFileSync('next/'+file,'utf8'));
+  for(const file of ['groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','analytics.mjs'])assert.equal(readFileSync('public/next/'+file,'utf8'),readFileSync('next/'+file,'utf8'));
   const output=readFileSync('public/next/firebase-config.js','utf8');
   assert.match(output,/useEmulators=false/);assert.doesNotMatch(output,/privateField|must-not-be-published/);
   execFileSync(process.execPath,['scripts/prepare-pages.mjs'],{env:{...process.env,FIREBASE_WEB_CONFIG:''}});

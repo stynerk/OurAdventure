@@ -1,5 +1,8 @@
 import {readRoomIds,rememberRoom,readCreateRequest,getCreateRequest,clearCreateRequest,loadAccessibleRooms} from './session.mjs';
 import {createGroupViews} from './groups.mjs';
+import {createAnalytics} from './analytics.mjs';
+const pendingAnalytics=[];
+let analytics={track:(name,params)=>{if(pendingAnalytics.length<30)pendingAnalytics.push([name,params]);},setAuthType:()=>{}};
 const localState={getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value),removeItem:key=>localStorage.removeItem(key)};
 const app = document.querySelector('#app'), message = document.querySelector('#message');
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -155,7 +158,7 @@ app.addEventListener('click',event=>{
       user=auth.currentUser;await route();
     } else if(action==='logout'){
       if(!confirm('로그아웃할까요? 익명 참여 기록은 이 브라우저에서도 다시 연결하지 못할 수 있어요.'))return;
-      clearListeners();await api.signOut(auth);user=null;inviteToken='';location.hash='';await route();
+      clearListeners();groupViews?.clearPhotos();await api.signOut(auth);analytics.setAuthType(null);user=null;inviteToken='';location.hash='';await route();
     } else if(action==='copy'){
       await navigator.clipboard.writeText(inviteUrl(inviteToken));alert('초대 링크를 복사했어요.');
     } else if(action==='rotate'){
@@ -171,22 +174,30 @@ try {
   enableIndividualPilot=config.enableIndividualPilot===true;
   if(!config.firebaseConfig?.projectId || config.firebaseConfig.projectId==='YOUR_PROJECT')throw new Error('Firebase 연결 설정이 필요해요.');
   const sdk='https://www.gstatic.com/firebasejs/13.0.0/';
-  const modules=await Promise.all(['firebase-app.js','firebase-auth.js','firebase-firestore.js','firebase-functions.js'].map(name=>import(sdk+name)));
+  const modules=await Promise.all(['firebase-app.js','firebase-auth.js','firebase-firestore.js','firebase-functions.js','firebase-storage.js'].map(name=>import(sdk+name)));
   api=Object.assign({},...modules);
   const firebaseApp=api.initializeApp(config.firebaseConfig);
   auth=api.getAuth(firebaseApp);db=api.getFirestore(firebaseApp);functions=api.getFunctions(firebaseApp,config.functionsRegion || 'asia-northeast3');
+  const photoStorage=config.firebaseConfig.storageBucket?api.getStorage(firebaseApp):api.getStorage(firebaseApp,`gs://${config.firebaseConfig.projectId}.firebasestorage.app`);
+  photoStorage.maxOperationRetryTime=5000;photoStorage.maxUploadRetryTime=20000;
   if(config.useEmulators){
     if(!['localhost','127.0.0.1'].includes(location.hostname))throw new Error('에뮬레이터는 로컬에서만 사용할 수 있어요.');
     document.body.classList.add('emulator-mode');
     api.connectAuthEmulator(auth,'http://127.0.0.1:9099');api.connectFirestoreEmulator(db,'127.0.0.1',8085);api.connectFunctionsEmulator(functions,'127.0.0.1',5001);
+    api.connectStorageEmulator(photoStorage,'127.0.0.1',9199);
   }
   await api.setPersistence(auth,api.browserLocalPersistence);await auth.authStateReady();user=auth.currentUser;
-  groupViews=createGroupViews({app,api,db,getUser:()=>user,call,perform,say,isCurrent:version=>version===generation,storage:localState});
+  void createAnalytics({app:firebaseApp,config,loadSdk:()=>import(sdk+'firebase-analytics.js'),location:new URL('./',import.meta.url).href,debug:config.analyticsDebug===true}).then(ready=>{
+    analytics=ready;analytics.setAuthType(user?(user.isAnonymous?'anonymous':'google'):null);
+    for(const [name,params] of pendingAnalytics.splice(0))analytics.track(name,params);
+  });
+  groupViews=createGroupViews({app,api,db,photoStorage,getUser:()=>user,call,perform,say,isCurrent:version=>version===generation,storage:localState,track:(name,params)=>analytics.track(name,params)});
   course=await fetch('./course.json').then(r=>{if(!r.ok)throw new Error('코스를 읽을 수 없어요.');return r.json();});
   window.addEventListener('hashchange',route);
   window.addEventListener('online',updateSync);window.addEventListener('offline',updateSync);
   api.onAuthStateChanged(auth,current=>{
-    if(user?.uid !== current?.uid){clearListeners();user=current;route();}
+    analytics.setAuthType(current?(current.isAnonymous?'anonymous':'google'):null);
+    if(user?.uid !== current?.uid){clearListeners();groupViews?.clearPhotos();user=current;route();}
   });
   await route();
 } catch(error){configMissing();say(error.message);}
