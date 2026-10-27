@@ -26,6 +26,7 @@ export async function createAnalytics({app,config,loadSdk,location,debug=false})
     return {setAuthType(type){try{sdk.setUserProperties(analytics,{auth_type:['google','anonymous'].includes(type)?type:null});}catch{}},track(name,input={}) {
       let params;
       if(name==='page_view' && screens.has(input.screen_name))params={screen_name:input.screen_name,page_title:input.screen_name};
+      else if(name==='screen_view' && ['map','course','stamps','memory','stamp_detail','report','share_image'].includes(input.screen_name))params={screen_name:input.screen_name};
       else if(name==='login' && input.method==='google')params={method:'google'};
       else if(name==='logout')params={};
       else if(name==='group_create' || name==='trip_create_start')params={};

@@ -46,6 +46,13 @@ test('SDK is never loaded for emulator, disabled, or missing measurement configu
     const {track}=await createAnalytics(f.options);track('logout');assert.deepEqual(f.sent,[]);
   }
 });
+test('T7 screen events accept only specified screen names and safe common context',async()=>{
+  const f=fixture();const {track}=await createAnalytics(f.options);
+  track('screen_view',{screen_name:'stamps',role:'member',trip_status:'ended',group_id:'A'.repeat(20),uid:'PRIVATE_UID',nickname:'PRIVATE_NAME'});
+  track('screen_view',{screen_name:'group-join/PRIVATE_TOKEN'});
+  assert.equal(f.sent.length,1);assert.equal(f.sent[0].params.screen_name,'stamps');
+  assert.equal(f.sent[0].params.role,'member');assert.doesNotMatch(JSON.stringify(f.sent),/PRIVATE/);
+});
 test('unsupported browser, SDK failure, and blocked event delivery do not break application',async()=>{
   for(const loadSdk of [async()=>{throw new Error('offline');},async()=>({isSupported:async()=>false}),async()=>({isSupported:async()=>true,initializeAnalytics:()=>({}),logEvent:()=>{throw new Error('blocked');}})]){
     const {track}=await createAnalytics(fixture({loadSdk}).options);assert.doesNotThrow(()=>track('logout'));
