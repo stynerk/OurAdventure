@@ -29,7 +29,7 @@ PM이 PRD v2·목업 진행 승인과 T0–T12 순서를 기록했다. 구현 �
 | NAVER 지역 검색 | 검색 API 일 25,000회 공유, 결과 최대 5개, start 최대 1 | 국내 후보지만 한 검색어당 결과 폭이 작아 여러 검색 필요. 장기 여행 데이터 보관·AI 전달 조건은 약관 검토가 필요 |
 | Google Places Text Search Pro | 월 무료 5,000회, 첫 유료 구간 $32/1,000회 | 해외 확장 후보. 이름 등 요청 필드에 따라 SKU 달라짐. 지도 표시·캐시·보관 조건을 구현 전 확인 |
 
-추천: **국내 1차는 Kakao Local을 비교 실험 후보로 제안**한다. 실제 품질 통과·키 제공·계정 무료 쿼터 적용·약관 확인 후 확정한다. 자동 등록·결제 연결은 하지 않는다.
+결정 갱신: **2026-10-26 사용자 결정으로 Google Places를 사용한다.** 국내 Kakao 우선 제안은 이전 비교안으로 남기며 현재 구현에 적용하지 않는다. Google Places 실제 응답·키 제한·결제·약관 확인은 T4에서 진행한다. 자동 등록·결제 연결은 하지 않는다.
 
 공식 근거: [Kakao 쿼터·요금](https://developers.kakao.com/docs/ko/getting-started/quota), [Kakao 응답 필드](https://developers.kakao.com/docs/ko/local/dev-guide), [NAVER 지역 검색](https://developers.naver.com/docs/serviceapi/search/local/local.md), [NAVER 약관](https://developers.naver.com/products/intro/terms/terms.md), [Google Maps 요금](https://developers.google.com/maps/billing-and-pricing/pricing).
 
@@ -47,7 +47,15 @@ PM이 PRD v2·목업 진행 승인과 T0–T12 순서를 기록했다. 구현 �
 
 공식 근거: [GPT-5.4 mini](https://developers.openai.com/api/docs/models/gpt-5.4-mini), [GPT-5.4 nano](https://developers.openai.com/api/docs/models/gpt-5.4-nano), [GPT-5 mini](https://developers.openai.com/api/docs/models/gpt-5-mini).
 
-### 경주 시범 생성·품질 비교 계획
+### PM 검토 반영: 다른 공급사 비교 후보 추가 (2026-10-27)
+
+추가 후보는 Google `gemini-3.1-flash-lite`다. 공식 모델 문서에서 구조화된 출력을 지원하는 것을 확인했다. T5에서 동일한 지도 장소 목록과 네 가지 미션 필드로 비교하고, JSON 형식뿐 아니라 입력 placeId 일치·관찰형 한국어·위험 행동·확정 운영정보도 앱에서 검증한다. 아직 품질 실험·모델 선정·API 호출은 하지 않았다. [모델 문서](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite), [구조화 출력](https://ai.google.dev/gemini-api/docs/structured-output).
+
+일반 온라인 텍스트 요금은 100만 토큰당 입력 $0.25·출력 $1.50이다. 기존과 같은 입력 4,000·출력 3,000토큰 가정이면 1회 $0.0055, 100회 $0.55, 1,000회 $5.50이며 매번 동일량을 한 번 재시도하면 각각 두 배다. 실제 추론 토큰·오류·세금·호출량에 따라 달라지는 계획값이다. [공식 요금](https://ai.google.dev/gemini-api/docs/pricing#gemini-3.1-flash-lite).
+
+무료 등급과 유료 등급은 데이터 이용 조건이 다르므로 가격만으로 무료 등급을 자동 채택하지 않는다. 비교 입력은 공개 장소·합성 예시만 사용하고 사진·별칭·개인 기록은 보내지 않는다. 별도 AI 접근 권한·소액 호출 승인이 생긴 뒤 양 공급사에 같은 평가표를 적용한다.
+
+### 경주 시범 생성·품질 비교 실행 전제
 
 실행 전 필요한 것: 지도 API 선택·접근키, AI 모델 선택·접근키, 소액 유료 호출 승인. 현재 실험 실행 환경의 키 설정·유료 호출은 이번 작업에서 확인/실행하지 않았다.
 
@@ -79,7 +87,7 @@ Functions의 공개 무료 구간에는 호출 200만회/월 등이 있지만 2�
 
 ## 5. 사용자에게 제안할 선택과 다음 구현
 
-제안: Kakao Local 품질 비교 + gpt-5.4-mini 소량 비교, 초기 파일럿 월 $5 계획 또는 월 100여행 기준 $20 계획을 사용자 검토에 올린다. 이 금액은 USD 계획값이며 서비스 차단 한도가 아니다. 예산 알림만으로 과금이 멈추지 않는다. 실제 앱에서 여행별 사진/바이트 제한·사용자별 AI 요청 제한·동시 실행 제한을 강제하고 배포 리전·보관·삭제/복구 정책을 확정해야 한다. [Cloud Billing 예산·알림](https://docs.cloud.google.com/billing/docs/how-to/budgets).
+제안 갱신: 확정된 Google Places로 장소를 확인하고, 기존 OpenAI 후보와 추가 Gemini 후보를 같은 미션 형식으로 소량 비교한다. 초기 파일럿 월 $5 계획 또는 월 100여행 기준 $20 계획은 사용자 검토 대상으로 유지한다. 이 금액은 USD 계획값이며 서비스 차단 한도가 아니다. 예산 알림만으로 과금이 멈추지 않는다. 실제 앱에서 여행별 사진/바이트 제한·사용자별 AI 요청 제한·동시 실행 제한을 강제하고 배포 리전·보관·삭제/복구 정책을 확정해야 한다. [Cloud Billing 예산·알림](https://docs.cloud.google.com/billing/docs/how-to/budgets).
 
 결정 대기 중에도 T1의 기존 인증·참여 기반 차이 검토는 읽기·로컬 테스트 중심으로 진행할 수 있다. T4의 공급자 연결, T5의 실제 생성, T8/T9의 운영 Storage는 각 결정 이후 진행한다. PR 머지는 MVP 작업 목록 규칙에 따라 사용자 승인 대상으로 남긴다.
 
