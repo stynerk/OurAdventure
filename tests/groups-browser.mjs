@@ -47,6 +47,14 @@ try {
   const owner=await leader.newPage(),peer=await member.newPage(),errors=[];
   for(const page of [owner,peer])page.on('pageerror',e=>errors.push(e.message));
   await owner.goto(origin);await owner.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();
+  for(const width of [320,390]){
+    await owner.setViewportSize({width,height:844});
+    const layout=await owner.evaluate(()=>{
+      const brand=document.querySelector('header .brand').getBoundingClientRect(),badge=document.querySelector('header .badge').getBoundingClientRect();
+      return {overlap:brand.left<badge.right && brand.right>badge.left && brand.top<badge.bottom && brand.bottom>badge.top,overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    assert.equal(layout.overlap,false,`header overlaps at ${width}px`);assert.equal(layout.overflow,false);
+  }
   await auth(owner,true);await owner.getByRole('link',{name:'새 그룹 만들기',exact:true}).click();
   await owner.getByLabel('그룹 이름',{exact:true}).fill('브라우저 테스트 그룹');
   await owner.getByRole('button',{name:'그룹 만들기',exact:true}).click();
