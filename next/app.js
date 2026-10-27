@@ -77,13 +77,14 @@ function updateSync(){const el=document.querySelector('#sync');if(el)el.textCont
 const inviteUrl=token=>`${location.origin}${location.pathname}#join/${token}`;
 async function route() {
   const version=++generation;
+  document.body.classList.remove('trip-active');
   clearListeners();say('');
   if(location.hash !== `#room/${inviteRoomId}`){inviteToken='';inviteRoomId='';}
-  const [view,id,tripId]=location.hash.slice(1).split('/');
+  const [view,id,tripId,tab,placeId]=location.hash.slice(1).split('/');
   app.innerHTML='<section class="card"><p>탐험을 불러오고 있어요…</p></section>';
   try {
     if(view==='group-join'){await ensureUser();if(version!==generation)return;}
-    if(groupViews && (!view || groupViews.handles(view)))await groupViews.open({view:view||'groups',groupId:id,tripId},version);
+    if(groupViews && (!view || groupViews.handles(view)))await groupViews.open({view:view||'groups',groupId:id,tripId,tab,placeId},version);
     else if(view==='create')createView();
     else if(view==='join' && id)await joinView(id,version);
     else if(view==='room' && id) {
@@ -176,6 +177,7 @@ try {
   auth=api.getAuth(firebaseApp);db=api.getFirestore(firebaseApp);functions=api.getFunctions(firebaseApp,config.functionsRegion || 'asia-northeast3');
   if(config.useEmulators){
     if(!['localhost','127.0.0.1'].includes(location.hostname))throw new Error('에뮬레이터는 로컬에서만 사용할 수 있어요.');
+    document.body.classList.add('emulator-mode');
     api.connectAuthEmulator(auth,'http://127.0.0.1:9099');api.connectFirestoreEmulator(db,'127.0.0.1',8085);api.connectFunctionsEmulator(functions,'127.0.0.1',5001);
   }
   await api.setPersistence(auth,api.browserLocalPersistence);await auth.authStateReady();user=auth.currentUser;

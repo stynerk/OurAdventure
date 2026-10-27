@@ -1,11 +1,13 @@
 import {readPending,prepareRequest,finishRequest} from './creation-requests.mjs';
+import {createTripViews} from './trip-views.mjs';
 
-export function createGroupViews({app,api,db,getUser,call,perform,say,isCurrent,storage}) {
+export function createGroupViews({app,api,db,getUser,call,perform,say,isCurrent,storage,track=()=>{}}) {
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safeId=value=>typeof value==='string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
   const routes=new Set(['groups','group','group-create','trip-create','trip','group-join']);
   let active=null;
   const current=context=>active===context && isCurrent(context.version) && getUser()?.uid===context.uid;
+  const tripViews=createTripViews({app,api,db,current,getUser,track});
   const login=()=>'<p>그룹을 만들려면 Google 로그인이 필요해요.</p><button data-action="login">Google로 로그인</button>';
   const account=()=>getUser()?'<button class="secondary" data-action="logout">로그아웃</button>':'';
   const errorCard=(title,href='#groups')=>`<section class="card"><h1>${esc(title)}</h1><p>로그인·그룹 참여 상태와 연결을 확인해주세요.</p><a href="${href}">목록으로 돌아가기</a> <button class="secondary" data-v2-action="refresh">다시 확인</button></section>`;
@@ -65,14 +67,8 @@ export function createGroupViews({app,api,db,getUser,call,perform,say,isCurrent,
     pendingPanel(context,'trip');
   }
   async function tripDetail(context) {
-    const g=await getGroup(context);if(!safeId(context.tripId))throw new Error('잘못된 여행 주소');
-    const snapshot=await api.getDocFromServer(api.doc(db,'groups',g.id,'trips',context.tripId));
-    if(!snapshot.exists())throw new Error('없는 여행');
-    const trip=snapshot.data();
-    const places=await api.getDocsFromServer(api.collection(db,'groups',g.id,'trips',context.tripId,'places'));
-    if(!current(context))return;
-    const byId=new Map(places.docs.map(d=>[d.id,d.data()]));
-    app.innerHTML=`<section class="card"><a href="#group/${esc(g.id)}">← ${esc(g.title)}</a><span class="badge">${status(trip)}</span><h1>${esc(trip.title)}</h1><p>${esc(trip.destination)} · ${esc(trip.startDate)} ~ ${esc(trip.endDate)}</p><p>장소 ${Number(trip.placeCount)||0}개 · 기록 ${Number(trip.postCount)||0}개</p>${trip.status==='closed'?'<p>종료된 여행이에요. 기존 여행 정보는 계속 볼 수 있어요.</p>':''}</section><section class="card"><h2>여행 장소</h2>${trip.placeIds?.length?`<ol>${trip.placeIds.map(id=>`<li>${esc(byId.get(id)?.icon||'📍')} ${esc(byId.get(id)?.name||'장소 정보를 다시 확인해주세요.')}</li>`).join('')}</ol>`:'<p>아직 장소를 정하지 않았어요.</p>'}</section>`;
+    const group=await getGroup(context);if(!current(context))return;
+    await tripViews.open(context,group);
   }
   async function open(params,version) {
     const context={...params,version,uid:getUser()?.uid};active=context;
