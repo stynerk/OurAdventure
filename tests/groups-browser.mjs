@@ -1,3 +1,4 @@
+import {verifyPlaceEditing} from './place-edit-browser.mjs';
 import {auditUi} from './ui-audit.mjs';
 // Real SDK + exported handlers, demo emulators only; no production credentials.
 import {chromium} from 'playwright';
@@ -10,7 +11,7 @@ import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw Error('Demo emulators required');
 const root=process.cwd(),origin='http://127.0.0.1:8080/next/';
-const files=new Set(['index.html','style.css','icons.mjs','ui.mjs','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','report-views.mjs','share-renderer.mjs','analytics.mjs','analytics-source.mjs','course.json']);
+const files=new Set(['index.html','style.css','icons.mjs','ui.mjs','app.js','session.mjs','groups.mjs','trip-views.mjs','place-editor.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','report-views.mjs','share-renderer.mjs','analytics.mjs','analytics-source.mjs','course.json']);
 const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app',storageBucket:'demo-our-adventure.firebasestorage.app'};export const useEmulators=true;";
 const server=createServer((req,res)=>{
   const name=new URL(req.url,origin).pathname.replace(/^\/next\//,'');
@@ -62,6 +63,11 @@ try {
   }
   await auditUi(owner,'login');await auth(owner,true);await owner.getByRole('link',{name:'새 그룹 만들기',exact:true}).click();
   await owner.getByLabel('그룹 이름',{exact:true}).fill('브라우저 테스트 그룹');
+  // Forced submit on disabled controls must not construct empty FormData.
+  const ignoredBefore=await db.collection('groups').get();
+  await owner.locator('#v2-group-create').evaluate(form=>{for(const control of form.querySelectorAll('input,button'))control.disabled=true;for(let i=0;i<3;i++)form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));for(const control of form.querySelectorAll('input,button'))control.disabled=false;});
+  assert.equal((await db.collection('groups').get()).size,ignoredBefore.size);
+  console.log('PASS T15: disabled group form synthetic submits are silently ignored without page errors or requests');
   await owner.getByRole('button',{name:'그룹 만들기',exact:true}).click();
   await owner.getByRole('heading',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
   const groupId=await owner.evaluate(()=>location.hash.split('/')[1]);
@@ -300,6 +306,7 @@ try {
   console.log('PASS T9: authenticated photo feed, newest order, combined place/person filters and cursor pagination without duplicate IDs');
   console.log('PASS T9: optional free post creates no stamp; own edit survives lost response; leader cannot mutate another author; deleting last photo removes only own stamp');
 
+  await verifyPlaceEditing({owner,peer,db,groupId,origin,ownerUid,peerUid,image});
   const invoke=async(page,name,data)=>page.evaluate(async({name,data})=>{
     const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-functions.js');
     try{return {data:(await sdk.httpsCallable(sdk.getFunctions(undefined,'asia-northeast3'),name)(data)).data};}catch(error){return {code:error.code};}

@@ -3,6 +3,7 @@ import {createGroupViews} from './groups.mjs';
 import {createAnalytics} from './analytics.mjs';
 import {icon} from './icons.mjs';
 import {initUi} from './ui.mjs';
+import {inactiveForm} from './place-editor.mjs';
 initUi();
 const pendingAnalytics=[];
 let analytics={track:(name,params)=>{if(pendingAnalytics.length<30)pendingAnalytics.push([name,params]);},setAuthType:()=>{}};
@@ -127,7 +128,7 @@ async function perform(action){
 }
 app.addEventListener('submit',event=>{
   if(!['create','join'].includes(event.target.id))return;
-  event.preventDefault();const form=event.target, data=Object.fromEntries(new FormData(form));
+  event.preventDefault();const form=event.target;if(inactiveForm(form))return;const data=Object.fromEntries(new FormData(form));
   perform(async()=>{
     if(form.id==='create'){
       const uid=user.uid;

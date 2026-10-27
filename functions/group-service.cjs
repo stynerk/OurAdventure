@@ -59,6 +59,19 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
   }
   const open = trip => {if(trip.status!=='open')throw new HttpsError('failed-precondition','종료된 여행은 읽기만 할 수 있어요.',{reason:'ended'});};
   const coordinates = data => ({g:id(data?.groupId,'그룹 ID'),t:id(data?.tripId,'여행 ID')});
+  async function placeImpact(tx,g,t,p,uid) {
+    const trip=await tripContext(tx,g,t,uid,true);open(trip);
+    const snapshot=await tx.get(placeRef(g,t,p));
+    if(!snapshot.exists)fail('not-found','장소를 찾지 못했어요.');
+    const place=snapshot.data();
+    if(place.status==='deleted')return {trip,place,deleted:true};
+    if(!trip.placeIds.includes(p))fail('not-found','이 여행에 없는 장소예요.');
+    const posts=await tx.get(tripRef(g,t).collection('posts').where('placeId','==',p));
+    const published=posts.docs.filter(d=>d.data().status==='published');
+    if(published.length!==place.postCount)fail('failed-precondition','사진 수를 확인하지 못했어요. 다시 확인해주세요.');
+    return {trip,place,photoCount:published.length,memberCount:new Set(published.map(d=>d.data().uid)).size,
+      confirmationToken:hash(['remove-place',uid,g,t,p,published.map(d=>d.id).sort()])};
+  }
   const tokenHash = token => typeof token==='string' && /^[A-Za-z0-9_-]{43}$/.test(token)?hash(['group-invite',token]):null;
   async function inviteContext(tx,key,uid) {
     if(!key)return null;
@@ -71,6 +84,29 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
   }
 
   const callables = {
+    async previewTripPlaceRemoval(data,auth) {
+      const uid=uidOf(auth),{g,t}=coordinates(data),p=id(data?.placeId,'장소 ID');
+      return db.runTransaction(async tx=>{
+        const impact=await placeImpact(tx,g,t,p,uid);
+        if(impact.deleted)return {placeId:p,deleted:true};
+        return {placeId:p,name:impact.place.name,photoCount:impact.photoCount,memberCount:impact.memberCount,confirmationToken:impact.confirmationToken};
+      });
+    },
+    async removeTripPlace(data,auth) {
+      const uid=uidOf(auth),{g,t}=coordinates(data),p=id(data?.placeId,'장소 ID');
+      return db.runTransaction(async tx=>{
+        const impact=await placeImpact(tx,g,t,p,uid);
+        if(impact.deleted)return {placeId:p,replayed:true};
+        if(impact.photoCount && data?.confirmationToken!==impact.confirmationToken)
+          throw new HttpsError('failed-precondition','사진이 남아 있어요. 최신 영향을 확인한 뒤 삭제해주세요.',{reason:'confirmation-required'});
+        // Remove the course association, not another author's photos or feelings.
+        // Keep a tombstone so authors can still delete their own retained posts.
+        const ids=impact.trip.placeIds.filter(value=>value!==p);
+        tx.update(placeRef(g,t,p),{status:'deleted',deletedAt:now(),deletedBy:uid});
+        tx.update(tripRef(g,t),{placeIds:ids,placeCount:ids.length});
+        return {placeId:p,replayed:false};
+      });
+    },
     ...createReportService({db,HttpsError,tripContext,tripRef,coordinates,uidOf,requestId,id,now,hash}),
     async editPost(data,auth) {
       const uid=uidOf(auth),{g,t}=coordinates(data),postId=id(data?.postId,'기록 ID'),request=requestId(data);
@@ -260,7 +296,8 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
         place=snapshots[0].data();completion=snapshots[1].exists?snapshots[1].data():null;
       }
       const mine=p?await tx.get(tripRef(g,t).collection('completions').where('uid','==',uid)):null;
-      const completionResult={newCompletion:!!p && !completion,stampsDone:p?mine.size+(completion?0:1):0,stampsTotal:trip.placeIds.length,postCount:trip.postCount+1};
+      const activeDone=mine?mine.docs.filter(d=>trip.placeIds.includes(d.data().placeId) && d.data().photoCount>0).length:0;
+      const completionResult={newCompletion:!!p && !completion,stampsDone:p?activeDone+(completion?0:1):0,stampsTotal:trip.placeIds.length,postCount:trip.postCount+1};
       const uploadId=id(data?.uploadId,'사진 ID');
       tx.create(tripRef(g,t).collection('uploads').doc(uid).collection('items').doc(uploadId),{uid,status:'published',postId:postRef.id,createdAt:now()});
       tx.create(postRef,{uid,placeId:p,feeling,status:'published',revision:0,fingerprint,completionResult,

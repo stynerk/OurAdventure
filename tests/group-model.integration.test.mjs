@@ -9,7 +9,7 @@ import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/ru
 import {doc,getDoc,setDoc,updateDoc,getDocs,query,collection,where} from 'firebase/firestore';
 const require=createRequire(import.meta.url);
 const {createGroupService}=require('../functions/group-service.cjs');
-class HttpsError extends Error {constructor(code,message){super(message);this.code=code;}}
+class HttpsError extends Error {constructor(code,message,details){super(message);this.code=code;this.details=details;}}
 const projectId='demo-our-adventure-v2';
 const auth=(uid,provider='anonymous')=>({uid,token:{firebase:{sign_in_provider:provider}}});
 const owner=auth('v2-owner','google.com'),a=auth('v2-a'),b=auth('v2-b'),outsider=auth('v2-outside');
@@ -322,4 +322,48 @@ test('T10/T11 zero-place and zero-photo ended report remains readable but cannot
   const g=(await group()).groupId;const t=(await trip(g,{places:[]})).tripId;await service.callables.endTrip({groupId:g,tripId:t},owner);
   const report=await service.callables.getTripReport({groupId:g,tripId:t},owner);assert.equal(report.placeCount,0);assert.equal(report.photoCount,0);assert.equal(report.stampCount,0);assert.equal(report.stampTotal,0);assert.deepEqual(report.lines,[]);
   await reject(service.callables.configureShareImage({groupId:g,tripId:t,requestId:randomUUID(),format:'feed',template:'grid',postIds:[]},owner),'invalid-argument');
+});
+
+test('T15 empty place removal is leader-only, idempotent, server-authorized and blocked after closure',async()=>{
+  const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId,[p,q]=await places(g,t),input={groupId:g,tripId:t,placeId:p};
+  for(const method of ['previewTripPlaceRemoval','removeTripPlace']){
+    for(const user of [a,outsider])await reject(service.callables[method]({...input,ownerId:a.uid,confirmationToken:'forged'},user),'permission-denied');
+    await reject(service.callables[method](input,null),'unauthenticated');
+  }
+  const preview=await service.callables.previewTripPlaceRemoval(input,owner);assert.equal(preview.photoCount,0);assert.equal(preview.memberCount,0);
+  const results=await Promise.all([service.callables.removeTripPlace(input,owner),service.callables.removeTripPlace(input,owner)]);
+  assert.equal(results.filter(r=>!r.replayed).length,1);assert.deepEqual(await places(g,t),[q]);
+  assert.equal((await db.doc(`groups/${g}/trips/${t}`).get()).data().placeCount,1);
+  await assertFails(updateDoc(doc(env.authenticatedContext(owner.uid).firestore(),`groups/${g}/trips/${t}/places/${q}`),{status:'deleted'}));
+  await service.callables.endTrip({groupId:g,tripId:t},owner);
+  for(const method of ['previewTripPlaceRemoval','removeTripPlace'])await reject(service.callables[method]({...input,placeId:q},owner),'failed-precondition');
+});
+
+test('T15 AC-2d impact uses distinct authors and published photos; stale or absent confirmation cannot remove a photographed place',async()=>{
+  const g=(await group()).groupId;await member(g,a);await member(g,b);const t=(await trip(g)).tripId,[p,q]=await places(g,t),root=`groups/${g}/trips/${t}`,input={groupId:g,tripId:t,placeId:p};
+  await publish(g,t,p,a);await publish(g,t,p,a);await publish(g,t,p,b);await publish(g,t,q,a);
+  await db.doc(root+'/posts/pending-impact').set({uid:b.uid,placeId:p,status:'pending'});
+  const preview=await service.callables.previewTripPlaceRemoval(input,owner);assert.equal(preview.memberCount,2);assert.equal(preview.photoCount,3);
+  for(const confirmationToken of [undefined,'forged'])await reject(service.callables.removeTripPlace({...input,confirmationToken},owner),'failed-precondition');
+  await publish(g,t,p,b);
+  await reject(service.callables.removeTripPlace({...input,confirmationToken:preview.confirmationToken},owner),'failed-precondition');
+  const beforePosts=(await db.collection(root+'/posts').get()).docs.map(d=>({id:d.id,...d.data()}));
+  const beforeStamps=(await db.collection(root+'/completions').get()).docs.map(d=>({id:d.id,...d.data()}));
+  const latest=await service.callables.previewTripPlaceRemoval(input,owner);assert.equal(latest.photoCount,4);
+  await service.callables.removeTripPlace({...input,confirmationToken:latest.confirmationToken},owner);
+  assert.deepEqual((await db.collection(root+'/posts').get()).docs.map(d=>({id:d.id,...d.data()})),beforePosts);
+  assert.deepEqual((await db.collection(root+'/completions').get()).docs.map(d=>({id:d.id,...d.data()})),beforeStamps);
+  assert.deepEqual(await places(g,t),[q]);await reject(publish(g,t,p,a),'invalid-argument');
+  const afterRemoval=await publish(g,t,q,b);assert.equal(afterRemoval.stampsDone,1);assert.equal(afterRemoval.stampsTotal,1);
+  await service.callables.endTrip({groupId:g,tripId:t},owner);
+  const report=await service.callables.getTripReport({groupId:g,tripId:t},a);assert.equal(report.photoCount,6);assert.equal(report.placeCount,1);assert.equal(report.stampCount,2);
+});
+
+test('T15 concurrent photo finalization and removal serialize without silently accepting an outdated impact',async()=>{
+  const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId,p=(await places(g,t))[0],input={groupId:g,tripId:t,placeId:p};await publish(g,t,p,a);
+  const preview=await service.callables.previewTripPlaceRemoval(input,owner);
+  const results=await Promise.allSettled([service.callables.removeTripPlace({...input,confirmationToken:preview.confirmationToken},owner),publish(g,t,p,a)]);
+  assert.ok(results.some(r=>r.status==='rejected'));
+  if(results[0].status==='fulfilled'){assert.equal(results[1].reason.code,'invalid-argument');assert.equal((await places(g,t)).includes(p),false);}
+  else{assert.equal(results[0].reason.code,'failed-precondition');assert.equal(results[1].status,'fulfilled');assert.equal((await places(g,t)).includes(p),true);}
 });
