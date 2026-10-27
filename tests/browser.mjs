@@ -20,7 +20,7 @@ try{
   await owner.getByRole('heading',{name:'함께하는 탐험을 준비하고 있어요'}).waitFor();
   console.log('PASS: missing Firebase configuration has a usable fallback');
   writeFileSync(configPath,`export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app'};export const useEmulators=true;export const enableIndividualPilot=true;`);
-  await owner.reload();await owner.getByRole('link',{name:'탐험방 만들기',exact:true}).waitFor();
+  await owner.goto(origin+'#legacy');await owner.reload();await owner.getByRole('link',{name:'탐험방 만들기',exact:true}).waitFor();
   // Fake Google credential is accepted only by the Auth emulator; no real account/login.
   await owner.evaluate(async()=>{
     const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js');
@@ -43,13 +43,13 @@ try{
   await a.locator('details').last().locator('summary').click();await a.locator('details').last().getByRole('button').click();
   await Promise.all([waitCount(owner,1),waitCount(a,1),waitCount(b,1)]);
   await b.reload();await waitCount(b,1);
-  await a.goto(origin);await a.getByRole('heading',{name:'내가 참여한 여행'}).waitFor();
+  await a.goto(origin+'#legacy');await a.getByRole('heading',{name:'내가 참여한 여행'}).waitFor();
   await a.getByRole('link',{name:'가족 공동 테스트 · 진행 중',exact:true}).click();await waitCount(a,1);
   await a.evaluate(()=>{
     const key=Object.keys(localStorage).find(k=>k.startsWith('oa-next-rooms-v1:'));
     const ids=JSON.parse(localStorage.getItem(key));ids.push('not-a-member-room');localStorage.setItem(key,JSON.stringify(ids));
   });
-  await a.goto(origin);
+  await a.goto(origin+'#legacy');
   await a.getByRole('link',{name:'가족 공동 테스트 · 진행 중',exact:true}).waitFor();
   assert.equal(await a.locator('#joinedRooms a').count(),1);
   await a.getByRole('link',{name:'가족 공동 테스트 · 진행 중',exact:true}).click();await waitCount(a,1);

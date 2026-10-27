@@ -17,5 +17,5 @@ serverApp.all('/demo-our-adventure/asia-northeast3/:name',(req,res)=>{
 });
 const server=serverApp.listen(5001,'127.0.0.1');await once(server,'listening');
 async function run(file){const proc=spawn(process.execPath,[file],{stdio:'inherit',env:process.env});const [code]=await once(proc,'exit');if(code!==0)throw new Error(`${file} failed (${code})`);}
-try{await run('tests/client.mjs');if(!process.argv.includes('--client-only'))await run('tests/browser.mjs');}
+try{await run('tests/client.mjs');if(process.argv.includes('--groups-ui'))await run('tests/groups-browser.mjs');else if(!process.argv.includes('--client-only'))await run('tests/browser.mjs');}
 finally{server.closeAllConnections();server.close();const {getApps,deleteApp}=functionRequire('firebase-admin/app');await functionRequire('firebase-admin/firestore').getFirestore().terminate();await Promise.all(getApps().map(deleteApp));}

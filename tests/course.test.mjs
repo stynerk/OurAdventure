@@ -15,7 +15,7 @@ test('versioned course reuses all nine legacy quests without changing the root a
   assert.equal(readFileSync('next/course.json','utf8'),readFileSync('functions/course.json','utf8'));
 });
 test('client scripts parse and legacy hidden-screen regression stays fixed',()=>{
-  for(const path of ['next/app.js','scripts/extract-course.mjs','functions/index.cjs','functions/service.cjs'])execFileSync(process.execPath,['--check',path]);
+  for(const path of ['next/app.js','next/groups.mjs','next/creation-requests.mjs','scripts/extract-course.mjs','functions/index.cjs','functions/service.cjs'])execFileSync(process.execPath,['--check',path]);
   assert.match(readFileSync('index.html','utf8'),/\[hidden\]\{display:none!important\}/);
 });
 test('Pages packages only public files and emits production-only config from explicit fields',()=>{
@@ -26,6 +26,7 @@ test('Pages packages only public files and emits production-only config from exp
   assert.equal(existsSync('public/docs'),false);
   assert.equal(existsSync('public/node_modules'),false);
   assert.equal(readFileSync('public/next/session.mjs','utf8'),readFileSync('next/session.mjs','utf8'));
+  for(const file of ['groups.mjs','creation-requests.mjs'])assert.equal(readFileSync('public/next/'+file,'utf8'),readFileSync('next/'+file,'utf8'));
   const output=readFileSync('public/next/firebase-config.js','utf8');
   assert.match(output,/useEmulators=false/);assert.doesNotMatch(output,/privateField|must-not-be-published/);
   execFileSync(process.execPath,['scripts/prepare-pages.mjs'],{env:{...process.env,FIREBASE_WEB_CONFIG:''}});
