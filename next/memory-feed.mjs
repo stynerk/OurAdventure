@@ -1,4 +1,6 @@
 import {photoForm} from './photo-views.mjs';
+import {icon} from './icons.mjs';
+import {avatar} from './ui.mjs';
 import {countBucket} from './analytics.mjs';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const FEED_PAGE_SIZE=12;
@@ -15,7 +17,7 @@ export function createMemoryFeed({app,api,db,photoStorage,current,getUser,call,p
   const valid=s=>state===s && current(s.context) && getUser()?.uid===s.uid;
   const common=s=>({group_id:s.context.groupId,trip_id:s.context.tripId,role:s.group.isOwner?'leader':'member',trip_status:s.closed?'ended':'active'});
   function clear(){state=null;for(const url of urls.values())URL.revokeObjectURL(url);urls.clear();}
-  const rows=s=>s.posts.length?s.posts.map(p=>`<article class="memory-item" data-post="${esc(p.id)}"><h3>${esc(s.names.get(p.uid)||'멤버')} · ${esc(p.placeId?s.places.get(p.placeId)?.name||'여행 장소':'자유 기록')}</h3><div class="memory-photo" data-photo-post="${esc(p.id)}"><span role="status">사진을 불러오고 있어요…</span></div>${p.feeling?`<p class="post-feeling">${esc(p.feeling)}</p>`:''}${!s.closed && p.uid===s.uid?'<div class="row"><button class="secondary" data-memory="edit">느낌 수정</button><button class="danger" data-memory="delete">기록 삭제</button></div><div class="post-editor"></div>':''}</article>`).join(''):'<p>조건에 맞는 추억이 없어요.</p>';
+  const rows=s=>s.posts.length?s.posts.map(p=>`<article class="memory-item" data-post="${esc(p.id)}"><div class="memory-author">${avatar(s.names.get(p.uid)||"멤버")}<h3>${esc(s.names.get(p.uid)||'멤버')}</h3><span class="location-chip">${esc(p.placeId?s.places.get(p.placeId)?.name||'여행 장소':'자유 기록')}</span></div><div class="memory-photo" data-photo-post="${esc(p.id)}"><span role="status">사진을 불러오고 있어요…</span></div>${p.feeling?`<p class="post-feeling">${esc(p.feeling)}</p>`:''}${!s.closed && p.uid===s.uid?`<details class="post-menu"><summary aria-label="내 기록 메뉴">${icon('ellipsis')}</summary><div class="post-actions"><button class="secondary" data-memory="edit">느낌 수정</button><button class="danger" data-memory="delete">기록 삭제</button></div></details><div class="post-editor"></div>`:''}</article>`).join(''):'<p>조건에 맞는 추억이 없어요.</p>';
   async function images(s,version){
     const queue=[...s.posts];
     await Promise.all(Array.from({length:3},async()=>{while(queue.length && valid(s) && s.version===version){
@@ -57,7 +59,7 @@ export function createMemoryFeed({app,api,db,photoStorage,current,getUser,call,p
     }
     const article=button.closest('[data-post]'),post=s.posts.find(p=>p.id===article?.dataset.post);if(!post || post.uid!==s.uid)return;
     if(action==='edit'){
-      const pending=s.edits.get(post.id);
+      const pending=s.edits.get(post.id);article.querySelector('.post-menu')?.removeAttribute('open');
       article.querySelector('.post-editor').innerHTML=`<form data-edit-post="${esc(post.id)}"><label>한 줄 느낌 수정 (선택)<textarea aria-label="한 줄 느낌 수정 (선택)" name="feeling" maxlength="60" rows="2" ${pending?'readonly':''}>${esc(pending?.feeling??post.feeling)}</textarea></label><button>${pending?'같은 수정 다시 저장':'수정 저장'}</button></form>`;return;
     }
     if(action==='delete'){

@@ -1,3 +1,4 @@
+import {auditUi} from './ui-audit.mjs';
 // Real SDK + exported handlers, demo emulators only; no production credentials.
 import {chromium} from 'playwright';
 import {createServer} from 'node:http';
@@ -9,13 +10,14 @@ import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw Error('Demo emulators required');
 const root=process.cwd(),origin='http://127.0.0.1:8080/next/';
-const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','report-views.mjs','share-renderer.mjs','analytics.mjs','analytics-source.mjs','course.json']);
+const files=new Set(['index.html','style.css','icons.mjs','ui.mjs','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','report-views.mjs','share-renderer.mjs','analytics.mjs','analytics-source.mjs','course.json']);
 const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app',storageBucket:'demo-our-adventure.firebasestorage.app'};export const useEmulators=true;";
 const server=createServer((req,res)=>{
   const name=new URL(req.url,origin).pathname.replace(/^\/next\//,'');
   if(name==='firebase-config.js'){res.writeHead(200,{'Content-Type':'text/javascript'});res.end(config);return;}
   if(name==='analytics.mjs'){res.writeHead(200,{'Content-Type':'text/javascript'});res.end("export {countBucket,daysBucket} from './analytics-source.mjs';export async function createAnalytics(){return {setAuthType:()=>{},track:(name,params)=>{(window.__photoEvents||=[]).push({name,params});}};}");return;}
   const file=name===''?'index.html':name;
+  if(/^assets\/(travel-cover-v2\.(webp|jpg)|PretendardVariable\.woff2|Jua-Regular\.ttf)$/.test(file)){res.writeHead(200,{'Content-Type':file.endsWith('.webp')?'image/webp':file.endsWith('.jpg')?'image/jpeg':file.endsWith('.ttf')?'font/ttf':'font/woff2'});res.end(readFileSync(resolve(root,'next',file)));return;}
   if(!files.has(file)){res.writeHead(404);res.end();return;}
   res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':'text/javascript'});
   res.end(readFileSync(resolve(root,'next',file==='analytics-source.mjs'?'analytics.mjs':file)));
@@ -63,7 +65,7 @@ try{
   browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||undefined,args:['--disable-gpu','--renderer-process-limit=2','--js-flags=--max-old-space-size=128']});
   const leader=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true}),member=await browser.newContext({viewport:{width:390,height:844}});
   await sdkCache(leader);await sdkCache(member);const owner=await leader.newPage(),peer=await member.newPage();
-  for(const page of [owner,peer]){await page.addInitScript(()=>{const original=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(text,...args){(window.__exportTexts||=[]).push(String(text));return original.call(this,text,...args);};});page.setDefaultNavigationTimeout(60000);page.on('pageerror',error=>errors.push(error.message));await page.goto(origin);await page.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();}
+  for(const page of [owner,peer]){await page.addInitScript(()=>{const original=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(text,...args){if(this.canvas.width===1080 && [1350,1920].includes(this.canvas.height))(window.__exportTexts||=[]).push(String(text));return original.call(this,text,...args);};});page.setDefaultNavigationTimeout(60000);page.on('pageerror',error=>errors.push(error.message));await page.goto(origin);await page.getByRole('heading',{name:/내 그룹|오늘의 여행이/}).waitFor();}
   await auth(owner,true);await auth(peer);
   const groupId=(await request(owner,'createGroup',{title:'리포트 검증 그룹',requestId:crypto.randomUUID()})).groupId;
   const {token}=await request(owner,'createGroupInvite',{groupId});await request(peer,'joinGroup',{token,nickname:'별빛'});
@@ -84,6 +86,7 @@ try{
     await page.waitForFunction(()=>document.querySelectorAll('.report-photo img').length===2);
     assert.equal(await page.locator(`[data-report-photo="${representative.postId}"] img`).count(),1);assert.equal(await page.getByText('PRIVATE_PENDING',{exact:true}).count(),0);
   }
+  await auditUi(owner,'report');
   await owner.screenshot({path:'test-results/report-leader-mobile.png',fullPage:true});
   assert.equal(await peer.getByRole('link',{name:'인스타 이미지 만들기',exact:true}).count(),0);
   await peer.goto(origin+`#trip/${groupId}/${tripId}/share`);await peer.getByRole('heading',{name:'리더만 결과 이미지를 구성할 수 있어요',exact:true}).waitFor();assert.equal(await peer.locator('[data-report="save"]').count(),0);
@@ -107,7 +110,7 @@ try{
   console.log('PASS REPORT: actual Storage read failure blocks PNG and preserves selected photos for retry');
   let downloads=0;owner.on('download',()=>downloads++);
   for(const format of ['feed','story'])for(const template of ['grid','board']){
-    await owner.getByLabel('이미지 크기',{exact:true}).selectOption(format);await owner.getByLabel('템플릿',{exact:true}).selectOption(template);
+    await owner.getByLabel('이미지 크기',{exact:true}).selectOption(format,{force:true});await owner.getByLabel('템플릿',{exact:true}).selectOption(template,{force:true});
     assert.equal(await owner.locator('#share-preview img').count(),0);assert.equal(await owner.locator('[data-report="save"]').isDisabled(),true);
     await owner.getByRole('button',{name:'미리보기 만들기',exact:true}).click();
     await owner.locator('#share-preview img').waitFor();

@@ -1,5 +1,7 @@
 import {readPending,prepareRequest,finishRequest} from './creation-requests.mjs';
 import {createTripViews} from './trip-views.mjs';
+import {icon} from './icons.mjs';
+import {cover} from './ui.mjs';
 
 export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,say,isCurrent,storage,track=()=>{}}) {
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -35,7 +37,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
     pendingPanel(context,'group');
   }
   async function groupList(context) {
-    if(!context.uid){app.innerHTML=`<section class="card"><h1>내 그룹</h1><p>같은 사람들과 새로운 여행을 쌓아보세요.</p>${login()}</section><a href="#legacy">기존 공동 탐험방 열기</a>`;return;}
+    if(!context.uid){app.innerHTML=`<section class="login-cover" data-login-cover>${cover()}<div class="login-content"><p class="eyebrow">함께 떠나는 즐거움</p><h1>오늘의 여행이,<br>우리의 추억으로.</h1><p>사진 한 장, 도장 하나. 함께한 순간을 모아요.</p><button class="google-login" data-action="login">${icon('log-in')}Google로 시작하기</button><p class="invite-hint">초대받았다면 받은 링크로 바로 참여해요.</p></div></section>`;return;}
     const result=await api.getDocsFromServer(api.query(api.collection(db,'groups'),api.where('memberIds','array-contains',context.uid)));
     if(!current(context))return;
     const groups=result.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>timestamp(b.createdAt)-timestamp(a.createdAt));
@@ -46,8 +48,8 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
     const trips=await api.getDocsFromServer(api.collection(db,'groups',g.id,'trips'));
     if(!current(context))return;
     const rows=trips.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>timestamp(b.createdAt)-timestamp(a.createdAt));
-    const section=(closed,title)=>`<section class="card"><h2>${title}</h2>${rows.filter(t=>(t.status==='closed')===closed).map(t=>`<article class="trip-list-item"><span class="badge">${status(t)}</span><h3><a href="#trip/${esc(g.id)}/${esc(t.id)}">${esc(t.title)}</a></h3><p>${esc(t.destination)} · ${esc(t.startDate)} ~ ${esc(t.endDate)}</p><p class="muted">장소 ${Number(t.placeCount)||0}개 · 기록 ${Number(t.postCount)||0}개</p></article>`).join('')||`<p>${closed?'종료된 여행이 없어요.':'진행 중인 여행이 없어요.'}</p>`}</section>`;
-    app.innerHTML=`<section class="card"><a href="#groups">← 내 그룹</a><h1>${esc(g.title)}</h1><p>멤버 ${Number(g.memberCount)||0}명 / 10명 · 여행 ${rows.length}개</p>${g.isOwner?`<a class="button" href="#trip-create/${esc(g.id)}">새 여행 만들기</a>`:''}</section>${g.isOwner?'<section class="card"><h2>멤버 초대</h2><p>방장 포함 최대 10명이 함께해요. 재발급하면 이전 링크는 새 참여에 사용할 수 없고, 기존 멤버는 유지돼요.</p><button data-v2-action="create-invite">초대 링크 생성·재발급</button><div id="v2-invite"></div></section>':''}${section(false,'진행 중인 여행')}${section(true,'지난 여행')}<button class="secondary" data-v2-action="refresh">목록 새로고침</button>`;
+    const section=(closed,title)=>`<section class="card"><h2>${title}</h2>${rows.filter(t=>(t.status==='closed')===closed).map(t=>`<article class="trip-list-item ${closed?'is-past':'is-active'}">${cover("trip-thumb")}<span class="badge">${status(t)}</span><h3><a href="#trip/${esc(g.id)}/${esc(t.id)}">${esc(t.title)}</a></h3><p>${esc(t.destination)} · ${esc(t.startDate)} ~ ${esc(t.endDate)}</p><p class="muted">장소 ${Number(t.placeCount)||0}개 · 기록 ${Number(t.postCount)||0}개</p></article>`).join('')||`<p>${closed?'종료된 여행이 없어요.':'진행 중인 여행이 없어요.'}</p>`}</section>`;
+    app.innerHTML=`<section class="card"><a href="#groups">← 내 그룹</a><h1>${esc(g.title)}</h1><div class="avatar-stack" aria-hidden="true">${Array.from({length:Math.min(3,Number(g.memberCount)||0)},()=>`<span class="avatar">${icon("user")}</span>`).join('')}</div><p>멤버 ${Number(g.memberCount)||0}명 / 10명 · 여행 ${rows.length}개</p>${g.isOwner?`<a class="button ink new-trip-button" href="#trip-create/${esc(g.id)}">${icon("plus")}새 여행 만들기</a>`:''}</section>${g.isOwner?'<section class="card"><h2>멤버 초대</h2><p>방장 포함 최대 10명이 함께해요. 재발급하면 이전 링크는 새 참여에 사용할 수 없고, 기존 멤버는 유지돼요.</p><button data-v2-action="create-invite">초대 링크 생성·재발급</button><div id="v2-invite"></div></section>':''}${section(false,'진행 중인 여행')}${section(true,'지난 여행')}<button class="secondary" data-v2-action="refresh">목록 새로고침</button>`;
   }
   function inviteUnavailable(state) {
     app.innerHTML=`<section class="card"><h1>${state==='full'?'그룹 정원이 모두 찼어요':'초대 링크를 확인해주세요'}</h1><p>${state==='full'?'최대 10명까지 참여할 수 있어요. 리더에게 문의해주세요.':'유효하지 않거나 재발급된 링크예요. 리더에게 새 링크를 요청해주세요.'}</p><a href="#groups">내 그룹으로</a></section>`;
@@ -57,7 +59,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
     if(!current(context))return;
     if(summary.state==='member'){location.hash=`group/${summary.groupId}`;return;}
     if(summary.state!=='ready'){inviteUnavailable(summary.state);return;}
-    app.innerHTML=`<section class="card"><h1>${esc(summary.title)}</h1><h2>그룹에 초대받았어요</h2><form id="v2-group-join"><label>탐험가 별칭<input name="nickname" required maxlength="24" autocomplete="off" placeholder="실명 대신 별칭을 써주세요"></label><p class="muted">이 브라우저의 참여 기록을 이어서 사용해요. 다른 기기에서는 이어서 쓰기 어려울 수 있어요. 브라우저 데이터를 지우거나 로그아웃하면 익명 기록에 다시 연결하기 어려워요.</p><button>그룹 참여하기</button></form></section>`;
+    app.innerHTML=`<section class="card"><h1>${esc(summary.title)}</h1><h2>그룹에 초대받았어요</h2>${cover("invite-cover")}<form id="v2-group-join"><label>탐험가 별칭<input name="nickname" required maxlength="24" autocomplete="off" placeholder="실명 대신 별칭을 써주세요"></label><p class="muted">이 브라우저의 참여 기록을 이어서 사용해요. 다른 기기에서는 이어서 쓰기 어려울 수 있어요. 브라우저 데이터를 지우거나 로그아웃하면 익명 기록에 다시 연결하기 어려워요.</p><button>그룹 참여하기</button></form></section>`;
   }
   async function tripForm(context) {
     const g=await getGroup(context);if(!current(context))return;

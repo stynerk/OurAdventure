@@ -26,32 +26,32 @@ export function renderShareImage(canvas,config,images){
   for(const photo of config.photos)if(!images.get(photo.id))throw Error('선택한 사진을 모두 불러와야 저장할 수 있어요.');
   canvas.width=layout.width;canvas.height=layout.height;const ctx=canvas.getContext('2d');
   if(!ctx)throw Error('이 브라우저에서 이미지를 만들지 못했어요.');
-  ctx.fillStyle='#f7f2e7';ctx.fillRect(0,0,layout.width,layout.height);
-  ctx.fillStyle='#284e3f';ctx.font='bold 62px Arial, sans-serif';label(ctx,config.includeTripTitle===true?config.tripTitle:'Our Adventure',64,112,952);
-  ctx.font='24px Arial, sans-serif';ctx.fillStyle='#677363';ctx.fillText(config.template==='grid'?'함께 남긴 추억':'우리가 모은 도장',66,160);
-  ctx.font='22px Arial, sans-serif';ctx.fillText(`사진 ${config.photos.length}장 · 도장 ${config.stampCount}/${config.stampTotal}`,66,202);
+  ctx.fillStyle='#f4f5f7';ctx.fillRect(0,0,layout.width,layout.height);
+  ctx.fillStyle='#111827';ctx.font='bold 62px Pretendard, sans-serif';label(ctx,config.includeTripTitle===true?config.tripTitle:'Our Adventure',64,112,952);
+  ctx.font='24px Pretendard, sans-serif';ctx.fillStyle='#626a79';ctx.fillText(config.template==='grid'?'함께 남긴 추억':'우리가 모은 도장',66,160);
+  ctx.font='22px Pretendard, sans-serif';ctx.fillText(`사진 ${config.photos.length}장 · 도장 ${config.stampCount}/${config.stampTotal}`,66,202);
   for(const rect of layout.photos){
     ctx.save();rounded(ctx,rect.x,rect.y,rect.w,rect.h);ctx.clip();ctx.fillStyle='#ffffff';ctx.fillRect(rect.x,rect.y,rect.w,rect.h);cover(ctx,images.get(rect.id),rect);ctx.restore();
-    ctx.fillStyle='#284e3f';ctx.font=`${config.template==='grid'?26:20}px Arial, sans-serif`;label(ctx,rect.alias,rect.x+16,rect.y+rect.h-15,rect.w-32);
+    ctx.fillStyle='#111827';ctx.font=`${config.template==='grid'?26:20}px Pretendard, sans-serif`;label(ctx,rect.alias,rect.x+16,rect.y+rect.h-15,rect.w-32);
   }
   if(config.template==='board'){
     const left=240,cell=(layout.width-64-left)/Math.max(config.placeCount,1);
-    ctx.font='18px Arial, sans-serif';ctx.fillStyle='#677363';
+    ctx.font='18px Pretendard, sans-serif';ctx.fillStyle='#626a79';
     for(let i=0;i<config.placeCount;i++){ctx.textAlign='center';ctx.fillText(String(i+1).padStart(2,'0'),left+cell*(i+.5),layout.boardY);}
     ctx.textAlign='left';
     config.members.forEach((member,index)=>{
       const cy=layout.boardY+30+layout.rowHeight*index+layout.rowHeight/2;
-      ctx.fillStyle='#284e3f';ctx.font='22px Arial, sans-serif';label(ctx,member.alias,64,cy+7,160);
-      if(!config.placeCount){ctx.font='20px Arial, sans-serif';ctx.fillText('0 / 0',left,cy+7);}
+      ctx.fillStyle='#111827';ctx.font='22px Pretendard, sans-serif';label(ctx,member.alias,64,cy+7,160);
+      if(!config.placeCount){ctx.font='20px Pretendard, sans-serif';ctx.fillText('0 / 0',left,cy+7);}
       for(let i=1;i<=config.placeCount;i++){
         const x=left+cell*(i-.5),done=member.stampIndices.includes(i),radius=Math.min(21,cell*.33,layout.rowHeight*.33);
-        ctx.beginPath();ctx.arc(x,cy,radius,0,Math.PI*2);ctx.fillStyle=done?'#365f49':'#e5e8db';ctx.fill();
+        ctx.beginPath();ctx.arc(x,cy,radius,0,Math.PI*2);ctx.fillStyle=done?'#d63e1b':'#e9ecf1';ctx.fill();
         if(done){ctx.beginPath();ctx.moveTo(x-radius*.45,cy);ctx.lineTo(x-radius*.08,cy+radius*.35);ctx.lineTo(x+radius*.48,cy-radius*.38);ctx.lineWidth=3;ctx.strokeStyle='#ffffff';ctx.stroke();}
-        else{ctx.font='16px Arial, sans-serif';ctx.fillStyle='#778473';ctx.textAlign='center';ctx.fillText(String(i),x,cy+5);ctx.textAlign='left';}
+        else{ctx.font='16px Jua, sans-serif';ctx.fillStyle='#626a79';ctx.textAlign='center';ctx.fillText(String(i),x,cy+5);ctx.textAlign='left';}
       }
     });
   }
-  ctx.fillStyle='#677363';ctx.font='18px Arial, sans-serif';ctx.fillText('Our Adventure',64,layout.footerY);
+  ctx.fillStyle='#626a79';ctx.font='18px Pretendard, sans-serif';ctx.fillText('Our Adventure',64,layout.footerY);
   return layout;
 }
 export async function sharePng(canvas){

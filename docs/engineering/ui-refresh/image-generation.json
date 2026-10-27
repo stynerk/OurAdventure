@@ -1,0 +1,25 @@
+{
+  "tool": "OpenAI built-in image_gen",
+  "date": "2026-10-28",
+  "prompt": "Use case: photorealistic-natural. Asset type: full-screen mobile travel memory web app cover, portrait 1536 x 3328, 9:19.5 composition. A joyful fictional family-and-friends group of four travelers, adults and a child, seen from behind at a comfortable distance, walking together on a gentle meadow trail toward rounded green hills and a soft blue sky in warm daylight. One adult casually holds a small blank paper map/stamp card, no readable writing. Candid premium editorial travel photography, warm natural sunlight, soft orange, sky blue and sage green accents in clothing, beautiful believable landscape. People and all meaningful subjects in the upper 55-60 percent of the composition; lower 40 percent is quiet softly blurred grass and path with very little detail for white login text over a dark scrim. Keep faces small and unrecognizable, relaxed safe walking, no dangerous poses. This is an invented landscape, no identifiable real landmark, no existing brand, no logos, no watermark, no typography, no UI. Natural photo texture, restrained attractive colors, gentle optimism. Generate a tall cover at least 1170 x 2532 pixels.",
+  "source": {
+    "width": 780,
+    "height": 2017,
+    "handling": "Generated source copied into the workspace; original retained. Resampled/cropped for the requested export size."
+  },
+  "exports": [
+    "next/assets/travel-cover-v2.webp",
+    "next/assets/travel-cover-v2.jpg"
+  ],
+  "rights": {
+    "commercialUse": "Use in this commercial web app is subject to the applicable OpenAI service agreement and policies. No separate stock-photo license was used; exclusivity or statutory copyright protection is not guaranteed.",
+    "source": "https://openai.com/policies/services-agreement/"
+  },
+  "constraints": [
+    "fictional people and landscape",
+    "small/back-facing faces",
+    "no real landmark, brand or logo",
+    "simple lower 40 percent",
+    "decorative image with empty alt"
+  ]
+}
