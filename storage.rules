@@ -12,7 +12,7 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/groups/$(g)/trips/$(t)/uploads/$(uid)/items/$(photo)).data.status == 'published';
     }
     match /groups/{g}/trips/{t}/uploads/{uid}/{photo} {
-      allow get: if member(g) && (request.auth.uid == uid || published(g,t,uid,photo));
+      allow get: if member(g) && (published(g,t,uid,photo) || (request.auth.uid == uid && !firestore.exists(/databases/(default)/documents/groups/$(g)/trips/$(t)/uploads/$(uid)/items/$(photo))));
       allow create: if resource == null && member(g) && request.auth.uid == uid && openTrip(g,t)
         && photo.matches('[A-Za-z0-9_-]{16,128}') && request.resource.size > 0
         && request.resource.size <= 5 * 1024 * 1024

@@ -34,9 +34,10 @@ function fixture({owner=true,closed=false}={}) {
     if(path.endsWith('/places'))return docs([{id:'p1',name:'첫 장소',icon:'📍'},{id:'p2',name:'둘째 장소'}]);
     if(path.endsWith('/members'))return docs([{id:'a',displayName:'같은 별칭'},{id:'b',displayName:'같은 별칭'}]);
     if(path.endsWith('/completions'))return docs([{id:'ca',uid:'a',placeId:'p1',photoCount:1},{id:'cb',uid:'b',placeId:'p2',photoCount:1}]);
-    assert.deepEqual(query.constraints,[{where:['status','==','published']},{limit:50}]);
+    assert.deepEqual(query.constraints,[{where:['status','==','published']},{orderBy:['createdAt','desc']},{orderBy:['__name__','desc']},{limit:12}]);
     return docs([{id:'post',uid:'b',placeId:null,status:'published',feeling:'<img src=x onerror=alert(1)>',photo:{objectPath:'PRIVATE_STORAGE_PATH'}}]);
   }};
+  api.orderBy=(...args)=>({orderBy:args});api.documentId=()=>'__name__';
   const views=createTripViews({app,api,db:{},current:context=>active && context===expectedContext,getUser:()=>({uid:'a'}),track:(name,params)=>events.push({name,params}),activate:()=>activated++});
   const open=tab=>{expectedContext={groupId:'g',tripId:'t',tab,placeId:'p1'};return views.open(expectedContext,{title:'그룹',isOwner:owner});};
   return {app,api,open,calls,events,deactivate:()=>{active=false;},activated:()=>activated};
@@ -53,8 +54,8 @@ test('closed trips retain all four routes and personal progress without write co
     if(tab==='stamps')assert.match(f.app.innerHTML,/내 스탬프 1\/2/);
   }
   assert.equal(f.activated(),4);
-  assert.deepEqual(f.events.map(e=>e.params.screen_name),TRIP_TABS);
-  assert.ok(f.events.every(e=>e.name==='screen_view' && e.params.trip_status==='ended'));
+  assert.deepEqual(f.events.filter(e=>e.name==='screen_view').map(e=>e.params.screen_name),TRIP_TABS);
+  assert.ok(f.events.every(e=>e.params.trip_status==='ended'));
   assert.match(f.app.innerHTML,/&lt;img/);assert.doesNotMatch(f.app.innerHTML,/<img|PRIVATE_STORAGE_PATH/);
 });
 test('closed leader direct management route returns read-only map without management actions',async()=>{

@@ -9,7 +9,7 @@ import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw Error('Demo emulators required');
 const root=process.cwd(),origin='http://127.0.0.1:8080/next/';
-const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','analytics.mjs','analytics-source.mjs','course.json']);
+const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','analytics.mjs','analytics-source.mjs','course.json']);
 const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app',storageBucket:'demo-our-adventure.firebasestorage.app'};export const useEmulators=true;";
 const server=createServer((req,res)=>{
   const name=new URL(req.url,origin).pathname.replace(/^\/next\//,'');
@@ -22,7 +22,8 @@ const server=createServer((req,res)=>{
 }).listen(8080,'127.0.0.1');
 await once(server,'listening');
 const admin=initializeApp({projectId:'demo-our-adventure'},'groups-browser'),db=getFirestore(admin);
-let browser;
+let browser;const errors=[];
+async function sdkCache(context){if(!process.env.FIREBASE_BROWSER_SDK_CACHE)return;await context.route('https://www.gstatic.com/firebasejs/13.0.0/*.js',async route=>{const name=new URL(route.request().url()).pathname.split('/').at(-1);if(!/^firebase-(app|auth|firestore|functions|storage)\.js$/.test(name)){await route.continue();return;}await route.fulfill({status:200,contentType:'text/javascript',headers:{'access-control-allow-origin':'*'},body:readFileSync(resolve(process.env.FIREBASE_BROWSER_SDK_CACHE,name))});});}
 async function auth(page,google=false) {
   await page.evaluate(async google=>{
     const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js');
@@ -45,8 +46,9 @@ async function blankTrip(page) {
 try {
   browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||undefined});
   const leader=await browser.newContext({viewport:{width:390,height:844}}),member=await browser.newContext({viewport:{width:390,height:844}});
-  const owner=await leader.newPage(),peer=await member.newPage(),errors=[];
-  for(const page of [owner,peer])page.on('pageerror',e=>errors.push(e.message));
+  await sdkCache(leader);await sdkCache(member);
+  const owner=await leader.newPage(),peer=await member.newPage();
+  for(const page of [owner,peer]){page.setDefaultNavigationTimeout(60000);page.on('pageerror',e=>{errors.push(e.message);console.error('UI error:',e.message);});}
   await owner.goto(origin);await owner.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();
   for(const width of [320,390]){
     await owner.setViewportSize({width,height:844});
@@ -230,6 +232,64 @@ try {
   console.log('PASS: actual Storage upload stays private until server confirmation; failed upload/save preserves input; lost-response and repeated submits make one photo/stamp');
   console.log('PASS: A completes without changing B, empty feeling works, second photo keeps one stamp, camera/gallery and safe GA event sequence verified');
 
+
+  // T9: actual authenticated images, optional free records and server-owned mutations.
+  await owner.goto(origin+`#trip/${groupId}/${openTripId}/memory`);
+  await owner.getByRole('heading',{name:'함께 남긴 추억',exact:true}).waitFor();
+  await owner.waitForFunction(()=>document.querySelectorAll('.memory-photo img').length===2);
+  assert.equal(await owner.locator('.memory-item').count(),2);
+  const firstStampId=savedPhotos.docs[0].id,secondStampId=savedPhotos.docs[1].id;
+  await owner.locator(`[data-post="${firstStampId}"] [data-memory="edit"]`).click();
+  await owner.getByLabel('한 줄 느낌 수정 (선택)',{exact:true}).fill('수정한 여행 느낌');
+  let editAbort=true;const editBodies=[];
+  await owner.route('**/editPost',async route=>{if(route.request().method()!=='POST'){await route.continue();return;}editBodies.push(route.request().postDataJSON().data);if(editAbort){editAbort=false;await route.fetch();await route.abort('failed');}else await route.continue();});
+  await owner.getByRole('button',{name:'수정 저장',exact:true}).click();
+  await owner.waitForFunction(()=>document.querySelector('[data-edit-post] button')?.disabled===false);
+  assert.equal(await owner.getByLabel('한 줄 느낌 수정 (선택)',{exact:true}).inputValue(),'수정한 여행 느낌');
+  await owner.getByRole('button',{name:'수정 저장',exact:true}).click();
+  await owner.getByText('수정한 여행 느낌',{exact:true}).waitFor();await owner.unroute('**/editPost');
+  assert.equal(new Set(editBodies.map(b=>b.requestId)).size,1);
+  await peer.goto(origin+`#trip/${groupId}/${openTripId}/memory`);await peer.getByRole('heading',{name:'함께 남긴 추억',exact:true}).waitFor();
+  assert.equal(await peer.locator('[data-memory="edit"],[data-memory="delete"]').count(),0);
+  await peer.getByText('자유 기록 남기기',{exact:true}).click();
+  await peer.waitForFunction(()=>!document.querySelector('#photo-stamp fieldset')?.disabled && !document.querySelector('#photo-stamp button')?.disabled);
+  await peer.getByLabel('사진 선택',{exact:true}).setInputFiles({name:'free-test.png',mimeType:'image/png',buffer:image.buffer});
+  await peer.getByRole('button',{name:'자유 기록 저장',exact:true}).click();
+  await peer.getByText('자유 기록이 저장됐어요.',{exact:true}).waitFor();
+  const freeDocs=await db.collection(photoRoot+'/posts').where('uid','==',peerUid).get();assert.equal(freeDocs.size,1);
+  const freeId=freeDocs.docs[0].id;assert.equal(freeDocs.docs[0].data().placeId,null);assert.equal(freeDocs.docs[0].data().feeling,'');
+  assert.equal((await db.collection(photoRoot+'/completions').where('uid','==',peerUid).get()).size,0);
+  assert.equal(await peer.locator('.memory-item').first().getAttribute('data-post'),freeId);
+  await peer.getByLabel('장소별',{exact:true}).selectOption(photoPlace);await peer.waitForFunction(()=>document.querySelectorAll('.memory-item').length===2);
+  await peer.getByLabel('사람별',{exact:true}).selectOption(peerUid);await peer.getByText('조건에 맞는 추억이 없어요.',{exact:true}).waitFor();
+  await peer.getByLabel('장소별',{exact:true}).selectOption('free');await peer.waitForFunction(()=>document.querySelectorAll('.memory-item').length===1);
+  await peer.waitForFunction(()=>document.querySelectorAll('.memory-photo img').length===1);
+  assert.equal(await peer.locator('.memory-item').first().getAttribute('data-post'),freeId);
+  await peer.screenshot({path:'test-results/t9-filtered-memory-mobile.png',fullPage:true});
+  const mutations=await owner.evaluate(async({g,t,id})=>{const f=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-functions.js'),functions=f.getFunctions(undefined,'asia-northeast3');const out=[];for(const name of ['editPost','deletePost']){try{await f.httpsCallable(functions,name)({groupId:g,tripId:t,postId:id,requestId:crypto.randomUUID(),revision:0,feeling:'타인 변경 시도'});out.push('allowed');}catch(e){out.push(e.code);}}return out;},{g:groupId,t:openTripId,id:freeId});
+  assert.deepEqual(mutations,['functions/permission-denied','functions/permission-denied']);
+  await owner.getByRole('button',{name:'추억 새로고침',exact:true}).click();
+  await owner.waitForFunction(()=>document.querySelectorAll('.memory-photo img').length===3);
+  assert.equal(await owner.locator('[data-trip-post-count]').textContent(),'3');
+  await owner.screenshot({path:'test-results/t9-memory-feed-mobile.png',fullPage:true});
+  // More than one page of controlled published fixtures, with equal timestamps, tests cursor ties.
+  const batch=db.batch();for(let i=0;i<13;i++){batch.set(db.doc(photoRoot+'/posts/paging-'+String(i).padStart(2,'0')),{uid:peerUid,placeId:null,status:'published',feeling:'페이지 검증 '+i,revision:0,photo:freeDocs.docs[0].data().photo,createdAt:FieldValue.serverTimestamp()});}batch.update(db.doc(photoRoot),{postCount:16});await batch.commit();
+  await owner.getByRole('button',{name:'추억 새로고침',exact:true}).click();await owner.waitForFunction(()=>document.querySelectorAll('.memory-item').length===12);
+  await owner.getByRole('button',{name:'추억 더 보기',exact:true}).click();await owner.waitForFunction(()=>document.querySelectorAll('.memory-item').length===16);
+  const ids=await owner.locator('.memory-item').evaluateAll(nodes=>nodes.map(n=>n.dataset.post));assert.equal(new Set(ids).size,16);
+  await owner.getByLabel('장소별',{exact:true}).selectOption(photoPlace);await owner.waitForFunction(()=>document.querySelectorAll('.memory-item').length===2);
+  for(const id of [firstStampId,secondStampId]){owner.once('dialog',dialog=>dialog.accept());await owner.locator(`[data-post="${id}"] [data-memory="delete"]`).click();await owner.waitForFunction(id=>!document.querySelector(`[data-post="${id}"]`),id);}
+  await owner.getByText('기록을 삭제했어요. 이 장소의 내 스탬프는 미완료예요.',{exact:true}).waitFor();
+  await owner.screenshot({path:'test-results/t9-last-stamp-deleted-mobile.png',fullPage:true});
+  assert.equal((await db.collection(photoRoot+'/completions').where('uid','==',ownerUid).get()).size,0);
+  assert.ok((await readPhoto(peer,savedPhotos.docs[0].data().photo.objectPath)).code);
+  await owner.getByRole('link',{name:'스탬프',exact:true}).click();await owner.getByRole('heading',{name:'내 스탬프 0/1',exact:true}).waitFor();
+  const t9Events=[...await owner.evaluate(()=>window.__photoEvents||[]),...await peer.evaluate(()=>window.__photoEvents||[])];
+  assert.equal(t9Events.filter(e=>e.name==='free_post_create').length,1);assert.equal(t9Events.filter(e=>e.name==='post_delete').length,2);assert.ok(t9Events.some(e=>e.name==='feed_view'));
+  assert.doesNotMatch(JSON.stringify(t9Events.filter(e=>['free_post_create','post_delete','feed_view'].includes(e.name))),/修|수정한 여행 느낌|free-test.png|objectPath|member_id|place_id/);
+  console.log('PASS T9: authenticated photo feed, newest order, combined place/person filters and cursor pagination without duplicate IDs');
+  console.log('PASS T9: optional free post creates no stamp; own edit survives lost response; leader cannot mutate another author; deleting last photo removes only own stamp');
+
   const invoke=async(page,name,data)=>page.evaluate(async({name,data})=>{
     const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-functions.js');
     try{return {data:(await sdk.httpsCallable(sdk.getFunctions(undefined,'asia-northeast3'),name)(data)).data};}catch(error){return {code:error.code};}
@@ -252,7 +312,7 @@ try {
   for(const page of [owner,peer]){
     await page.goto(origin+`#trip/${groupId}/${openTripId}/map`);await page.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();
     const nav=page.getByRole('navigation',{name:'여행 화면'});
-    for(const [label,heading] of [['코스','여행 코스'],['스탬프',page===owner?'내 스탬프 1/1':'내 스탬프 0/1'],['추억','함께 남긴 추억'],['지도','여행 지도']]){
+    for(const [label,heading] of [['코스','여행 코스'],['스탬프','내 스탬프 0/1'],['추억','함께 남긴 추억'],['지도','여행 지도']]){
       await nav.getByRole('link',{name:label,exact:true}).click();await page.getByRole('heading',{name:heading,exact:true}).waitFor();
       assert.equal(await page.getByRole('link',{name:'여행 관리',exact:true}).count(),0);
       assert.equal(await page.locator('form,input[type=file],button[data-trip-action="end"]').count(),0);
@@ -270,7 +330,7 @@ try {
   console.log('PASS: member management controls absent, direct create route denied, closed-trip reads and outsider denial');
 
   // Group details may be introduced by a valid invite, but a full/invalid state must clear them.
-  const outsiderContext=await browser.newContext({viewport:{width:320,height:740}}),stranger=await outsiderContext.newPage();
+  const outsiderContext=await browser.newContext({viewport:{width:320,height:740}});await sdkCache(outsiderContext);const stranger=await outsiderContext.newPage();
   stranger.on('pageerror',e=>errors.push(e.message));
   await stranger.goto(inviteLink);await stranger.getByRole('heading',{name:'그룹에 초대받았어요',exact:true}).waitFor();
   await db.runTransaction(async tx=>{
@@ -304,6 +364,6 @@ try {
   console.log('PASS: full race clears introduction; full, malformed and revoked links expose no group content; rotation preserves members');
   console.log('PASS: header brand and badge do not overlap at 320px and 390px');
   console.log('Physical mobile, production OAuth/Functions and visual font quality remain untested.');
-} finally {
+} catch(error){console.error('Browser page errors:',errors);if(browser){let i=0;for(const context of browser.contexts())for(const page of context.pages()){await page.screenshot({path:`test-results/t9-browser-failure-${i++}.png`,fullPage:true}).catch(()=>{});console.error('Memory diagnostics:',await page.locator('.post-editor').count(),await page.locator('[data-edit-post]').count(),await page.locator('#message').textContent().catch(()=>''),await page.locator('#app').innerText().catch(()=>''));}}throw error;} finally {
   await browser?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(admin);
 }

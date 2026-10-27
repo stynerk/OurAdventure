@@ -71,6 +71,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
     await tripViews.open(context,group);
   }
   async function open(params,version) {
+    tripViews.clearMemory();
     const context={...params,version,uid:getUser()?.uid};active=context;
     try {
       if(params.view==='group-join')await inviteView(context);

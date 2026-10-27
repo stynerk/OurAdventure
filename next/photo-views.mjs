@@ -1,8 +1,8 @@
 import {makePhotoAttempt,savePhotoAttempt,validatePhoto,lineBucket,uploadBucket} from './photo-upload.mjs';
 import {countBucket} from './analytics.mjs';
 import {readPhotoDraft,storePhotoDraft,removePhotoDraft,clearPhotoDrafts} from './photo-drafts.mjs';
-export const photoForm=()=>'<form id="photo-stamp"><fieldset><legend>사진으로 내 스탬프 남기기</legend><label>사진 촬영<input type="file" name="camera" accept="image/jpeg,image/png,image/webp" capture="environment"></label><label>사진 선택<input type="file" name="gallery" accept="image/jpeg,image/png,image/webp"></label><p class="muted">JPEG·PNG·WebP · 사진당 5MiB 이하</p><div id="photo-preview"></div><label>한 줄 느낌 (선택)<textarea name="feeling" rows="2" maxlength="60" placeholder="오늘의 느낌을 60자 안으로 남겨주세요"></textarea></label></fieldset><button type="submit">사진 저장하고 스탬프 받기</button><p id="photo-status" role="status" aria-live="polite"></p></form>';
-export function createPhotoViews({app,api,photoStorage,getUser,current,call,perform,track}) {
+export const photoForm=(mode='stamp')=>'<form id="photo-stamp"><fieldset><legend>사진으로 내 스탬프 남기기</legend><label>사진 촬영<input type="file" name="camera" accept="image/jpeg,image/png,image/webp" capture="environment"></label><label>사진 선택<input type="file" name="gallery" accept="image/jpeg,image/png,image/webp"></label><p class="muted">JPEG·PNG·WebP · 사진당 5MiB 이하</p><div id="photo-preview"></div><label>한 줄 느낌 (선택)<textarea name="feeling" rows="2" maxlength="60" placeholder="오늘의 느낌을 60자 안으로 남겨주세요"></textarea></label></fieldset><button type="submit">사진 저장하고 스탬프 받기</button><p id="photo-status" role="status" aria-live="polite"></p></form>'.replace('사진으로 내 스탬프 남기기',mode==='free'?'장소 없이 자유 기록 남기기':'사진으로 내 스탬프 남기기').replace('사진 저장하고 스탬프 받기',mode==='free'?'자유 기록 저장':'사진 저장하고 스탬프 받기');
+export function createPhotoViews({app,api,photoStorage,getUser,current,call,perform,track,onSaved=async()=>{}}) {
   const drafts=new Map();let active=null;
   const valid=()=>active && current(active.context) && active.uid===getUser()?.uid;
   const visible=state=>valid() && active.key===state.key;
@@ -19,7 +19,7 @@ export function createPhotoViews({app,api,photoStorage,getUser,current,call,perf
     if(event.target.id!=='photo-stamp')return;event.preventDefault();if(!valid())return;
     const state=active,draft=drafts.get(state.key),form=event.target;
     if(draft.restoring)return;
-    try{if(!draft.attempt)draft.attempt=makePhotoAttempt({...state.context,uid:state.uid,file:draft.file,feeling:form.elements.feeling.value});}
+    try{if(!draft.attempt)draft.attempt=makePhotoAttempt({...state.context,placeId:state.context.placeId??null,uid:state.uid,file:draft.file,feeling:form.elements.feeling.value});}
     catch(error){status(error.message);return;}
     form.querySelector('fieldset').disabled=true;
     perform(async()=>{
@@ -36,12 +36,13 @@ export function createPhotoViews({app,api,photoStorage,getUser,current,call,perf
           finalize:data=>call('finalizePhoto',data),stage:stage=>{if(visible(state))status(stage==='upload'?'사진을 업로드하고 있어요…':'업로드 완료 · 스탬프 저장을 확인하고 있어요…');}
         });
         try{await removePhotoDraft(state.key);}catch{/* A retained request safely replays after reload. */}
-        if(!attempt.reported && getUser()?.uid===state.uid){attempt.reported=true;track(result.newCompletion?'stamp_complete':'photo_add',{...state.common,place_index:state.index,has_line:!!attempt.feeling,line_length_bucket:lineBucket(attempt.feeling),upload_bucket:uploadBucket(attempt.uploadMs||0),stamps_done:countBucket(result.stampsDone),stamps_total:countBucket(result.stampsTotal)});}
+        if(!attempt.reported && getUser()?.uid===state.uid){attempt.reported=true;track(state.free?'free_post_create':result.newCompletion?'stamp_complete':'photo_add',{...state.common,place_index:state.index,has_line:!!attempt.feeling,line_length_bucket:lineBucket(attempt.feeling),upload_bucket:uploadBucket(attempt.uploadMs||0),stamps_done:countBucket(result.stampsDone),stamps_total:countBucket(result.stampsTotal)});}
         draft.saved=true;draft.attempt=null;draft.file=null;
-        if(visible(state)){const shown=app.querySelector('#photo-stamp');shown.reset();shown.querySelector('fieldset').disabled=false;shown.querySelector('button[type=submit]').textContent='사진 저장하고 스탬프 받기';const badge=app.querySelector('[data-own-stamp]');if(badge)badge.textContent='내 스탬프 완료';const count=app.querySelector('[data-trip-post-count]');if(count && Number.isFinite(result.postCount))count.textContent=String(Math.max(Number(count.textContent)||0,result.postCount));status('사진과 스탬프가 저장됐어요.');preview(draft);}
+        if(visible(state)){const shown=app.querySelector('#photo-stamp');shown.reset();shown.querySelector('fieldset').disabled=false;shown.querySelector('button[type=submit]').textContent=state.free?'자유 기록 저장':'사진 저장하고 스탬프 받기';const badge=app.querySelector('[data-own-stamp]');if(badge)badge.textContent='내 스탬프 완료';const count=app.querySelector('[data-trip-post-count]');if(count && Number.isFinite(result.postCount))count.textContent=String(Math.max(Number(count.textContent)||0,result.postCount));status(state.free?'자유 기록이 저장됐어요.':'사진과 스탬프가 저장됐어요.');preview(draft);}
+        try{await onSaved(state.context);}catch{if(visible(state))status('기록은 저장됐어요. 피드는 새로고침으로 확인해주세요.');}
       }catch(error){
         try{await storePhotoDraft(state.key,attempt);}catch{}
-        if(getUser()?.uid===state.uid)track('stamp_complete_fail',{...state.common,reason:!navigator.onLine?'offline':error.details?.reason==='ended'?'ended':attempt.stage==='upload'?'upload':'save',retry:attempt.tries>1});
+        if(!state.free && getUser()?.uid===state.uid)track('stamp_complete_fail',{...state.common,reason:!navigator.onLine?'offline':error.details?.reason==='ended'?'ended':attempt.stage==='upload'?'upload':'save',retry:attempt.tries>1});
         if(visible(state)){status('저장하지 못했어요. 사진과 느낌은 유지돼요. 같은 요청으로 다시 시도해주세요.');app.querySelector('#photo-stamp button[type=submit]').textContent='같은 사진 다시 저장';}
         if(error.code==='functions/invalid-argument'){try{await removePhotoDraft(state.key);}catch{}draft.attempt=null;if(visible(state)){app.querySelector('#photo-stamp fieldset').disabled=false;status(error.message+' 사진과 느낌을 확인한 뒤 다시 선택해주세요.');}}
         throw error;
@@ -50,14 +51,14 @@ export function createPhotoViews({app,api,photoStorage,getUser,current,call,perf
   });
   return {
     async mount(context,group,index){
-      const uid=getUser()?.uid,key=JSON.stringify([uid,context.groupId,context.tripId,context.placeId]);
+      const uid=getUser()?.uid,key=JSON.stringify([uid,context.groupId,context.tripId,context.placeId??null]);
       const restore=!drafts.has(key) || drafts.get(key).restoreFailed;if(!drafts.has(key))drafts.set(key,{});
-      active={context,uid,key,index,common:{group_id:context.groupId,trip_id:context.tripId,role:group.isOwner?'leader':'member',trip_status:'active'}};
+      active={context,uid,key,index,free:context.tab==='memory',common:{group_id:context.groupId,trip_id:context.tripId,role:group.isOwner?'leader':'member',trip_status:'active'}};
       const draft=drafts.get(key),form=app.querySelector('#photo-stamp');
       if(restore){
         draft.restoring=true;
         form.querySelector('fieldset').disabled=true;form.querySelector('button').disabled=true;
-        try{const saved=await readPhotoDraft(key);if(saved){if(saved.uid!==uid || saved.groupId!==context.groupId || saved.tripId!==context.tripId || saved.placeId!==context.placeId)throw Error('요청 불일치');validatePhoto(saved.file,saved.feeling);draft.attempt={...saved,inFlight:null,result:null};draft.file=saved.file;draft.preview=URL.createObjectURL(saved.file);}}
+        try{const saved=await readPhotoDraft(key);if(saved){if(saved.uid!==uid || saved.groupId!==context.groupId || saved.tripId!==context.tripId || saved.placeId!==(context.placeId??null))throw Error('요청 불일치');validatePhoto(saved.file,saved.feeling);draft.attempt={...saved,inFlight:null,result:null};draft.file=saved.file;draft.preview=URL.createObjectURL(saved.file);}}
         catch{draft.restoreFailed=true;if(visible(active))status('이 기기의 이전 저장 요청을 확인하지 못했어요. 브라우저 저장 공간을 확인해주세요.');return;}
         draft.restoring=false;draft.restoreFailed=false;
         if(!current(context) || getUser()?.uid!==uid)return;

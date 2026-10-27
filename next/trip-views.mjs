@@ -1,5 +1,6 @@
 import {illustratedMap} from './illustrated-map.mjs';
 import {createPhotoViews,photoForm} from './photo-views.mjs';
+import {createMemoryFeed} from './memory-feed.mjs';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const TRIP_TABS=Object.freeze(['map','course','stamps','memory']);
 export function googlePlaceUrl(destination,place) {
@@ -14,7 +15,8 @@ export function completionSummary(placeIds,members,completions) {
   return byMember;
 }
 export function createTripViews({app,api,db,photoStorage,current,getUser,call,perform,track=()=>{},activate=()=>document.body.classList.add('trip-active'),confirmEnd=()=>confirm('여행을 종료할까요? 종료 후 사진과 스탬프는 읽기 전용이 되며 되돌릴 수 없어요.')}) {
-  const photos=createPhotoViews({app,api,photoStorage,getUser,current,call,perform,track});
+  const memories=createMemoryFeed({app,api,db,photoStorage,getUser,current,call,perform,track});
+  const photos=createPhotoViews({app,api,photoStorage,getUser,current,call,perform,track,onSaved:context=>memories.refresh(context)});
   let active=null;
   app.addEventListener('click',event=>{
     const button=event.target.closest('button[data-trip-action="end"]');
@@ -28,6 +30,7 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
   });
   const timestamp=t=>t?.seconds||0;
   async function open(context,group) {
+    memories.clear();
     const {groupId:g,tripId:t}=context;
     if(!/^[A-Za-z0-9_-]{1,128}$/.test(t||''))throw Error('잘못된 여행 주소');
     const root=['groups',g,'trips',t];let tab=context.tab||'map';
@@ -67,12 +70,7 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
     }else if(tab==='stamps'){
       content=`<h2 id="trip-panel-title">내 스탬프 ${done.size}/${places.length}</h2><div class="stamp-grid">${places.map(p=>`<a class="stamp-tile ${done.has(p.id)?'is-done':''}" href="${placeLink(p)}"><span aria-hidden="true">${escape(p.icon||'📍')}</span><strong>${escape(p.name)}</strong><small>${done.has(p.id)?'완료':'미완료'}</small></a>`).join('')}</div>${places.length?'':empty}<h3>멤버별 진행</h3><ul class="members">${members.map(m=>`<li><strong>${escape(m.displayName)}${m.id===getUser()?.uid?' (나)':''}</strong>스탬프 ${summaries.get(m.id)?.size||0}/${places.length}</li>`).join('')}</ul>`;
     }else if(tab==='memory'){
-      const result=await api.getDocsFromServer(api.query(api.collection(db,...root,'posts'),api.where('status','==','published'),api.limit(50)));
-      if(!current(context))return;
-      const names=new Map(members.map(m=>[m.id,m.displayName]));
-      const posts=result.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>timestamp(b.createdAt)-timestamp(a.createdAt));
-      // Storage download permissions and thumbnails are connected with T8/T9, never expose object paths here.
-      content=`<h2 id="trip-panel-title">함께 남긴 추억</h2><p>저장된 기록 ${Number(trip.postCount)||0}개</p>${posts.length?posts.map(p=>`<article class="memory-item"><h3>${escape(names.get(p.uid)||'멤버')} · ${escape(p.placeId?byId.get(p.placeId)?.name||'여행 장소':'자유 기록')}</h3><p>사진 기록</p>${p.feeling?`<p>${escape(p.feeling)}</p>`:''}</article>`).join(''):'<p>아직 함께 남긴 기록이 없어요.</p>'}${Number(trip.postCount)>50?'<p class="muted">기록 일부를 표시하고 있어요.</p>':''}${closed?'<p>종료된 여행의 추억을 다시 둘러보세요.</p>':''}`;
+      content=await memories.render(context,group,trip,places,members);
     }else if(tab==='stamp'){
       const p=byId.get(context.placeId);
       if(!p || !places.some(place=>place.id===p.id))throw Error('없는 장소');
@@ -87,7 +85,8 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
     app.innerHTML=`<section class="card trip-heading"><a href="#group/${escape(g)}">← ${escape(group.title)}</a><span class="badge">${closed?'종료':'진행 중'}</span><h1>${escape(trip.title)}</h1><p>${escape(trip.destination)} · ${escape(trip.startDate)} ~ ${escape(trip.endDate)}</p><p>장소 ${places.length}개 · 기록 <span data-trip-post-count>${Number(trip.postCount)||0}</span>개</p>${closed?'<p>종료된 여행이에요. 기존 여행 정보는 계속 볼 수 있어요.</p>':''}${group.isOwner && !closed && tab!=='manage'?`<a class="button secondary" href="${base}/manage">여행 관리</a>`:''}</section><section class="card trip-panel" aria-labelledby="trip-panel-title">${content}</section><nav class="trip-tabs" aria-label="여행 화면">${[['map','🗺️','지도'],['course','🧭','코스'],['stamps','🏅','스탬프'],['memory','📷','추억']].map(([key,icon,label])=>`<a href="${base}/${key}" ${selected===key?'aria-current="page"':''}><span aria-hidden="true">${icon}</span>${label}</a>`).join('')}</nav>`;
     activate();
     if(tab==='stamp' && !closed)await photos.mount(context,group,places.findIndex(p=>p.id===context.placeId)+1);
+    if(tab==='memory'){memories.mount();if(!closed)await photos.mount(context,group,0);}
     if(tab!=='manage')track('screen_view',{screen_name:tab==='stamp'?'stamp_detail':tab,role:group.isOwner?'leader':'member',group_id:g,trip_id:t,trip_status:closed?'ended':'active'});
   }
-  return {open,clearPhotos:()=>photos.clear()};
+  return {open,clearMemory:()=>memories.clear(),clearPhotos:()=>{photos.clear();memories.clear();}};
 }

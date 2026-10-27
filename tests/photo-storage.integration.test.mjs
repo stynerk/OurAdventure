@@ -1,12 +1,13 @@
 import test,{before,after} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {randomUUID} from 'node:crypto';import {createRequire} from 'node:module';
 import {initializeApp,deleteApp} from 'firebase-admin/app';import {getFirestore,FieldValue} from 'firebase-admin/firestore';import {getStorage as adminStorage} from 'firebase-admin/storage';
+import {getDoc,getDocs,query,collection,where,orderBy,documentId,limit,startAfter,updateDoc,deleteDoc} from 'firebase/firestore';
 import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
 import {ref,uploadBytes,getMetadata,getBytes,deleteObject,updateMetadata} from 'firebase/storage';import {doc,setDoc} from 'firebase/firestore';
 const require=createRequire(import.meta.url),{createGroupService}=require('../functions/group-service.cjs'),{createPhotoVerifier}=require('../functions/photo-verifier.cjs');
 class HttpsError extends Error{constructor(code,message,details){super(message);this.code=code;this.details=details;}}
 const projectId='demo-our-adventure',bucketName=projectId+'.firebasestorage.app',png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=','base64');
 const auth=(uid,provider='anonymous')=>({uid,token:{firebase:{sign_in_provider:provider}}}),owner=auth('photo-owner','google.com'),a=auth('photo-a'),b=auth('photo-b');let app,db,bucket,env,service;
-before(async()=>{assert.ok(process.env.FIREBASE_STORAGE_EMULATOR_HOST && process.env.FIRESTORE_EMULATOR_HOST,'Demo emulators required');app=initializeApp({projectId,storageBucket:bucketName},'photo-admin');db=getFirestore(app);bucket=adminStorage(app).bucket();env=await initializeTestEnvironment({projectId,firestore:{host:'127.0.0.1',port:8085,rules:readFileSync('firestore.rules','utf8')},storage:{host:'127.0.0.1',port:9199,rules:readFileSync('storage.rules','utf8')}});service=createGroupService(db,{HttpsError,FieldValue,verifyPhoto:createPhotoVerifier(bucket,{HttpsError})});});
+before(async()=>{assert.ok(process.env.FIREBASE_STORAGE_EMULATOR_HOST && process.env.FIRESTORE_EMULATOR_HOST,'Demo emulators required');app=initializeApp({projectId,storageBucket:bucketName},'photo-admin');db=getFirestore(app);bucket=adminStorage(app).bucket();env=await initializeTestEnvironment({projectId,firestore:{host:'127.0.0.1',port:8085,rules:readFileSync('firestore.rules','utf8')},storage:{host:'127.0.0.1',port:9199,rules:readFileSync('storage.rules','utf8')}});service=createGroupService(db,{HttpsError,FieldValue,verifyPhoto:createPhotoVerifier(bucket,{HttpsError}),deletePhoto:photo=>bucket.file(photo.objectPath).delete({ignoreNotFound:true})});});
 after(async()=>{await env?.cleanup();await db?.terminate();if(app)await deleteApp(app);});
 const client=user=>env.authenticatedContext(user.uid).storage('gs://'+bucketName);
 async function setup(){const g=(await service.callables.createGroup({title:'사진 테스트 그룹',requestId:randomUUID()},owner)).groupId,{token}=await service.callables.createGroupInvite({groupId:g},owner);for(const user of [a,b])await service.callables.joinGroup({token,nickname:'같은 별칭'},user);const t=(await service.callables.createTrip({groupId:g,title:'사진 여행',destination:'경주',startDate:'2026-10-28',endDate:'2026-10-29',places:[{name:'첫 장소'}],requestId:randomUUID()},owner)).tripId,p=(await db.doc(`groups/${g}/trips/${t}`).get()).data().placeIds[0];return {g,t,p};}
@@ -45,4 +46,68 @@ test('ended trip denies new Storage uploads and unfinished-photo finalization wh
   await finalize(c,saved);await service.callables.endTrip({groupId:c.g,tripId:c.t},owner);
   await assertFails(uploadBytes(ref(client(a),path(c,a,randomUUID())),png,{contentType:'image/png'}));await rejects(finalize(c,pending),'failed-precondition');
   await assertFails(getMetadata(ref(client(b),path(c,a,pending))));await assertSucceeds(getBytes(ref(client(b),path(c,a,saved))));
+});
+
+async function publish(c,user=a,{place=c.p,feeling=''}={}){
+  const uploadId=randomUUID(),requestId=randomUUID();await uploadBytes(ref(client(user),path(c,user,uploadId)),png,{contentType:'image/png'});
+  const data={groupId:c.g,tripId:c.t,placeId:place,uploadId,requestId,feeling};
+  const result=await service.callables.finalizePhoto(data,user);return {...result,data,objectPath:path(c,user,uploadId)};
+}
+const edit=(c,post,user,more={})=>service.callables.editPost({groupId:c.g,tripId:c.t,postId:post.postId,feeling:'수정한 느낌',revision:0,requestId:randomUUID(),...more},user);
+const remove=(c,post,user)=>service.callables.deletePost({groupId:c.g,tripId:c.t,postId:post.postId,uid:a.uid},user);
+test('T9 AC-5a/5b: member-only published feed, stable newest pagination and combined filters exclude unconfirmed records',async()=>{
+  const c=await setup(),one=await publish(c,a),two=await publish(c,b,{place:null,feeling:'자유 기록'}),root=`groups/${c.g}/trips/${c.t}/posts`;
+  await db.doc(`${root}/unconfirmed`).set({uid:a.uid,status:'pending',createdAt:FieldValue.serverTimestamp(),feeling:'보이면 안 되는 기록'});
+  const pending=randomUUID();await uploadBytes(ref(client(a),path(c,a,pending)),png,{contentType:'image/png'});
+  const store=env.authenticatedContext(b.uid).firestore(),base=collection(store,root),ordered=[where('status','==','published'),orderBy('createdAt','desc'),orderBy(documentId(),'desc')];
+  const first=await getDocs(query(base,...ordered,limit(1)));assert.equal(first.docs[0].id,two.postId);
+  const second=await getDocs(query(base,...ordered,startAfter(first.docs[0]),limit(1)));assert.equal(second.docs[0].id,one.postId);
+  const filtered=await getDocs(query(base,where('status','==','published'),where('uid','==',b.uid),where('placeId','==',null),orderBy('createdAt','desc')));assert.equal(filtered.size,1);assert.equal(filtered.docs[0].id,two.postId);
+  await assertFails(getDoc(doc(store,root+'/unconfirmed')));await assertFails(getDocs(base));
+  const outsider=env.authenticatedContext('non-member').firestore();await assertFails(getDocs(query(collection(outsider,root),where('status','==','published'))));await assertFails(getDoc(doc(outsider,root+'/'+one.postId)));
+  await assertFails(getBytes(ref(client(b),path(c,a,pending))));
+  assert.equal((await db.collection(`groups/${c.g}/trips/${c.t}/completions`).get()).size,1);
+});
+test('T9 AC-5c: other member, leader, outsider and unauthenticated caller cannot edit/delete another author; direct writes denied',async()=>{
+  const c=await setup(),post=await publish(c,a);
+  for(const user of [b,owner,auth('outsider')]){await rejects(edit(c,post,user),'permission-denied');await rejects(remove(c,post,user),'permission-denied');}
+  await rejects(edit(c,post,null),'unauthenticated');await rejects(remove(c,post,null),'unauthenticated');
+  const target=doc(env.authenticatedContext(a.uid).firestore(),`groups/${c.g}/trips/${c.t}/posts/${post.postId}`);
+  await assertFails(updateDoc(target,{feeling:'직접 변경'}));await assertFails(deleteDoc(target));
+  assert.equal((await db.doc(`groups/${c.g}/trips/${c.t}/posts/${post.postId}`).get()).data().status,'published');
+});
+test('T9 own optional feeling edit validates sixty Unicode characters, deduplicates lost-response retries and rejects stale edits',async()=>{
+  const c=await setup(),post=await publish(c,a),requestId=randomUUID();
+  const results=await Promise.all([edit(c,post,a,{requestId}),edit(c,post,a,{requestId})]);assert.deepEqual(results.map(r=>r.revision),[1,1]);
+  await rejects(edit(c,post,a,{requestId,feeling:'다른 내용'}),'failed-precondition');await rejects(edit(c,post,a),'aborted');
+  await rejects(edit(c,post,a,{revision:1,feeling:'가'.repeat(61)}),'invalid-argument');
+  await edit(c,post,a,{revision:1,feeling:''});const saved=(await db.doc(`groups/${c.g}/trips/${c.t}/posts/${post.postId}`).get()).data();
+  assert.equal(saved.feeling,'');assert.equal(saved.revision,2);assert.equal(saved.uid,a.uid);assert.equal(saved.placeId,c.p);
+  assert.equal((await db.doc(`groups/${c.g}/trips/${c.t}`).get()).data().postCount,1);
+});
+test('T9 concurrent own deletion/retry removes only own last stamp, decrements counts once and revokes photo reads for everyone',async()=>{
+  const c=await setup(),a1=await publish(c,a),a2=await publish(c,a),b1=await publish(c,b);
+  const first=await Promise.all([remove(c,a1,a),remove(c,a1,a)]);assert.ok(first.every(r=>!r.stampRemoved));
+  assert.equal((await db.collection(`groups/${c.g}/trips/${c.t}/completions`).get()).docs.find(d=>d.data().uid===a.uid).data().photoCount,1);
+  const last=await remove(c,a2,a);assert.equal(last.stampRemoved,true);assert.equal(last.postCount,1);
+  await remove(c,a2,a);const done=await db.collection(`groups/${c.g}/trips/${c.t}/completions`).get();assert.equal(done.size,1);assert.equal(done.docs[0].data().uid,b.uid);
+  assert.equal((await db.doc(`groups/${c.g}/trips/${c.t}/places/${c.p}`).get()).data().postCount,1);
+  assert.equal((await bucket.file(a2.objectPath).exists())[0],false);await assertFails(getBytes(ref(client(a),a2.objectPath)));await assertFails(getBytes(ref(client(b),a2.objectPath)));
+  await assertSucceeds(getBytes(ref(client(a),b1.objectPath)));
+});
+test('T9 free record deletion never changes stamps; failed physical cleanup remains private and retries safely',async()=>{
+  const c=await setup(),post=await publish(c,a,{place:null,feeling:'자유 기록'});let fail=true;
+  const flaky=createGroupService(db,{HttpsError,FieldValue,verifyPhoto:createPhotoVerifier(bucket,{HttpsError}),deletePhoto:async photo=>{if(fail)throw Error('temporary Storage failure');await bucket.file(photo.objectPath).delete({ignoreNotFound:true});}});
+  const data={groupId:c.g,tripId:c.t,postId:post.postId};const result=await flaky.callables.deletePost(data,a);assert.equal(result.cleanupPending,true);assert.equal(result.wasStamp,false);
+  assert.equal((await bucket.file(post.objectPath).exists())[0],true);await assertFails(getBytes(ref(client(a),post.objectPath)));await assertFails(getBytes(ref(client(b),post.objectPath)));
+  await rejects(service.callables.finalizePhoto(post.data,a),'failed-precondition');
+  fail=false;const retry=await flaky.callables.deletePost(data,a);assert.equal(retry.replayed,true);assert.equal(retry.cleanupPending,false);assert.equal(retry.postCount,0);
+  assert.equal((await db.collection(`groups/${c.g}/trips/${c.t}/completions`).get()).size,0);assert.equal((await bucket.file(post.objectPath).exists())[0],false);
+});
+test('T9 closed trip rejects own edit/delete/free create and pending finalize; ended published feed stays readable',async()=>{
+  const c=await setup(),post=await publish(c,a),pending=randomUUID();await uploadBytes(ref(client(a),path(c,a,pending)),png,{contentType:'image/png'});
+  await service.callables.endTrip({groupId:c.g,tripId:c.t},owner);
+  await rejects(edit(c,post,a),'failed-precondition');await rejects(remove(c,post,a),'failed-precondition');
+  await rejects(service.callables.finalizePhoto({groupId:c.g,tripId:c.t,placeId:null,uploadId:pending,requestId:randomUUID(),feeling:''},a),'failed-precondition');
+  await assertSucceeds(getDoc(doc(env.authenticatedContext(b.uid).firestore(),`groups/${c.g}/trips/${c.t}/posts/${post.postId}`)));await assertSucceeds(getBytes(ref(client(b),post.objectPath)));
 });

@@ -29,6 +29,9 @@ export async function createAnalytics({app,config,loadSdk,location,debug=false})
       else if(name==='screen_view' && ['map','course','stamps','memory','stamp_detail','report','share_image'].includes(input.screen_name))params={screen_name:input.screen_name};
       else if(name==='login' && input.method==='google')params={method:'google'};
       else if(name==='logout')params={};
+      else if(name==='free_post_create' && typeof input.has_line==='boolean')params={has_line:input.has_line};
+      else if(name==='post_delete' && typeof input.was_stamp==='boolean')params={was_stamp:input.was_stamp};
+      else if(name==='feed_view' && countBuckets.has(input.post_count_bucket))params={post_count_bucket:input.post_count_bucket};
       else if(name==='photo_select' && ['camera','gallery'].includes(input.source))params={source:input.source};
       else if(name==='stamp_complete_fail' && ['upload','save','offline','ended'].includes(input.reason) && typeof input.retry==='boolean')params={reason:input.reason,retry:input.retry};
       else if(name==='photo_add' && Number.isInteger(input.place_index) && input.place_index>=1 && input.place_index<=10)params={place_index:input.place_index};

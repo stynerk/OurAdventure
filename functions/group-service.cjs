@@ -5,7 +5,7 @@ const LIMITS = Object.freeze({members:10, places:10, feeling:60});
 
 // V2 lives beside the legacy rooms collection. No legacy records are read or migrated.
 // Auth is provided by onCall; no client-supplied owner/uid/completion is trusted.
-function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () => {
+function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}, verifyPhoto = async () => {
   throw new HttpsError('failed-precondition', '사진 저장 연결이 아직 준비되지 않았어요.');
 }}) {
   const fail = (code, message) => {throw new HttpsError(code,message);};
@@ -70,6 +70,48 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
   }
 
   const callables = {
+    async editPost(data,auth) {
+      const uid=uidOf(auth),{g,t}=coordinates(data),postId=id(data?.postId,'기록 ID'),request=requestId(data);
+      const feeling=text(data?.feeling,LIMITS.feeling,'한 줄 느낌',true),revision=data?.revision;
+      if(!Number.isSafeInteger(revision) || revision<0)fail('invalid-argument','기록 버전을 확인해주세요.');
+      const ref=tripRef(g,t).collection('posts').doc(postId),replay=db.doc(`v2Requests/${hash(['edit-post',uid,g,t,postId,request])}`),fingerprint=hash([feeling,revision]);
+      return db.runTransaction(async tx=>{
+        const trip=await tripContext(tx,g,t,uid),[post,saved]=await tx.getAll(ref,replay);
+        if(!post.exists)fail('not-found','기록을 찾지 못했어요.');
+        if(post.data().uid!==uid)fail('permission-denied','본인 기록만 바꿀 수 있어요.');
+        open(trip);
+        if(saved.exists){if(saved.data().fingerprint!==fingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');return {...saved.data().result,replayed:true};}
+        if(post.data().status!=='published')fail('failed-precondition','삭제된 기록이에요.');
+        if((post.data().revision||0)!==revision)fail('aborted','다른 화면에서 바뀐 기록이에요. 새로 확인해주세요.');
+        const result={postId,revision:revision+1};
+        tx.update(ref,{feeling,revision:revision+1,updatedAt:now()});tx.create(replay,{uid,fingerprint,result,createdAt:now()});
+        return {...result,replayed:false};
+      });
+    },
+    async deletePost(data,auth) {
+      const uid=uidOf(auth),{g,t}=coordinates(data),postId=id(data?.postId,'기록 ID'),ref=tripRef(g,t).collection('posts').doc(postId);
+      const outcome=await db.runTransaction(async tx=>{
+        const trip=await tripContext(tx,g,t,uid),post=await tx.get(ref);
+        if(!post.exists)fail('not-found','기록을 찾지 못했어요.');
+        const record=post.data();if(record.uid!==uid)fail('permission-denied','본인 기록만 지울 수 있어요.');
+        open(trip);
+        if(record.status==='deleted')return {...record.deleteResult,photo:record.photo,replayed:true};
+        if(record.status!=='published')fail('failed-precondition','확정된 기록만 지울 수 있어요.');
+        const p=record.placeId,completionRef=p?tripRef(g,t).collection('completions').doc(hash([uid,p])):null;
+        const [place,completion]=p?await tx.getAll(placeRef(g,t,p),completionRef):[null,null];
+        if(trip.postCount<1 || (p && (!place.exists || place.data().postCount<1 || !completion.exists || completion.data().photoCount<1)))fail('failed-precondition','기록 수를 확인하지 못했어요.');
+        const result={postId,wasStamp:!!p,stampRemoved:!!p && completion.data().photoCount===1,postCount:trip.postCount-1};
+        const uploadId=record.photo.objectPath.split('/').at(-1);
+        tx.set(tripRef(g,t).collection('uploads').doc(uid).collection('items').doc(uploadId),{uid,status:'deleted',postId,deletedAt:now()});
+        tx.update(ref,{status:'deleted',feeling:FieldValue.delete(),deletedAt:now(),deleteResult:result});
+        tx.update(tripRef(g,t),{postCount:trip.postCount-1});
+        if(p){tx.update(placeRef(g,t,p),{postCount:place.data().postCount-1});if(result.stampRemoved)tx.delete(completionRef);else tx.update(completionRef,{photoCount:completion.data().photoCount-1,updatedAt:now()});}
+        return {...result,photo:record.photo,replayed:false};
+      });
+      // Revocation/counts commit first. Storage failure cannot resurrect the post.
+      let cleanupPending=false;try{await deletePhoto(outcome.photo);}catch{cleanupPending=true;}
+      const {photo,...result}=outcome;return {...result,cleanupPending};
+    },
     async finalizePhoto(data,auth) {
       const uid=uidOf(auth),{g,t}=coordinates(data);
       await db.runTransaction(tx=>tripContext(tx,g,t,uid));
@@ -202,6 +244,7 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
       const existing=await tx.get(postRef);
       if(existing.exists) {
         if(existing.data().fingerprint!==fingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
+        if(existing.data().status!=='published')fail('failed-precondition','삭제된 기록은 다시 저장할 수 없어요.');
           return {postId:postRef.id,completed:!!p,...existing.data().completionResult,replayed:true};
       }
       open(trip);
@@ -218,7 +261,7 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
       const completionResult={newCompletion:!!p && !completion,stampsDone:p?mine.size+(completion?0:1):0,stampsTotal:trip.placeIds.length,postCount:trip.postCount+1};
       const uploadId=id(data?.uploadId,'사진 ID');
       tx.create(tripRef(g,t).collection('uploads').doc(uid).collection('items').doc(uploadId),{uid,status:'published',postId:postRef.id,createdAt:now()});
-      tx.create(postRef,{uid,placeId:p,feeling,status:'published',fingerprint,completionResult,
+      tx.create(postRef,{uid,placeId:p,feeling,status:'published',revision:0,fingerprint,completionResult,
         photo:{objectPath:verified.objectPath,contentType:verified.contentType,size:verified.size,generation:verified.generation||''},createdAt:now()});
       tx.create(claimRef,{groupId:g,tripId:t,uid,postId:postRef.id,createdAt:now()});
       tx.update(tripRef(g,t),{postCount:trip.postCount+1});
