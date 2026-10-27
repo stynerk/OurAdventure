@@ -9,7 +9,7 @@ import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw Error('Demo emulators required');
 const root=process.cwd(),origin='http://127.0.0.1:8080/next/';
-const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','creation-requests.mjs','course.json']);
+const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','course.json']);
 const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app'};export const useEmulators=true;";
 const server=createServer((req,res)=>{
   const name=new URL(req.url,origin).pathname.replace(/^\/next\//,'');
@@ -86,6 +86,7 @@ try {
   assert.equal((await db.collection(`groups/${groupId}/trips`).get()).size,3);
   await owner.unroute('**/createTrip');await owner.getByRole('button',{name:'이전 요청 확인',exact:true}).click();
   await owner.getByRole('heading',{name:'응답 유실 복구 여행',exact:true}).waitFor();
+  const openTripId=await owner.evaluate(()=>location.hash.split('/')[2]);
   assert.equal((await db.collection(`groups/${groupId}/trips`).get()).size,3);
   console.log('PASS: lost creation response preserves form; recovery reuses one trip without duplicates');
 
@@ -134,7 +135,7 @@ try {
     const nav=page.getByRole('navigation',{name:'여행 화면',exact:true});assert.equal(await nav.getByRole('link').count(),4);
     assert.equal(await page.locator('.stamp-tile small').nth(0).textContent(),firstState);
     assert.equal(await page.locator('.stamp-tile small').nth(1).textContent(),secondState);
-    assert.equal(await page.getByRole('link',{name:'여행 관리',exact:true}).count(),page===owner?1:0);
+    assert.equal(await page.getByRole('link',{name:'여행 관리',exact:true}).count(),0);
     for(const [label,heading] of [['지도','여행 지도'],['코스','여행 코스'],['추억','함께 남긴 추억'],['스탬프','내 스탬프 1/2']]){
       await nav.getByRole('link',{name:label,exact:true}).click();
       await page.getByRole('heading',{name:heading,exact:true}).waitFor();
@@ -147,15 +148,18 @@ try {
     assert.equal(await page.getByText('TEST_ONLY_PRIVATE_PATH',{exact:false}).count(),0);
   }
   await owner.goto(origin+`#trip/${groupId}/${firstTripId}/map`);await owner.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();
-  const googleLink=await owner.getByRole('link',{name:'대릉원 · Google 지도 열기 ↗',exact:true}).getAttribute('href');
-  assert.equal(new URL(googleLink).origin,'https://www.google.com');
-  assert.equal(new URL(googleLink).searchParams.get('query'),'경주 대릉원');
+  assert.equal(await owner.locator('.illustrated-map .map-pin').count(),2);
+  assert.equal(await owner.locator('.map-route').count(),1);assert.equal(await owner.locator('.map-pin.is-done').count(),1);
+  assert.equal(await owner.locator('.trip-panel a[href^="http"]').count(),0);
+  await owner.screenshot({path:'test-results/trip-illustrated-map-mobile.png',fullPage:true});
   await owner.getByRole('link',{name:'다음 탐험 · 첨성대',exact:true}).click();
   await owner.getByText('종료된 여행이에요. 스탬프는 읽기만 할 수 있어요.',{exact:true}).waitFor();
-  await owner.getByRole('link',{name:'여행 관리',exact:true}).click();
+  await owner.goto(origin+`#trip/${groupId}/${firstTripId}/manage`);await owner.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();
+  assert.equal(await owner.getByRole('link',{name:'초대 링크·참여 관리',exact:true}).count(),0);
+  await owner.goto(origin+`#trip/${groupId}/${openTripId}/map`);await owner.getByRole('link',{name:'여행 관리',exact:true}).click();
   await owner.getByRole('heading',{name:'여행 관리',exact:true}).waitFor();
   await owner.getByRole('link',{name:'초대 링크·참여 관리',exact:true}).waitFor();
-  await peer.goto(origin+`#trip/${groupId}/${firstTripId}/manage`);
+  await peer.goto(origin+`#trip/${groupId}/${openTripId}/manage`);
   await peer.getByRole('heading',{name:'리더만 여행을 관리할 수 있어요',exact:true}).waitFor();
   assert.equal(await peer.getByRole('link',{name:'초대 링크·참여 관리',exact:true}).count(),0);
   await owner.goto(origin+`#trip/${groupId}/${firstTripId}/stamps`);await owner.getByRole('heading',{name:'내 스탬프 1/2',exact:true}).waitFor();
@@ -163,10 +167,12 @@ try {
     await owner.setViewportSize({width,height:844});
     assert.equal(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     const bounds=await owner.getByRole('navigation',{name:'여행 화면'}).boundingBox();assert.ok(bounds.x>=0 && bounds.x+bounds.width<=width+1);
+    await owner.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
+    assert.equal(await owner.evaluate(()=>document.querySelector('.trip-panel').getBoundingClientRect().bottom<=document.querySelector('.trip-tabs').getBoundingClientRect().top),true);
   }
   mkdirSync('test-results',{recursive:true});await owner.screenshot({path:'test-results/trip-tabs-mobile.png',fullPage:true});
   console.log('PASS: both roles retain four closed-trip tabs; UID-based stamp progress differs, only published memories display and member management is denied');
-  console.log('PASS: Google Maps URL, next stamp, leader management, selected route and 320/390px bottom navigation');
+  console.log('PASS: illustrated map pins and dotted path, next stamp, closed management hidden, direct closed route read-only and 320/390px content clearance');
 
   await peer.goto(origin+'#groups');await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
   assert.equal(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

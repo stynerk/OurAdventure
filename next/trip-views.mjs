@@ -1,3 +1,4 @@
+import {illustratedMap} from './illustrated-map.mjs';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const TRIP_TABS=Object.freeze(['map','course','stamps','memory']);
 export function googlePlaceUrl(destination,place) {
@@ -16,11 +17,12 @@ export function createTripViews({app,api,db,current,getUser,track=()=>{},activat
   async function open(context,group) {
     const {groupId:g,tripId:t}=context;
     if(!/^[A-Za-z0-9_-]{1,128}$/.test(t||''))throw Error('잘못된 여행 주소');
-    const root=['groups',g,'trips',t],tab=context.tab||'map';
+    const root=['groups',g,'trips',t];let tab=context.tab||'map';
     const snapshot=await api.getDocFromServer(api.doc(db,...root));
     if(!current(context))return;
     if(!snapshot.exists())throw Error('없는 여행');
     const trip=snapshot.data();
+    if(tab==='manage' && trip.status==='closed')tab='map';
     if(![...TRIP_TABS,'stamp','manage'].includes(tab))throw Error('없는 화면');
     if(tab==='manage' && !group.isOwner){app.innerHTML='<section class="card"><h1>리더만 여행을 관리할 수 있어요</h1><a href="#groups">내 그룹으로</a></section>';return;}
     const [placeSnap,memberSnap,doneSnap]=await Promise.all([
@@ -46,7 +48,7 @@ export function createTripViews({app,api,db,current,getUser,track=()=>{},activat
     let content='';
     if(tab==='map'){
       const next=places.find(p=>!done.has(p.id));
-      content=`<h2 id="trip-panel-title">여행 지도</h2><p>방문 순서대로 장소를 확인하고 Google 지도에서 위치를 열어보세요.</p>${next?`<a class="button" href="${placeLink(next)}">다음 탐험 · ${escape(next.name)}</a>`:places.length?'<p>모든 장소의 내 스탬프를 모았어요!</p>':''}${places.length?`<ol class="route-stops">${places.map(p=>`<li>${badge(p)}<h3>${escape(p.icon||'📍')} <a href="${placeLink(p)}">${escape(p.name)}</a></h3>${mapLink(p)}</li>`).join('')}</ol>`:empty}`;
+      content=`<h2 id="trip-panel-title">여행 지도</h2>${places.length?illustratedMap(places,done,placeLink):empty}${next?`<a class="button" href="${placeLink(next)}">다음 탐험 · ${escape(next.name)}</a>`:places.length?'<p>모든 장소의 내 스탬프를 모았어요!</p>':''}`;
     }else if(tab==='course'){
       content=`<h2 id="trip-panel-title">여행 코스</h2>${places.length?`<ol class="course-stops">${places.map(p=>`<li><h3><a href="${placeLink(p)}">${escape(p.name)}</a></h3>${badge(p)}${mission(p)}</li>`).join('')}</ol>`:empty}`;
     }else if(tab==='stamps'){
@@ -67,7 +69,7 @@ export function createTripViews({app,api,db,current,getUser,track=()=>{},activat
     }
     if(!current(context))return;
     const selected=tab==='stamp'?'stamps':tab;
-    app.innerHTML=`<section class="card trip-heading"><a href="#group/${escape(g)}">← ${escape(group.title)}</a><span class="badge">${closed?'종료':'진행 중'}</span><h1>${escape(trip.title)}</h1><p>${escape(trip.destination)} · ${escape(trip.startDate)} ~ ${escape(trip.endDate)}</p><p>장소 ${places.length}개 · 기록 ${Number(trip.postCount)||0}개</p>${closed?'<p>종료된 여행이에요. 기존 여행 정보는 계속 볼 수 있어요.</p>':''}${group.isOwner && tab!=='manage'?`<a class="button secondary" href="${base}/manage">여행 관리</a>`:''}</section><section class="card trip-panel" aria-labelledby="trip-panel-title">${content}</section><nav class="trip-tabs" aria-label="여행 화면">${[['map','🗺️','지도'],['course','🧭','코스'],['stamps','🏅','스탬프'],['memory','📷','추억']].map(([key,icon,label])=>`<a href="${base}/${key}" ${selected===key?'aria-current="page"':''}><span aria-hidden="true">${icon}</span>${label}</a>`).join('')}</nav>`;
+    app.innerHTML=`<section class="card trip-heading"><a href="#group/${escape(g)}">← ${escape(group.title)}</a><span class="badge">${closed?'종료':'진행 중'}</span><h1>${escape(trip.title)}</h1><p>${escape(trip.destination)} · ${escape(trip.startDate)} ~ ${escape(trip.endDate)}</p><p>장소 ${places.length}개 · 기록 ${Number(trip.postCount)||0}개</p>${closed?'<p>종료된 여행이에요. 기존 여행 정보는 계속 볼 수 있어요.</p>':''}${group.isOwner && !closed && tab!=='manage'?`<a class="button secondary" href="${base}/manage">여행 관리</a>`:''}</section><section class="card trip-panel" aria-labelledby="trip-panel-title">${content}</section><nav class="trip-tabs" aria-label="여행 화면">${[['map','🗺️','지도'],['course','🧭','코스'],['stamps','🏅','스탬프'],['memory','📷','추억']].map(([key,icon,label])=>`<a href="${base}/${key}" ${selected===key?'aria-current="page"':''}><span aria-hidden="true">${icon}</span>${label}</a>`).join('')}</nav>`;
     activate();
     if(tab!=='manage')track('screen_view',{screen_name:tab==='stamp'?'stamp_detail':tab,role:group.isOwner?'leader':'member',group_id:g,trip_id:t,trip_status:closed?'ended':'active'});
   }

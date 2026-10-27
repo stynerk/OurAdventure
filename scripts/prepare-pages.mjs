@@ -7,7 +7,7 @@ if(dirname(output)!==resolve(root))throw new Error('Unexpected public output dir
 process.chdir(root);
 rmSync(output,{recursive:true,force:true});mkdirSync('public/next',{recursive:true});
 cpSync('index.html','public/index.html');cpSync('assets','public/assets',{recursive:true});
-for(const file of ['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','creation-requests.mjs','course.json'])cpSync(`next/${file}`,`public/next/${file}`);
+for(const file of ['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','course.json'])cpSync(`next/${file}`,`public/next/${file}`);
 // Never publish a developer's local emulator configuration or backend source.
 if(process.env.FIREBASE_WEB_CONFIG){
   const input=JSON.parse(process.env.FIREBASE_WEB_CONFIG);
