@@ -1,7 +1,7 @@
 // Real SDK + exported handlers, demo emulators only; no production credentials.
 import {chromium} from 'playwright';
 import {createServer} from 'node:http';
-import {readFileSync,mkdirSync} from 'node:fs';
+import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {once} from 'node:events';
 import assert from 'node:assert/strict';
@@ -12,6 +12,7 @@ const root=process.cwd(),origin='http://127.0.0.1:8080/next/';
 const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','report-views.mjs','share-renderer.mjs','analytics.mjs','analytics-source.mjs','course.json']);
 const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app',storageBucket:'demo-our-adventure.firebasestorage.app'};export const useEmulators=true;";
 const server=createServer((req,res)=>{
+  if(req.url==='/' || req.url==='/index.html'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(readFileSync(resolve(root,'index.html')));return;}
   const name=new URL(req.url,origin).pathname.replace(/^\/next\//,'');
   if(name==='firebase-config.js'){res.writeHead(200,{'Content-Type':'text/javascript'});res.end(config);return;}
   if(name==='analytics.mjs'){res.writeHead(200,{'Content-Type':'text/javascript'});res.end("export {countBucket,daysBucket} from './analytics-source.mjs';export async function createAnalytics(){return {setAuthType:()=>{},track:(name,params)=>{(window.__photoEvents||=[]).push({name,params});}};}");return;}
@@ -45,9 +46,10 @@ async function blankTrip(page) {
 }
 try {
   browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||undefined,args:['--disable-gpu','--renderer-process-limit=2','--js-flags=--max-old-space-size=128']});
-  const leader=await browser.newContext({viewport:{width:390,height:844}}),member=await browser.newContext({viewport:{width:390,height:844}});
+  mkdirSync('test-results',{recursive:true});writeFileSync('test-results/qa-v2-environment.json',JSON.stringify({date:new Date().toISOString(),platform:process.platform,node:process.version,chromium:browser.version(),base:'fd8cdfec00b325fa1a9b7f3dc2d326690d3dc165',branch:'engineering/qa-v2',emulators:['auth','firestore','storage'],viewports:[320,390],physicalDevices:false,production:false},null,2));
+  let leader=await browser.newContext({viewport:{width:390,height:844}}),member=await browser.newContext({viewport:{width:390,height:844}});
   await sdkCache(leader);await sdkCache(member);
-  const owner=await leader.newPage(),peer=await member.newPage();
+  let owner=await leader.newPage(),peer=await member.newPage();
   for(const page of [owner,peer]){page.setDefaultNavigationTimeout(60000);page.on('pageerror',e=>{errors.push(e.message);console.error('UI error:',e.message);});}
   await owner.goto(origin);await owner.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();
   for(const width of [320,390]){
@@ -58,11 +60,15 @@ try {
     });
     assert.equal(layout.overlap,false,`header overlaps at ${width}px`);assert.equal(layout.overflow,false);
   }
+  const firstQuest=JSON.parse(readFileSync('next/course.json')).quests[0].id;
+  const legacyKeys={'gj-family-quest':JSON.stringify({team:'QA 가상 탐험대',done:[firstQuest],photos:{},memories:{[firstQuest]:'QA 합성 기록'},archivedRecords:[],qaSentinel:'preserve-exact-bytes'}),'gj-family-diary-template':JSON.stringify({template:'album',diaryReflection:'QA 합성 느낌',qaSentinel:'preserve-exact-bytes'})};
+  await owner.evaluate(keys=>{for(const [key,value]of Object.entries(keys))localStorage.setItem(key,value);},legacyKeys);
   await auth(owner,true);await owner.getByRole('link',{name:'새 그룹 만들기',exact:true}).click();
   await owner.getByLabel('그룹 이름',{exact:true}).fill('브라우저 테스트 그룹');
-  await owner.getByRole('button',{name:'그룹 만들기',exact:true}).click();
+  await owner.getByRole('button',{name:'그룹 만들기',exact:true}).evaluate(button=>{button.click();button.click();});
   await owner.getByRole('heading',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
   const groupId=await owner.evaluate(()=>location.hash.split('/')[1]);
+  assert.equal((await db.collection('groups').where('title','==','브라우저 테스트 그룹').get()).size,1);console.log('PASS QA A2: rapid duplicate group button clicks create exactly one group');
   await owner.getByRole('link',{name:'새 여행 만들기',exact:true}).click();await blankTrip(owner);
   await fillTrip(owner,'첫 여행','대릉원\n첨성대');await owner.getByRole('button',{name:'여행 만들기',exact:true}).click();
   await owner.getByRole('heading',{name:'첫 여행',exact:true}).waitFor();
@@ -72,6 +78,10 @@ try {
   await fillTrip(owner,'장소 없는 새 여행');await owner.getByRole('button',{name:'여행 만들기',exact:true}).click();
   await owner.getByRole('heading',{name:'장소 없는 새 여행',exact:true}).waitFor();
   await owner.getByText('아직 장소를 정하지 않았어요.',{exact:true}).waitFor();
+  const emptyTripId=await owner.evaluate(()=>location.hash.split('/')[2]);
+  await owner.goto(origin+'#trip/'+groupId+'/'+emptyTripId+'/stamps');await owner.getByRole('heading',{name:'내 스탬프 0/0',exact:true}).waitFor();assert.equal(await owner.locator('.stamp-tile').count(),0);
+  await owner.getByRole('link',{name:'추억',exact:true}).click();await owner.getByText('자유 기록 남기기',{exact:true}).waitFor();
+  console.log('PASS QA B5: zero-place trip has no stamp controls and retains free-record entry');
   await db.doc(`groups/${groupId}/trips/${firstTripId}`).update({status:'closed',closedAt:FieldValue.serverTimestamp()});
   await owner.getByRole('link',{name:'← 브라우저 테스트 그룹',exact:true}).click();
   await owner.getByRole('heading',{name:'지난 여행',exact:true}).waitFor();
@@ -92,6 +102,13 @@ try {
   const openTripId=await owner.evaluate(()=>location.hash.split('/')[2]);
   assert.equal((await db.collection(`groups/${groupId}/trips`).get()).size,3);
   console.log('PASS: lost creation response preserves form; recovery reuses one trip without duplicates');
+  // Close the complete browser context; restore persisted localStorage + Firebase Auth IndexedDB.
+  const persisted=await leader.storageState({indexedDB:true});await leader.close();
+  leader=await browser.newContext({viewport:{width:390,height:844},storageState:persisted});await sdkCache(leader);owner=await leader.newPage();owner.setDefaultNavigationTimeout(60000);owner.on('pageerror',e=>errors.push(e.message));
+  await owner.goto(origin+'#groups');await owner.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
+  await owner.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).click();
+  for(const title of ['첫 여행','장소 없는 새 여행','응답 유실 복구 여행'])await owner.getByRole('link',{name:title,exact:true}).waitFor();
+  console.log('PASS QA A3: closed browser context restores persisted Auth and the same group/trip list');
 
   await owner.goto(origin+'#group/'+groupId);
   await owner.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).click();
@@ -135,6 +152,7 @@ try {
   for(const [page,firstState,secondState] of [[owner,'완료','미완료'],[peer,'미완료','완료']]){
     await page.goto(origin+`#trip/${groupId}/${firstTripId}/stamps`);
     await page.getByRole('heading',{name:'내 스탬프 1/2',exact:true}).waitFor();
+    assert.deepEqual(await page.locator('.stamp-tile strong').allTextContents(),['대릉원','첨성대']);
     const nav=page.getByRole('navigation',{name:'여행 화면',exact:true});assert.equal(await nav.getByRole('link').count(),4);
     assert.equal(await page.locator('.stamp-tile small').nth(0).textContent(),firstState);
     assert.equal(await page.locator('.stamp-tile small').nth(1).textContent(),secondState);
@@ -218,9 +236,11 @@ try {
   await peer.goto(origin+`#trip/${groupId}/${openTripId}/stamps`);await peer.getByRole('heading',{name:'내 스탬프 0/1',exact:true}).waitFor();
   // Camera input, a failed Storage request and an empty feeling: photo two, same one stamp.
   await owner.locator('input[name=camera]').setInputFiles(image);
-  await owner.route('**/v0/b/**',route=>route.abort('failed'));
+  await owner.evaluate(async()=>{const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-storage.js');sdk.getStorage().maxUploadRetryTime=1000;});
+  let interruptedUpload=false;
+  await owner.route('**/v0/b/**',async route=>{if(route.request().method()==='POST'){interruptedUpload=true;await route.abort('internetdisconnected');}else await route.continue();});
   await owner.locator('#photo-stamp button[type=submit]').click();
-  await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).waitFor();await owner.unroute('**/v0/b/**');
+  await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).waitFor();assert.equal(interruptedUpload,true,'Disconnect must interrupt the Storage upload byte request, not only metadata');await owner.unroute('**/v0/b/**');
   assert.equal(await owner.locator('#photo-preview img').count(),1);await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).click();
   await owner.getByText('사진과 스탬프가 저장됐어요.',{exact:true}).waitFor();
   const savedPhotos=await db.collection(photoRoot+'/posts').get(),completion=(await db.collection(photoRoot+'/completions').get()).docs[0].data();
@@ -233,6 +253,13 @@ try {
   console.log('PASS: A completes without changing B, empty feeling works, second photo keeps one stamp, camera/gallery and safe GA event sequence verified');
 
 
+  // QA D5: another isolated browser signs into the same Google emulator identity.
+  const secondDevice=await browser.newContext({viewport:{width:390,height:844}});await sdkCache(secondDevice);const sameUser=await secondDevice.newPage();
+  await sameUser.goto(origin);await sameUser.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();await auth(sameUser,true);
+  assert.equal(await sameUser.evaluate(async()=>{const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js');return sdk.getAuth().currentUser.uid;}),ownerUid);
+  await sameUser.goto(origin+'#trip/'+groupId+'/'+openTripId+'/stamps');await sameUser.getByRole('heading',{name:'내 스탬프 1/1',exact:true}).waitFor();
+  await sameUser.screenshot({path:'test-results/qa-v2-same-account.png',fullPage:true});await secondDevice.close();
+  console.log('PASS QA D5: same authenticated UID in isolated browser context reads the same committed stamp');
   // T9: actual authenticated images, optional free records and server-owned mutations.
   await owner.goto(origin+`#trip/${groupId}/${openTripId}/memory`);
   await owner.getByRole('heading',{name:'함께 남긴 추억',exact:true}).waitFor();
@@ -323,6 +350,20 @@ try {
   console.log('PASS: member end denied; leader cancel preserves open; committed end survives lost-response retry with unchanged closedAt');
   console.log('PASS: newly ended trip retains four read-only tabs for both roles, no management/write controls and callable rejects new place');
 
+  // Record missing product flows as QA findings, never change production code to make QA pass.
+  const gaps=[];
+  await owner.goto(origin+'#trip-create/'+groupId);await owner.getByRole('heading',{name:'새 여행 만들기',exact:true}).waitFor();
+  for(const destination of ['경주','부산','제주','서울']){await owner.getByLabel('목적지',{exact:true}).fill(destination);gaps.push({destination,formActions:await owner.locator('#v2-trip-create button').allTextContents(),recommendationControls:await owner.getByRole('button',{name:/추천|AI|생성/}).count()});}
+  await owner.getByLabel('방문 장소',{exact:false}).fill('QA 이전 목적지 장소');await owner.getByLabel('목적지',{exact:true}).fill('부산');
+  const retained=await owner.getByLabel('방문 장소',{exact:false}).inputValue();
+  await owner.screenshot({path:'test-results/qa-v2-course-gaps.png',fullPage:true});
+  const qaTrip=(await invoke(owner,'createTrip',{groupId,requestId:crypto.randomUUID(),title:'QA 장소 관리',destination:'QA',startDate:'2026-10-28',endDate:'2026-10-29',places:[{name:'QA 첫 장소'}]})).data.tripId;
+  await owner.goto(origin+'#trip/'+groupId+'/'+qaTrip+'/manage');await owner.getByRole('heading',{name:'여행 관리',exact:true}).waitFor();
+  const managementActions=await owner.locator('.trip-panel button,.trip-panel a').allTextContents();
+  await owner.screenshot({path:'test-results/qa-v2-place-management-gap.png',fullPage:true});
+  writeFileSync('test-results/qa-v2-observations.json',JSON.stringify({course:gaps,destinationChangeRetainsManualPlace:retained,managementActions},null,2));
+  console.log('QA FINDING B2/B3/B6/B7/B8/B9: no recommendation/AI controls in four destination forms; manual place remains on destination change');
+  console.log('QA FINDING B10/B11: management offers no place add/delete UI; addTripPlace server behavior is covered separately');
   await peer.goto(origin+'#groups');await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
   assert.equal(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   mkdirSync('test-results',{recursive:true});await owner.screenshot({path:'test-results/groups-mobile.png',fullPage:true});
@@ -363,6 +404,17 @@ try {
   console.log('PASS: leader generates and copies link; anonymous nickname join and repeated-link reentry do not duplicate membership');
   console.log('PASS: full race clears introduction; full, malformed and revoked links expose no group content; rotation preserves members');
   console.log('PASS: header brand and badge do not overlap at 320px and 390px');
+  assert.deepEqual(await owner.evaluate(keys=>Object.fromEntries(Object.keys(keys).map(key=>[key,localStorage.getItem(key)])),legacyKeys),legacyKeys);
+  console.log('PASS QA H2: both legacy localStorage values remain byte-identical through V2 creation, restart, photos, deletes and end');
+  await owner.route('https://**/*',route=>route.abort());
+  await owner.goto('http://127.0.0.1:8080/');await owner.locator('#brand').waitFor();assert.equal(await owner.locator('#brand').textContent(),'QA 가상 탐험대');
+  for(const tab of ['home','route','stamps','memory']){await owner.locator('.nav button[data-s="'+tab+'"]').click();assert.equal(await owner.locator('#'+tab).evaluate(node=>node.classList.contains('on')),true);}
+  await owner.getByText('QA 합성 기록',{exact:true}).waitFor({state:'attached'});
+  await owner.locator('.nav button[data-s="stamps"]').click();assert.equal(await owner.locator('#stampGrid .stamp').count(),9);assert.equal(await owner.locator('#stampGrid .done').count(),1);
+  await owner.locator('#stampGrid .stamp').first().click();await owner.locator('#questOverlay.show').waitFor();await owner.evaluate(()=>closeQuest());
+  assert.deepEqual(await owner.evaluate(keys=>Object.fromEntries(Object.keys(keys).map(key=>[key,localStorage.getItem(key)])),legacyKeys),legacyKeys);
+  await owner.screenshot({path:'test-results/qa-v2-legacy-root.png',fullPage:true});assert.deepEqual(errors,[]);
+  console.log('PASS QA H1: unchanged root app restores prior record, renders four tabs and nine stamps, opens quest; offline external photos/print excluded');
   console.log('Physical mobile, production OAuth/Functions and visual font quality remain untested.');
 } catch(error){console.error('Browser page errors:',errors);if(browser){let i=0;for(const context of browser.contexts())for(const page of context.pages()){await page.screenshot({path:`test-results/t9-browser-failure-${i++}.png`,fullPage:true}).catch(()=>{});console.error('Memory diagnostics:',await page.locator('.post-editor').count(),await page.locator('[data-edit-post]').count(),await page.locator('#message').textContent().catch(()=>''),await page.locator('#app').innerText().catch(()=>''));}}throw error;} finally {
   await browser?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(admin);

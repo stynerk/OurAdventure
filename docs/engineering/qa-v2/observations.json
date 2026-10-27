@@ -1,0 +1,37 @@
+{
+  "course": [
+    {
+      "destination": "경주",
+      "formActions": [
+        "여행 만들기"
+      ],
+      "recommendationControls": 0
+    },
+    {
+      "destination": "부산",
+      "formActions": [
+        "여행 만들기"
+      ],
+      "recommendationControls": 0
+    },
+    {
+      "destination": "제주",
+      "formActions": [
+        "여행 만들기"
+      ],
+      "recommendationControls": 0
+    },
+    {
+      "destination": "서울",
+      "formActions": [
+        "여행 만들기"
+      ],
+      "recommendationControls": 0
+    }
+  ],
+  "destinationChangeRetainsManualPlace": "QA 이전 목적지 장소",
+  "managementActions": [
+    "초대 링크·참여 관리",
+    "여행 종료"
+  ]
+}

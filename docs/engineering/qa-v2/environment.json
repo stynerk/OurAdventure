@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-27T21:47:19.335Z",
+  "platform": "win32",
+  "node": "v24.20.0",
+  "chromium": "151.0.7922.34",
+  "base": "fd8cdfec00b325fa1a9b7f3dc2d326690d3dc165",
+  "branch": "engineering/qa-v2",
+  "emulators": [
+    "auth",
+    "firestore",
+    "storage"
+  ],
+  "viewports": [
+    320,
+    390
+  ],
+  "physicalDevices": false,
+  "production": false
+}
