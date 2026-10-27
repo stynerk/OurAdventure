@@ -53,6 +53,14 @@ async function publish(c,user=a,{place=c.p,feeling=''}={}){
   const data={groupId:c.g,tripId:c.t,placeId:place,uploadId,requestId,feeling};
   const result=await service.callables.finalizePhoto(data,user);return {...result,data,objectPath:path(c,user,uploadId)};
 }
+test('QA D7: exactly sixty Unicode characters publish, sixty-one rejects without an extra post',async()=>{
+  const c=await setup(),post=await publish(c,a,{feeling:'가'.repeat(60)});
+  assert.equal((await db.doc(`groups/${c.g}/trips/${c.t}/posts/${post.postId}`).get()).data().feeling.length,60);
+  const pending=randomUUID();await uploadBytes(ref(client(a),path(c,a,pending)),png,{contentType:'image/png'});
+  await rejects(finalize(c,pending,randomUUID(),a,'가'.repeat(61)),'invalid-argument');
+  assert.equal((await db.collection(`groups/${c.g}/trips/${c.t}/posts`).get()).size,1);
+  await assertFails(getBytes(ref(client(b),path(c,a,pending))));
+});
 const edit=(c,post,user,more={})=>service.callables.editPost({groupId:c.g,tripId:c.t,postId:post.postId,feeling:'수정한 느낌',revision:0,requestId:randomUUID(),...more},user);
 const remove=(c,post,user)=>service.callables.deletePost({groupId:c.g,tripId:c.t,postId:post.postId,uid:a.uid},user);
 test('T9 AC-5a/5b: member-only published feed, stable newest pagination and combined filters exclude unconfirmed records',async()=>{
