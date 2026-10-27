@@ -275,3 +275,51 @@ test('concurrent end and photo commit serialize; no new write commits against an
   if(result[1].status==='rejected'){assert.equal(result[1].reason.code,'failed-precondition');assert.equal(saved.postCount,0);}else assert.equal(saved.postCount,1);
   await reject(publish(g,t,p),'failed-precondition');
 });
+
+test('T10 report requires ended membership and derives deduplicated member stamps, representatives and lines from published photos',async()=>{
+  const g=(await group()).groupId;await member(g,a);await member(g,b);const t=(await trip(g)).tripId,[p1,p2]=await places(g,t);
+  const old=await publish(g,t,p1,a,{feeling:'삭제할 기록'}),latest=await publish(g,t,p1,a,{feeling:'멋진 발견'});await publish(g,t,p2,b);await publish(g,t,null,owner,{feeling:'자유 기록'});
+  await service.callables.deletePost({groupId:g,tripId:t,postId:old.postId},a);
+  await db.doc(`groups/${g}/members/${a.uid}`).update({email:'PRIVATE_EMAIL',phone:'PRIVATE_PHONE'});
+  await db.doc(`groups/${g}/trips/${t}/posts/pending-report`).set({status:'pending',uid:a.uid,placeId:p2,feeling:'PRIVATE_PENDING'});
+  await reject(service.callables.getTripReport({groupId:g,tripId:t},a),'failed-precondition');await service.callables.endTrip({groupId:g,tripId:t},owner);
+  const report=await service.callables.getTripReport({groupId:g,tripId:t},a);assert.deepEqual(report,await service.callables.getTripReport({groupId:g,tripId:t},owner));
+  assert.equal(report.days,2);assert.equal(report.placeCount,2);assert.equal(report.photoCount,3);assert.equal(report.stampCount,2);assert.equal(report.stampTotal,6);assert.equal(report.lines.length,2);assert.equal(report.places[0].representative.id,latest.postId);
+  assert.equal(report.members.find(m=>m.uid===a.uid).stampCount,1);assert.equal(report.members.find(m=>m.uid===b.uid).stampCount,1);assert.doesNotMatch(JSON.stringify(report),/PRIVATE_EMAIL|PRIVATE_PHONE|PRIVATE_PENDING/);
+  await reject(service.callables.getTripReport({groupId:g,tripId:t},outsider),'permission-denied');await reject(service.callables.getTripReport({groupId:g,tripId:t},null),'unauthenticated');
+});
+test('T11 AC-6a: only ended-trip leader can configure results; no direct config writes or another member overrides',async()=>{
+  const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId,p=(await places(g,t))[0],post=await publish(g,t,p,a);
+  const input={groupId:g,tripId:t,requestId:randomUUID(),format:'feed',template:'grid',postIds:[post.postId],ownerId:a.uid,uid:owner.uid};
+  await reject(service.callables.configureShareImage(input,owner),'failed-precondition');await service.callables.endTrip({groupId:g,tripId:t},owner);
+  for(const user of [a,outsider])await reject(service.callables.configureShareImage(input,user),'permission-denied');await reject(service.callables.configureShareImage(input,null),'unauthenticated');
+  assert.equal((await db.collection(`groups/${g}/trips/${t}/shareImages`).get()).size,0);
+  await assertFails(setDoc(doc(env.authenticatedContext(a.uid).firestore(),`groups/${g}/trips/${t}/shareImages/forged`),{uid:a.uid,format:'feed'}));
+});
+test('T11 configurations freeze export-only fields, deduplicate retries and reject zero/duplicate/missing/pending selections',async()=>{
+  const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId,p=(await places(g,t))[0],post=await publish(g,t,p,a,{feeling:'PRIVATE_LINE'});await service.callables.endTrip({groupId:g,tripId:t},owner);
+  const input={groupId:g,tripId:t,requestId:randomUUID(),format:'story',template:'board',postIds:[post.postId]};
+  const results=await Promise.all([service.callables.configureShareImage(input,owner),service.callables.configureShareImage(input,owner)]);assert.equal(new Set(results.map(r=>r.configId)).size,1);assert.equal(results.filter(r=>!r.replayed).length,1);
+  assert.equal(results[0].width,1080);assert.equal(results[0].height,1920);assert.doesNotMatch(JSON.stringify(results),/PRIVATE_LINE|대릉원|첨성대|새 여행|destination|email|displayName/);
+  assert.equal(results[0].includeTripTitle,false);assert.equal(Object.hasOwn(results[0],'tripTitle'),false);
+  await reject(service.callables.configureShareImage({...input,includeTripTitle:true},owner),'failed-precondition');
+  const namedInput={...input,requestId:randomUUID(),includeTripTitle:true,tripTitle:'UNTRUSTED_TITLE'};
+  const named=await service.callables.configureShareImage(namedInput,owner);
+  assert.equal(named.includeTripTitle,true);assert.equal(named.tripTitle,(await db.doc(`groups/${g}/trips/${t}`).get()).data().title);
+  assert.doesNotMatch(JSON.stringify(named),/UNTRUSTED_TITLE|PRIVATE_LINE|대릉원|첨성대|destination|email|displayName/);
+  assert.equal((await service.callables.configureShareImage(namedInput,owner)).configId,named.configId);
+  await reject(service.callables.configureShareImage({...namedInput,includeTripTitle:false},owner),'failed-precondition');
+  for(const includeTripTitle of ['true',1,null])await reject(service.callables.configureShareImage({...input,requestId:randomUUID(),includeTripTitle},owner),'invalid-argument');
+  await reject(service.callables.configureShareImage({...namedInput,requestId:randomUUID()},a),'permission-denied');
+  await reject(service.callables.configureShareImage({...input,template:'grid'},owner),'failed-precondition');
+  for(const changes of [{postIds:[]},{postIds:[post.postId,post.postId]},{postIds:Array(7).fill(post.postId)},{format:'__proto__'},{template:'unknown'}])await reject(service.callables.configureShareImage({...input,...changes,requestId:randomUUID()},owner),'invalid-argument');
+  await reject(service.callables.configureShareImage({...input,postIds:['missing'],requestId:randomUUID()},owner),'failed-precondition');
+  await db.doc(`groups/${g}/trips/${t}/posts/unfinished`).set({status:'pending',uid:a.uid});await reject(service.callables.configureShareImage({...input,postIds:['unfinished'],requestId:randomUUID()},owner),'failed-precondition');
+  // Replays still check current ownership and membership, rather than trusting a prior config.
+  await db.doc(`groups/${g}/members/${owner.uid}`).update({role:'member'});await reject(service.callables.configureShareImage(input,owner),'permission-denied');
+});
+test('T10/T11 zero-place and zero-photo ended report remains readable but cannot create a blank image',async()=>{
+  const g=(await group()).groupId;const t=(await trip(g,{places:[]})).tripId;await service.callables.endTrip({groupId:g,tripId:t},owner);
+  const report=await service.callables.getTripReport({groupId:g,tripId:t},owner);assert.equal(report.placeCount,0);assert.equal(report.photoCount,0);assert.equal(report.stampCount,0);assert.equal(report.stampTotal,0);assert.deepEqual(report.lines,[]);
+  await reject(service.callables.configureShareImage({groupId:g,tripId:t,requestId:randomUUID(),format:'feed',template:'grid',postIds:[]},owner),'invalid-argument');
+});

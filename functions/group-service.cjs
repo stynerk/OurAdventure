@@ -1,4 +1,5 @@
 const {createHash,randomBytes} = require('node:crypto');
+const {createReportService}=require('./report-service.cjs');
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const LIMITS = Object.freeze({members:10, places:10, feeling:60});
@@ -70,6 +71,7 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
   }
 
   const callables = {
+    ...createReportService({db,HttpsError,tripContext,tripRef,coordinates,uidOf,requestId,id,now,hash}),
     async editPost(data,auth) {
       const uid=uidOf(auth),{g,t}=coordinates(data),postId=id(data?.postId,'기록 ID'),request=requestId(data);
       const feeling=text(data?.feeling,LIMITS.feeling,'한 줄 느낌',true),revision=data?.revision;
