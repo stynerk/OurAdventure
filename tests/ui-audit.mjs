@@ -31,6 +31,28 @@ export async function auditUi(page,name){
     writeFileSync('test-results/ui-refresh/last-audit.json',JSON.stringify({name,...metrics},null,2));
     assert.equal(metrics.scroll<=width,true,`${name}/${width}: horizontal overflow ${metrics.scroll}`);
     assert.deepEqual(metrics.touch,[],`${name}/${width}: touch target below 44px`);assert.deepEqual(metrics.emoji,[],`${name}: emoji icon`);assert.deepEqual(metrics.files,[],`${name}: native file control visible`);assert.deepEqual(metrics.clipped,[],`${name}: clipped control`);
+    if(await page.locator('.trip-heading').count()){
+      const layout=await page.evaluate(()=>{
+        const bar=document.querySelector('.trip-heading'),panel=document.querySelector('.trip-panel'),bounds=bar.getBoundingClientRect();
+        const issues=[];
+        if(getComputedStyle(document.querySelector('.app-header')).display!=='none')issues.push('duplicate app header');
+        if(bounds.height>65 || bounds.bottom>panel.getBoundingClientRect().top+1)issues.push('trip bar too tall or overlaps content');
+        if(panel.classList.contains('view-map')){
+          const map=panel.querySelector('.illustrated-map').getBoundingClientRect();
+          if(map.left!==0 || Math.abs(map.right-innerWidth)>1 || map.bottom<innerHeight || document.documentElement.scrollHeight>innerHeight+1)issues.push('map does not fill viewport');
+          if(bar.classList.contains('is-closed') && panel.querySelector('.map-pin.is-next'))issues.push('closed trip highlights next place');
+          const hex=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().slice(1),accent=`rgb(${[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)).join(', ')})`;
+          for(const pin of panel.querySelectorAll('.map-pin.is-incomplete .map-pin-dot'))if(getComputedStyle(pin).backgroundColor===accent)issues.push('incomplete pin has accent');
+        }
+        if(panel.classList.contains('view-stamps')){
+          if(getComputedStyle(panel).backgroundColor!=='rgba(0, 0, 0, 0)' || getComputedStyle(panel).boxShadow!=='none')issues.push('nested stamp board card');
+          if(getComputedStyle(panel.querySelector('.stamp-grid')).gridTemplateColumns.split(' ').length!==3)issues.push('stamp board is not three columns');
+          for(const seal of panel.querySelectorAll('.stamp-tile.is-done .clay-seal>span'))if(seal.textContent==='완료' || !getComputedStyle(seal).fontFamily.includes('Jua'))issues.push('seal missing stamp name/Jua');
+        }
+        return issues;
+      });
+      assert.deepEqual(layout,[],`${name}/${width}: PM layout regression`);
+    }
     if(process.env.UI_AUDIT_AXE_PATH){
       await page.addScriptTag({content:readFileSync(process.env.UI_AUDIT_AXE_PATH,'utf8')});
       const result=await page.evaluate(async()=>{const {violations}=await axe.run({include:[['main'],['.app-header']]},{runOnly:{type:'rule',values:['color-contrast','button-name','link-name','label','image-alt']}});return violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});

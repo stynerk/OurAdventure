@@ -25,13 +25,16 @@ test('illustrated map uses one internal pin per place, stable route order and es
   const html=illustratedMap([{id:'a',name:'<script>'},{id:'b',name:'둘째 장소'}],new Set(['a']),p=>`#trip/g/t/stamp/${p.id}`);
   assert.match(html,/map-route/);assert.match(html,/is-done/);assert.match(html,/href="#trip\/g\/t\/stamp\/b"/);
   assert.doesNotMatch(html,/<script>|https?:\/\//);assert.match(html,/&lt;script&gt;/);
+  assert.match(html,/map-pin is-next/);
+  const closed=illustratedMap([{id:'a',name:'첫 장소'},{id:'b',name:'둘째 장소'}],new Set(['a']),p=>`#${p.id}`,{closed:true});
+  assert.match(closed,/map-pin is-incomplete/);assert.doesNotMatch(closed,/is-next/);
 });
 function fixture({owner=true,closed=false}={}) {
   const app={innerHTML:'initial',addEventListener:()=>{}},calls=[],events=[];let active=true,activated=0,expectedContext;
   const docs=rows=>({docs:rows.map(({id,...data})=>({id,data:()=>data}))});
   const api={doc:(_db,...path)=>path.join('/'),collection:(_db,...path)=>path.join('/'),where:(...args)=>({where:args}),limit:n=>({limit:n}),query:(path,...constraints)=>({path,constraints}),getDocFromServer:async()=>({exists:()=>true,data:()=>({title:'여행',destination:'경주',status:closed?'closed':'open',placeIds:['p1','p2'],postCount:1})}),getDocsFromServer:async query=>{
     calls.push(query);const path=typeof query==='string'?query:query.path;
-    if(path.endsWith('/places'))return docs([{id:'p1',name:'첫 장소',icon:'📍'},{id:'p2',name:'둘째 장소'}]);
+    if(path.endsWith('/places'))return docs([{id:'p1',name:'첫 장소',mission:{stampName:'왕의 <언덕>'}},{id:'p2',name:'둘째 장소'}]);
     if(path.endsWith('/members'))return docs([{id:'a',displayName:'같은 별칭'},{id:'b',displayName:'같은 별칭'}]);
     if(path.endsWith('/completions'))return docs([{id:'ca',uid:'a',placeId:'p1',photoCount:1},{id:'cb',uid:'b',placeId:'p2',photoCount:1}]);
     assert.deepEqual(query.constraints,[{where:['status','==','published']},{orderBy:['createdAt','desc']},{orderBy:['__name__','desc']},{limit:12}]);
@@ -51,7 +54,9 @@ test('closed trips retain all four routes and personal progress without write co
     assert.match(f.app.innerHTML,/종료된 여행/);assert.doesNotMatch(f.app.innerHTML,/<form|data-v2-action|data-trip-action/);
     assert.doesNotMatch(f.app.innerHTML,/>여행 관리<|\/manage/);
     assert.doesNotMatch(f.app.innerHTML,/다음 탐험/);
-    if(tab==='stamps'){assert.match(f.app.innerHTML,/내 스탬프 1\/2/);assert.doesNotMatch(f.app.innerHTML,/is-next/);}
+    if(tab==='stamps'){assert.match(f.app.innerHTML,/내 스탬프 1\/2/);assert.doesNotMatch(f.app.innerHTML,/is-next/);assert.match(f.app.innerHTML,/<span>왕의 &lt;언덕&gt;<\/span>/);}
+    assert.match(f.app.innerHTML,/class="trip-report"/);
+    assert.doesNotMatch(f.app.innerHTML,/장소 2개|기존 여행 정보는 계속/);
   }
   assert.equal(f.activated(),4);
   assert.deepEqual(f.events.filter(e=>e.name==='screen_view').map(e=>e.params.screen_name),TRIP_TABS);

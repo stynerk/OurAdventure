@@ -516,36 +516,21 @@ body.trip-active #app {
 html {
   scroll-padding-bottom:200px
 }
+body.trip-active .app-header {display:none}
 .trip-heading {
-  box-shadow:none;
-  background:transparent;
-  padding:8px 4px 20px
-}
-.trip-heading>a:first-child {
-  display:inline-flex;
+  display:flex;
   align-items:center;
-  min-height:44px;
-  font-size:13px;
-  font-weight:700;
-  text-decoration:none;
-  max-width:100%
+  gap:8px;
+  min-height:64px;
+  padding:8px 0;
+  margin:0 0 16px;
 }
-.trip-heading>.badge {
-  margin-left:8px;
-  margin-bottom:0
-}
-.trip-heading h1 {
-  margin-top:8px
-}
-.trip-heading>p {
-  font-size:13px;
-  color:var(--muted)
-}
-.trip-heading>.button {
-  min-height:44px;
-  font-size:13px;
-  padding:8px 16px
-}
+.trip-heading h1 {flex:1;min-width:0;margin:0;font-size:18px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trip-heading>a {display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;flex-shrink:0;text-decoration:none;color:var(--ink)}
+.trip-heading .trip-back,.trip-heading .trip-manage {width:44px;background:var(--surface);border-radius:16px;box-shadow:var(--shadow-sm)}
+.trip-heading .badge {flex-shrink:0;margin:0;font-size:12px;padding:4px 8px}
+.trip-heading .trip-report {font-size:12px;font-weight:700}
+
 .trip-panel {
   scroll-margin-bottom:180px
 }
@@ -641,7 +626,7 @@ body.trip-active.emulator-mode #app {
 .map-pin.is-done .map-pin-dot {
   background:#1b6748
 }
-.map-pin:not(.is-done):first-of-type:before {
+.map-pin.is-next:before {
   content:"";
   position:absolute;
   inset:-6px;
@@ -1533,62 +1518,26 @@ body.emulator-mode .new-trip-button {
   flex-wrap:wrap
 }
 
-#app:has(.view-map) .trip-heading {
-  position:absolute;
-  z-index:5;
-  top:16px;
-  left:16px;
-  right:16px;
-  padding:12px 16px;
-  border-radius:22px;
-  background:#fffffff2;
-  box-shadow:var(--shadow-md)
-}
-#app:has(.view-map) .trip-heading h1 {
-  font-size:20px;
-  margin-bottom:8px
-}
-#app:has(.view-map) .trip-heading>p {
-  display:none
-}
-.view-map {
-  position:relative;
-  width:calc(100% + 40px);
-  margin-left:-20px;
-  border-radius:24px
-}
-.view-map>h2,.view-map>.muted {
-  position:absolute;
-  clip:rect(0,0,0,0);
-  width:1px;
-  height:1px;
-  overflow:hidden;
-  padding:0
-}
-.view-map .illustrated-map {
-  height:calc(100svh - 84px)!important;
-  min-height:660px;
-  margin-bottom:0
-}
-.view-map .next-adventure {
-  position:absolute;
-  left:16px;
-  right:16px;
-  bottom:124px;
-  margin:0;
-  z-index:6
-}
-body.emulator-mode .view-map .next-adventure {
-  bottom:176px
-}
+body.trip-active:has(.view-map) {background:#d6e3bf}
+body.trip-active:has(.view-map) main {padding-top:0;padding-bottom:0}
+body.trip-active:has(.view-map) #app {padding-bottom:0}
+#app:has(.view-map) .trip-heading {margin:0 -20px;padding:8px 16px;background:var(--bg)}
+.view-map {position:relative;width:calc(100% + 40px);margin:0 0 0 -20px;padding:0;border-radius:0}
+.view-map>h2,.view-map>.muted {position:absolute;top:0;left:0;margin:0;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden;padding:0}
+.view-map .illustrated-map {height:calc(100svh - 64px)!important;min-height:600px;margin:0;border-radius:0;background:#d6e3bf}
+.view-map .illustrated-map>svg {border-radius:0}
+.view-map .next-adventure {position:absolute;left:16px;right:16px;bottom:124px;margin:0;z-index:6}
+body.emulator-mode .view-map .next-adventure {bottom:176px}
+.view-stamps {background:transparent;box-shadow:none;padding:0}
+.stamp-tile.is-done .clay-seal {padding:8px}
+.stamp-tile.is-done .clay-seal>span {font-family:Jua,sans-serif;font-size:14px;line-height:1.15;overflow-wrap:anywhere}
+.map-pin.is-incomplete .map-pin-dot {background:#e9ecf1;color:var(--muted)}
 .celebration-photo img {
   max-height:180px
 }
 
 
-#app:has(.view-map) .trip-heading.is-closed>p:last-of-type {
-  display:block
-}
+
 
 
 .stamp-celebration {

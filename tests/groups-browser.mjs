@@ -78,7 +78,8 @@ try {
   await owner.getByRole('link',{name:'← 브라우저 테스트 그룹',exact:true}).click();
   await owner.getByRole('heading',{name:'지난 여행',exact:true}).waitFor();
   await owner.getByRole('link',{name:'첫 여행',exact:true}).click();
-  await owner.getByText('종료된 여행이에요. 기존 여행 정보는 계속 볼 수 있어요.',{exact:true}).waitFor();
+  await owner.getByLabel('종료된 여행',{exact:true}).waitFor();
+  await owner.getByRole('link',{name:'여행 리포트 보기',exact:true}).waitFor();
   assert.equal(await owner.locator('form').count(),0);
   console.log('PASS: Google-emulator leader creates group and separate trips; fresh empty forms, zero places and closed-trip reentry');
 
