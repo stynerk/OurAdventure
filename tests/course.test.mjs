@@ -30,6 +30,9 @@ test('Pages packages only public files and emits production-only config from exp
   const output=readFileSync('public/next/firebase-config.js','utf8');
   assert.match(output,/useEmulators=false/);assert.doesNotMatch(output,/privateField|must-not-be-published/);
   assert.match(output,/measurementId.*G-TEST123/);
+  const {measurementId,...withoutMeasurement}=config;
+  execFileSync(process.execPath,['scripts/prepare-pages.mjs'],{env:{...process.env,FIREBASE_WEB_CONFIG:JSON.stringify(withoutMeasurement)}});
+  assert.match(readFileSync('public/next/firebase-config.js','utf8'),/G-Z7PFT0F4YL/);
   execFileSync(process.execPath,['scripts/prepare-pages.mjs'],{env:{...process.env,FIREBASE_WEB_CONFIG:''}});
   assert.equal(existsSync('public/next/firebase-config.js'),false);
 });

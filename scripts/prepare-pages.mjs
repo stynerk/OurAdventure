@@ -14,9 +14,9 @@ if(process.env.FIREBASE_WEB_CONFIG){
   const keys=['apiKey','authDomain','projectId','appId'];
   if(!keys.every(k=>typeof input[k]==='string' && input[k].length>0))throw new Error('Incomplete Firebase public web configuration');
   const config=Object.fromEntries(keys.map(k=>[k,input[k]]));
-  if(input.measurementId!==undefined){
-    if(!/^G-[A-Z0-9]+$/.test(input.measurementId))throw new Error('Invalid Analytics measurement ID');
-    config.measurementId=input.measurementId;
-  }
+  // Owner-supplied public GA web measurement ID. An explicit web config may override it.
+  const measurementId=input.measurementId??'G-Z7PFT0F4YL';
+  if(!/^G-[A-Z0-9]+$/.test(measurementId))throw new Error('Invalid Analytics measurement ID');
+  config.measurementId=measurementId;
   writeFileSync('public/next/firebase-config.js',`export const firebaseConfig=${JSON.stringify(config)};\nexport const functionsRegion='asia-northeast3';\nexport const useEmulators=false;\n`);
 }
