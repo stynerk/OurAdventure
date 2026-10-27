@@ -2,6 +2,7 @@ import {readPending,prepareRequest,finishRequest} from './creation-requests.mjs'
 import {createTripViews} from './trip-views.mjs';
 import {icon} from './icons.mjs';
 import {cover} from './ui.mjs';
+import {inactiveForm} from './place-editor.mjs';
 
 export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,say,isCurrent,storage,track=()=>{}}) {
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -9,7 +10,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
   const routes=new Set(['groups','group','group-create','trip-create','trip','group-join']);
   let active=null;
   const current=context=>active===context && isCurrent(context.version) && getUser()?.uid===context.uid;
-  const tripViews=createTripViews({app,api,db,photoStorage,current,getUser,track,call,perform});
+  const tripViews=createTripViews({app,api,db,photoStorage,current,getUser,track,call,perform,storage});
   const login=()=>'<p>그룹을 만들려면 Google 로그인이 필요해요.</p><button data-action="login">Google로 로그인</button>';
   const account=()=>getUser()?'<button class="secondary" data-action="logout">로그아웃</button>':'';
   const errorCard=(title,href='#groups')=>`<section class="card"><h1>${esc(title)}</h1><p>로그인·그룹 참여 상태와 연결을 확인해주세요.</p><a href="${href}">목록으로 돌아가기</a> <button class="secondary" data-v2-action="refresh">다시 확인</button></section>`;
@@ -94,7 +95,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
   }
   app.addEventListener('submit',event=>{
     const form=event.target;if(!['v2-group-create','v2-trip-create','v2-group-join'].includes(form.id))return;
-    event.preventDefault();const context=active;if(!context || !current(context))return;
+    event.preventDefault();const context=active;if(!context || !current(context) || inactiveForm(form))return;
     if(form.id==='v2-group-join'){
       const nickname=new FormData(form).get('nickname');
       perform(async()=>{

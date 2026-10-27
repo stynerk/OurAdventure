@@ -111,3 +111,17 @@ test('T9 closed trip rejects own edit/delete/free create and pending finalize; e
   await rejects(service.callables.finalizePhoto({groupId:c.g,tripId:c.t,placeId:null,uploadId:pending,requestId:randomUUID(),feeling:''},a),'failed-precondition');
   await assertSucceeds(getDoc(doc(env.authenticatedContext(b.uid).firestore(),`groups/${c.g}/trips/${c.t}/posts/${post.postId}`)));await assertSucceeds(getBytes(ref(client(b),post.objectPath)));
 });
+
+test('T15 removed place retains member-readable photos and author-only edit/delete; unfinished uploads cannot create removed-place stamps',async()=>{
+  const c=await setup(),one=await publish(c,a),two=await publish(c,b),pending=randomUUID();
+  await uploadBytes(ref(client(a),path(c,a,pending)),png,{contentType:'image/png'});
+  const input={groupId:c.g,tripId:c.t,placeId:c.p},impact=await service.callables.previewTripPlaceRemoval(input,owner);
+  await service.callables.removeTripPlace({...input,confirmationToken:impact.confirmationToken},owner);
+  await assertSucceeds(getBytes(ref(client(b),one.objectPath)));await assertSucceeds(getBytes(ref(client(a),two.objectPath)));
+  await rejects(finalize(c,pending),'invalid-argument');await assertFails(getBytes(ref(client(b),path(c,a,pending))));
+  await rejects(remove(c,one,owner),'permission-denied');await rejects(edit(c,one,b),'permission-denied');
+  await edit(c,one,a);await remove(c,one,a);
+  await assertFails(getBytes(ref(client(b),one.objectPath)));await assertSucceeds(getBytes(ref(client(a),two.objectPath)));
+  assert.equal((await db.doc(`groups/${c.g}/trips/${c.t}`).get()).data().postCount,1);
+  assert.equal((await db.doc(`groups/${c.g}/trips/${c.t}/places/${c.p}`).get()).data().postCount,1);
+});

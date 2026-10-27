@@ -1,0 +1,262 @@
+{
+  "login": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ],
+  "groups": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ],
+  "map": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ],
+  "stamps": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ],
+  "stamp-detail": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ],
+  "stamp-complete": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ],
+  "memories": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ],
+  "place-add": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ],
+  "place-delete": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ],
+  "report": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 375,
+      "scroll": 375,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "touch": [],
+      "emoji": [],
+      "files": [],
+      "clipped": []
+    }
+  ]
+}

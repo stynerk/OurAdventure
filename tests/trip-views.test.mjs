@@ -52,7 +52,7 @@ test('closed trips retain all four routes and personal progress without write co
     assert.match(f.app.innerHTML,/aria-label="여행 화면"/);
     for(const label of ['지도','코스','스탬프','추억'])assert.ok(f.app.innerHTML.includes(label));
     assert.match(f.app.innerHTML,/종료된 여행/);assert.doesNotMatch(f.app.innerHTML,/<form|data-v2-action|data-trip-action/);
-    assert.doesNotMatch(f.app.innerHTML,/>여행 관리<|\/manage/);
+    assert.doesNotMatch(f.app.innerHTML,/>여행 관리<|\/manage|data-place-action/);
     assert.doesNotMatch(f.app.innerHTML,/다음 탐험/);
     if(tab==='stamps'){assert.match(f.app.innerHTML,/내 스탬프 1\/2/);assert.doesNotMatch(f.app.innerHTML,/is-next/);assert.match(f.app.innerHTML,/<span>왕의 &lt;언덕&gt;<\/span>/);}
     assert.match(f.app.innerHTML,/class="trip-report"/);
@@ -73,6 +73,8 @@ test('member DOM excludes management and direct management route does not read g
   f.calls.length=0;await f.open('manage');
   assert.match(f.app.innerHTML,/리더만 여행을 관리/);assert.equal(f.calls.length,0);
   assert.equal(f.events.length,1);
+  const course=fixture({owner:false});await course.open('course');assert.doesNotMatch(course.app.innerHTML,/data-place-action/);
+  const leader=fixture();await leader.open('course');assert.match(leader.app.innerHTML,/data-place-action="add"/);assert.match(leader.app.innerHTML,/data-place-action="remove"/);
 });
 test('only open leader management includes end action',async()=>{
   const leader=fixture();await leader.open('manage');assert.match(leader.app.innerHTML,/data-trip-action="end"/);

@@ -624,7 +624,8 @@ body.trip-active.emulator-mode #app {
   box-shadow:0 6px 14px #11182724
 }
 .map-pin.is-done .map-pin-dot {
-  background:#1b6748
+  background:var(--stamp-face);
+  color:var(--stamp-ink)
 }
 .map-pin.is-next:before {
   content:"";
@@ -1589,3 +1590,13 @@ body.emulator-mode .view-map .next-adventure {bottom:176px}
   bottom:76px;
   max-height:calc(100svh - 96px)
 }
+
+.illustrated-map>.map-sun {inset:auto;right:12%;top:5%;width:42px;height:42px}
+.place-dialog {width:calc(100% - 32px);max-width:440px;max-height:calc(100svh - 80px);overflow-y:auto;border:0;border-radius:24px;padding:24px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg)}
+.place-dialog::backdrop {background:#11182766}
+.place-dialog h2 {margin-top:0;font-size:22px}
+.place-dialog>button,.place-dialog form>button {width:100%;margin-top:12px}
+.place-dialog .row {display:flex;gap:12px}
+.place-dialog .row>button {flex:1}
+.place-impact {padding:16px;background:var(--accent-soft);color:var(--accent-ink);border-radius:18px;font-weight:700}
+.place-remove {margin-top:16px}

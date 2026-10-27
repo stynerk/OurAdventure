@@ -60,7 +60,8 @@ export async function auditUi(page,name){
     }
     await page.emulateMedia({reducedMotion:'reduce'});
     assert.equal(await page.evaluate(()=>[...document.querySelectorAll('.card,.clay-seal,.celebration-sparkles')].every(n=>getComputedStyle(n).animationName==='none')),true,'Reduced motion must suppress animation');
-    if(name==='stamp-complete' && await page.locator('.stamp-celebration').count())await page.locator('.stamp-celebration').screenshot({path:`test-results/ui-refresh/${name}-${width}.png`});
+    if(name.startsWith('place-'))await page.locator('.place-dialog').screenshot({path:`test-results/ui-refresh/${name}-${width}.png`});
+    else if(name==='stamp-complete' && await page.locator('.stamp-celebration').count())await page.locator('.stamp-celebration').screenshot({path:`test-results/ui-refresh/${name}-${width}.png`});
     else await page.screenshot({path:`test-results/ui-refresh/${name}-${width}.png`,fullPage:true});
     await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForTimeout(300);
     all.push(metrics);

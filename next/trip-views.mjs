@@ -4,6 +4,7 @@ import {createMemoryFeed} from './memory-feed.mjs';
 import {createReportViews} from './report-views.mjs';
 import {icon} from './icons.mjs';
 import {cover} from './ui.mjs';
+import {createPlaceEditor} from './place-editor.mjs';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const TRIP_TABS=Object.freeze(['map','course','stamps','memory']);
 export function googlePlaceUrl(destination,place) {
@@ -17,7 +18,10 @@ export function completionSummary(placeIds,members,completions) {
   for(const c of completions)if(allowed.has(c.placeId) && byMember.has(c.uid) && c.photoCount>0)byMember.get(c.uid).add(c.placeId);
   return byMember;
 }
-export function createTripViews({app,api,db,photoStorage,current,getUser,call,perform,track=()=>{},activate=()=>document.body.classList.add('trip-active'),confirmEnd=()=>confirm('여행을 종료할까요? 종료 후 사진과 스탬프는 읽기 전용이 되며 되돌릴 수 없어요.')}) {
+export function createTripViews({app,api,db,photoStorage,current,getUser,call,perform,storage,track=()=>{},activate=()=>document.body.classList.add('trip-active'),confirmEnd=()=>confirm('여행을 종료할까요? 종료 후 사진과 스탬프는 읽기 전용이 되며 되돌릴 수 없어요.')}) {
+  let stopPlaces=null;
+  const refresh=()=>window.dispatchEvent(new Event('hashchange'));
+  const placeEditor=createPlaceEditor({app,call,current,getUser,perform,storage,refresh});
   const reports=createReportViews({app,api,photoStorage,getUser,current,call,perform,track});
   const memories=createMemoryFeed({app,api,db,photoStorage,getUser,current,call,perform,track});
   const photos=createPhotoViews({app,api,photoStorage,getUser,current,call,perform,track,onSaved:context=>memories.refresh(context)});
@@ -34,6 +38,7 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
   });
   const timestamp=t=>t?.seconds||0;
   async function open(context,group) {
+    stopPlaces?.();stopPlaces=null;placeEditor.clear();
     memories.clear();reports.clear();
     const {groupId:g,tripId:t}=context;
     if(!/^[A-Za-z0-9_-]{1,128}$/.test(t||''))throw Error('잘못된 여행 주소');
@@ -72,7 +77,7 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
       const next=closed?null:places.find(p=>!done.has(p.id));
       content=`<h2 id="trip-panel-title">여행 지도</h2>${places.length?illustratedMap(places,done,placeLink,{closed}):empty}${next?`<div class="next-adventure">${cover("next-thumb")}<div><span class="eyebrow">다음 발견</span><a class="button" href="${placeLink(next)}">다음 탐험 · ${escape(next.name)} ${icon("arrow-right")}</a></div></div>`:places.length && done.size===places.length?'<p>모든 장소의 내 스탬프를 모았어요!</p>':''}`;
     }else if(tab==='course'){
-      content=`<h2 id="trip-panel-title">여행 코스</h2>${places.length?`<ol class="course-stops">${places.map(p=>`<li><h3><a href="${placeLink(p)}">${escape(p.name)}</a></h3>${badge(p)}${mission(p)}</li>`).join('')}</ol>`:empty}`;
+      content=`<h2 id="trip-panel-title">여행 코스</h2>${group.isOwner && !closed?`<button class="secondary" data-place-action="add">${icon('plus')}장소 추가</button>`:''}${places.length?`<ol class="course-stops">${places.map(p=>`<li><h3><a href="${placeLink(p)}">${escape(p.name)}</a></h3>${badge(p)}${mission(p)}${group.isOwner && !closed?`<button class="place-remove secondary" data-place-action="remove" data-place-id="${escape(p.id)}" aria-label="${escape(p.name)} 장소 삭제">${icon('trash-2')}장소 삭제</button>`:''}</li>`).join('')}</ol>`:empty}`;
     }else if(tab==='stamps'){
       content=`<h2 id="trip-panel-title">내 스탬프 ${done.size}/${places.length}</h2><div class="stamp-grid">${places.map((p,index)=>`<a class="stamp-tile ${done.has(p.id)?'is-done':!closed && places.find(item=>!done.has(item.id))?.id===p.id?'is-next':''}" href="${placeLink(p)}"><span class="clay-seal" aria-hidden="true">${done.has(p.id)?`<span>${escape(p.mission?.stampName||p.name)}</span>`:!closed && places.find(item=>!done.has(item.id))?.id===p.id?icon("camera"):String(index+1).padStart(2,"0")}</span><strong>${escape(p.name)}</strong><small>${done.has(p.id)?'완료':'미완료'}</small></a>`).join('')}</div>${places.length?'':empty}<h3>멤버별 진행</h3><ul class="members">${members.map(m=>`<li class="${m.id===getUser()?.uid?'is-me':''}"><strong>${escape(m.displayName)}${m.id===getUser()?.uid?' (나)':''}</strong>스탬프 ${summaries.get(m.id)?.size||0}/${places.length}</li>`).join('')}</ul>`;
     }else if(tab==='memory'){
@@ -90,10 +95,20 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
     const selected=tab==='stamp'?'stamps':['report','share'].includes(tab)?'memory':tab;
     app.innerHTML=`<header class="trip-heading ${closed?'is-closed':''}" aria-label="여행 상단"><a class="trip-back" href="#group/${escape(g)}" aria-label="← ${escape(group.title)}">${icon('arrow-left')}</a><h1>${escape(trip.title)}</h1>${closed?'<span class="badge" aria-label="종료된 여행">종료</span>':''}${closed && !['report','share'].includes(tab)?`<a class="trip-report" href="${base}/report" aria-label="여행 리포트 보기">리포트</a>`:''}${group.isOwner && !closed && tab!=='manage'?`<a class="trip-manage" href="${base}/manage" aria-label="여행 관리">${icon('settings')}</a>`:''}<span hidden data-trip-post-count>${Number(trip.postCount)||0}</span></header><section class="card trip-panel view-${tab}" aria-labelledby="trip-panel-title">${content}</section><nav class="trip-tabs" aria-label="여행 화면">${[['map','map','지도'],['course','route','코스'],['stamps','stamp','스탬프'],['memory','image','추억']].map(([key,glyph,label])=>`<a href="${base}/${key}" ${selected===key?'aria-current="page"':''}>${icon(glyph)}<span>${label}</span></a>`).join('')}</nav>`;
     activate();
+    placeEditor.mount(context,group,trip);
+    if(api.onSnapshot){
+      let initial=JSON.stringify(trip.placeIds);
+      stopPlaces=api.onSnapshot(api.doc(db,...root),{includeMetadataChanges:true},snapshot=>{
+        if(!current(context) || !snapshot.exists() || snapshot.metadata.fromCache)return;
+        const updated=JSON.stringify(snapshot.data().placeIds);
+        if(updated!==initial){initial=updated;if(!placeEditor.isMutating())refresh();}
+      },()=>{});
+    }
     if(['report','share'].includes(tab) && closed)reports.mount();
     if(tab==='stamp' && !closed)await photos.mount(context,group,places.findIndex(p=>p.id===context.placeId)+1);
     if(tab==='memory'){memories.mount();if(!closed)await photos.mount(context,group,0);}
     if(tab!=='manage')track('screen_view',{screen_name:tab==='stamp'?'stamp_detail':tab==='share'?'share_image':tab,role:group.isOwner?'leader':'member',group_id:g,trip_id:t,trip_status:closed?'ended':'active'});
   }
-  return {open,clearMemory:()=>{memories.clear();reports.clear();},clearPhotos:()=>{photos.clear();memories.clear();reports.clear();}};
+  const clearPlaces=()=>{stopPlaces?.();stopPlaces=null;placeEditor.clear();};
+  return {open,clearMemory:()=>{clearPlaces();memories.clear();reports.clear();},clearPhotos:()=>{clearPlaces();photos.clear();memories.clear();reports.clear();}};
 }
