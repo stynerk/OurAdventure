@@ -224,3 +224,54 @@ test('only leader can regenerate links; old links are invalidated without removi
   const next=(await trip(g,{title:'다음 여행'})).tripId;
   await assertSucceeds(getDoc(doc(memberDb,`groups/${g}/trips/${next}`)));
 });
+
+test('AC-6a: endTrip rejects members and outsiders, and leader retries preserve one server closure',async()=>{
+  const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId;
+  for(const user of [a,auth('unrelated-leader','google.com')])await reject(service.callables.endTrip({groupId:g,tripId:t,ownerId:user.uid},user),'permission-denied');
+  await reject(service.callables.endTrip({groupId:g,tripId:t},null),'unauthenticated');
+  assert.equal((await db.doc(`groups/${g}/trips/${t}`).get()).data().status,'open');
+  const results=await Promise.all(Array.from({length:3},()=>service.callables.endTrip({groupId:g,tripId:t,closedBy:a.uid},owner)));
+  assert.equal(results.filter(r=>!r.replayed).length,1);
+  const closed=(await db.doc(`groups/${g}/trips/${t}`).get()).data();
+  assert.equal(closed.status,'closed');assert.equal(closed.closedBy,owner.uid);assert.ok(closed.closedAt?.seconds);
+  await service.callables.endTrip({groupId:g,tripId:t},owner);
+  assert.equal((await db.doc(`groups/${g}/trips/${t}`).get()).data().closedAt.toMillis(),closed.closedAt.toMillis());
+  await reject(service.callables.endTrip({groupId:g,tripId:t},a),'permission-denied');
+});
+
+test('ended trip rejects new leader/member photo finalization, place writes and direct completion/reopen attempts while preserving reads',async()=>{
+  const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId,p=(await places(g,t))[0];
+  const original=await publish(g,t,p);await service.callables.endTrip({groupId:g,tripId:t},owner);
+  for(const user of [owner,a]){
+    await reject(publish(g,t,p,user),'failed-precondition');
+    await reject(publish(g,t,null,user),'failed-precondition');
+    const client=env.authenticatedContext(user.uid).firestore(),path=`groups/${g}/trips/${t}`;
+    await assertFails(setDoc(doc(client,`${path}/posts/forged-after-close`),{uid:user.uid,status:'published'}));
+    await assertFails(setDoc(doc(client,`${path}/completions/forged-after-close`),{uid:user.uid,placeId:p}));
+    await assertFails(updateDoc(doc(client,path),{status:'open'}));
+    await assertSucceeds(getDoc(doc(client,path)));await assertSucceeds(getDoc(doc(client,`${path}/posts/${original.postId}`)));
+  }
+  await reject(service.callables.addTripPlace({groupId:g,tripId:t,requestId:randomUUID(),place:{name:'종료 후 장소'}},owner),'failed-precondition');
+  assert.equal((await db.doc(`groups/${g}/trips/${t}`).get()).data().postCount,1);
+  assert.equal((await db.collection(`groups/${g}/trips/${t}/completions`).get()).size,1);
+});
+
+test('photo verification started before end cannot finalize after end commits',async()=>{
+  const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId,p=(await places(g,t))[0];
+  let release;const gate=new Promise(resolve=>{release=resolve;});
+  const slow=createGroupService(db,{HttpsError,FieldValue,verifyPhoto:async()=>{await gate;return {objectPath:`groups/${g}/trips/${t}/uploads/${a.uid}/late.jpg`,contentType:'image/jpeg',size:100};}});
+  const pending=slow.finalizeVerifiedPost({groupId:g,tripId:t,placeId:p,requestId:randomUUID()},a);
+  await service.callables.endTrip({groupId:g,tripId:t},owner);release();
+  await reject(pending,'failed-precondition');
+  assert.equal((await db.doc(`groups/${g}/trips/${t}`).get()).data().postCount,0);
+  assert.equal((await db.collection(`groups/${g}/trips/${t}/completions`).get()).size,0);
+});
+
+test('concurrent end and photo commit serialize; no new write commits against an already closed trip',async()=>{
+  const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId,p=(await places(g,t))[0];
+  const result=await Promise.allSettled([service.callables.endTrip({groupId:g,tripId:t},owner),publish(g,t,p)]);
+  assert.equal(result[0].status,'fulfilled');
+  const saved=(await db.doc(`groups/${g}/trips/${t}`).get()).data();assert.equal(saved.status,'closed');
+  if(result[1].status==='rejected'){assert.equal(result[1].reason.code,'failed-precondition');assert.equal(saved.postCount,0);}else assert.equal(saved.postCount,1);
+  await reject(publish(g,t,p),'failed-precondition');
+});

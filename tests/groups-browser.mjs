@@ -152,7 +152,8 @@ try {
   assert.equal(await owner.locator('.map-route').count(),1);assert.equal(await owner.locator('.map-pin.is-done').count(),1);
   assert.equal(await owner.locator('.trip-panel a[href^="http"]').count(),0);
   await owner.screenshot({path:'test-results/trip-illustrated-map-mobile.png',fullPage:true});
-  await owner.getByRole('link',{name:'다음 탐험 · 첨성대',exact:true}).click();
+  assert.equal(await owner.getByRole('link',{name:'다음 탐험 · 첨성대',exact:true}).count(),0);
+  await owner.locator('.map-pin').nth(1).click();
   await owner.getByText('종료된 여행이에요. 스탬프는 읽기만 할 수 있어요.',{exact:true}).waitFor();
   await owner.goto(origin+`#trip/${groupId}/${firstTripId}/manage`);await owner.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();
   assert.equal(await owner.getByRole('link',{name:'초대 링크·참여 관리',exact:true}).count(),0);
@@ -173,6 +174,39 @@ try {
   mkdirSync('test-results',{recursive:true});await owner.screenshot({path:'test-results/trip-tabs-mobile.png',fullPage:true});
   console.log('PASS: both roles retain four closed-trip tabs; UID-based stamp progress differs, only published memories display and member management is denied');
   console.log('PASS: illustrated map pins and dotted path, next stamp, closed management hidden, direct closed route read-only and 320/390px content clearance');
+
+  const invoke=async(page,name,data)=>page.evaluate(async({name,data})=>{
+    const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-functions.js');
+    try{return {data:(await sdk.httpsCallable(sdk.getFunctions(undefined,'asia-northeast3'),name)(data)).data};}catch(error){return {code:error.code};}
+  },{name,data});
+  assert.equal((await invoke(peer,'endTrip',{groupId,tripId:openTripId})).code,'functions/permission-denied');
+  await owner.goto(origin+`#trip/${groupId}/${openTripId}/manage`);
+  const endButton=owner.getByRole('button',{name:'여행 종료',exact:true});await endButton.waitFor();
+  owner.once('dialog',dialog=>dialog.dismiss());await endButton.click();
+  assert.equal((await db.doc(`groups/${groupId}/trips/${openTripId}`).get()).data().status,'open');
+  // Commit the end, lose the response, retry from stale UI: the server must keep one closure.
+  await owner.route('**/endTrip',async route=>{if(route.request().method()!=='POST'){await route.continue();return;}await route.fetch();await route.abort('failed');});
+  owner.once('dialog',dialog=>dialog.accept());await endButton.click();
+  await owner.waitForFunction(()=>document.querySelector('#message')?.textContent && !document.querySelector('button[data-trip-action="end"]')?.disabled);
+  const endedRef=db.doc(`groups/${groupId}/trips/${openTripId}`),firstEnd=(await endedRef.get()).data();
+  assert.equal(firstEnd.status,'closed');assert.equal(firstEnd.closedBy,ownerUid);
+  await owner.unroute('**/endTrip');owner.once('dialog',dialog=>dialog.accept());await endButton.click();
+  await owner.waitForURL(url=>url.hash===`#trip/${groupId}/${openTripId}/map`);
+  await owner.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();
+  assert.equal((await endedRef.get()).data().closedAt.toMillis(),firstEnd.closedAt.toMillis());
+  for(const page of [owner,peer]){
+    await page.goto(origin+`#trip/${groupId}/${openTripId}/map`);await page.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();
+    const nav=page.getByRole('navigation',{name:'여행 화면'});
+    for(const [label,heading] of [['코스','여행 코스'],['스탬프','내 스탬프 0/1'],['추억','함께 남긴 추억'],['지도','여행 지도']]){
+      await nav.getByRole('link',{name:label,exact:true}).click();await page.getByRole('heading',{name:heading,exact:true}).waitFor();
+      assert.equal(await page.getByRole('link',{name:'여행 관리',exact:true}).count(),0);
+      assert.equal(await page.locator('form,input[type=file],button[data-trip-action="end"]').count(),0);
+    }
+  }
+  assert.equal((await invoke(owner,'addTripPlace',{groupId,tripId:openTripId,requestId:crypto.randomUUID(),place:{name:'종료 후 장소'}})).code,'functions/failed-precondition');
+  await owner.screenshot({path:'test-results/trip-ended-readonly-mobile.png',fullPage:true});
+  console.log('PASS: member end denied; leader cancel preserves open; committed end survives lost-response retry with unchanged closedAt');
+  console.log('PASS: newly ended trip retains four read-only tabs for both roles, no management/write controls and callable rejects new place');
 
   await peer.goto(origin+'#groups');await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
   assert.equal(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
