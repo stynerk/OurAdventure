@@ -20,7 +20,7 @@ test('invalid trip paths, impossible dates, reverse date ranges and excessive pl
     await rejects(service.callables.createTrip({...valid,...update},owner),'invalid-argument');
 });
 test('photo finalization is not an exposed callable and client verification claims cannot publish',async()=>{
-  assert.deepEqual(Object.keys(service.callables).sort(),['addTripPlace','createGroup','createGroupInvite','createTrip','endTrip','joinGroup','previewGroupInvite']);
+  assert.deepEqual(Object.keys(service.callables).sort(),['addTripPlace','createGroup','createGroupInvite','createTrip','endTrip','finalizePhoto','joinGroup','previewGroupInvite']);
   assert.equal(service.callables.finalizeVerifiedPost,undefined);
   await rejects(service.finalizeVerifiedPost({...valid,tripId:'t',placeId:'p',verified:true,photo:{url:'https://invalid.test/photo.jpg'}},anonymous),'failed-precondition');
 });

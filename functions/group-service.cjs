@@ -56,7 +56,7 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
     if(!snapshot.exists)fail('not-found','여행을 찾지 못했어요.');
     return snapshot.data();
   }
-  const open = trip => {if(trip.status!=='open')fail('failed-precondition','종료된 여행은 읽기만 할 수 있어요.');};
+  const open = trip => {if(trip.status!=='open')throw new HttpsError('failed-precondition','종료된 여행은 읽기만 할 수 있어요.',{reason:'ended'});};
   const coordinates = data => ({g:id(data?.groupId,'그룹 ID'),t:id(data?.tripId,'여행 ID')});
   const tokenHash = token => typeof token==='string' && /^[A-Za-z0-9_-]{43}$/.test(token)?hash(['group-invite',token]):null;
   async function inviteContext(tx,key,uid) {
@@ -70,6 +70,11 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
   }
 
   const callables = {
+    async finalizePhoto(data,auth) {
+      const uid=uidOf(auth),{g,t}=coordinates(data);
+      await db.runTransaction(tx=>tripContext(tx,g,t,uid));
+      return finalizeVerifiedPost(data,auth);
+    },
     async endTrip(data,auth) {
       const uid=uidOf(auth),{g,t}=coordinates(data);
       return db.runTransaction(async tx=>{
@@ -177,8 +182,8 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
     }
   };
 
-  // INTERNAL ONLY: deliberately not returned in callables or exported by index.cjs.
-  // T8 must inject a trusted Storage verifier. A client's `verified:true` is ignored.
+  // The exported finalizePhoto wrapper always uses the injected server Storage verifier.
+  // Client `verified:true`, photo paths, uid and content claims are ignored.
   async function finalizeVerifiedPost(data,auth) {
     const uid=uidOf(auth),{g,t}=coordinates(data),request=requestId(data);
     const p=data?.placeId==null?null:id(data.placeId,'장소 ID');
@@ -197,7 +202,7 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
       const existing=await tx.get(postRef);
       if(existing.exists) {
         if(existing.data().fingerprint!==fingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
-        return {postId:postRef.id,completed:!!p,replayed:true};
+          return {postId:postRef.id,completed:!!p,...existing.data().completionResult,replayed:true};
       }
       open(trip);
       const claim=await tx.get(claimRef);
@@ -209,15 +214,19 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
         if(!snapshots[0].exists)fail('invalid-argument','이 여행에 없는 장소예요.');
         place=snapshots[0].data();completion=snapshots[1].exists?snapshots[1].data():null;
       }
-      tx.create(postRef,{uid,placeId:p,feeling,status:'published',fingerprint,
-        photo:{objectPath:verified.objectPath,contentType:verified.contentType,size:verified.size},createdAt:now()});
+      const mine=p?await tx.get(tripRef(g,t).collection('completions').where('uid','==',uid)):null;
+      const completionResult={newCompletion:!!p && !completion,stampsDone:p?mine.size+(completion?0:1):0,stampsTotal:trip.placeIds.length,postCount:trip.postCount+1};
+      const uploadId=id(data?.uploadId,'사진 ID');
+      tx.create(tripRef(g,t).collection('uploads').doc(uid).collection('items').doc(uploadId),{uid,status:'published',postId:postRef.id,createdAt:now()});
+      tx.create(postRef,{uid,placeId:p,feeling,status:'published',fingerprint,completionResult,
+        photo:{objectPath:verified.objectPath,contentType:verified.contentType,size:verified.size,generation:verified.generation||''},createdAt:now()});
       tx.create(claimRef,{groupId:g,tripId:t,uid,postId:postRef.id,createdAt:now()});
       tx.update(tripRef(g,t),{postCount:trip.postCount+1});
       if(p) {
         tx.set(completionRef,{uid,placeId:p,photoCount:(completion?.photoCount||0)+1,completedAt:completion?.completedAt||now(),updatedAt:now()});
         tx.update(placeRef(g,t,p),{postCount:place.postCount+1});
       }
-      return {postId:postRef.id,completed:!!p,replayed:false};
+      return {postId:postRef.id,completed:!!p,...completionResult,replayed:false};
     });
   }
   return {callables,finalizeVerifiedPost};
