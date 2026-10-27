@@ -29,6 +29,9 @@ export async function createAnalytics({app,config,loadSdk,location,debug=false})
       else if(name==='screen_view' && ['map','course','stamps','memory','stamp_detail','report','share_image'].includes(input.screen_name))params={screen_name:input.screen_name};
       else if(name==='login' && input.method==='google')params={method:'google'};
       else if(name==='logout')params={};
+      else if(name==='report_view')params={};
+      else if(name==='share_image_create' && ['feed','story'].includes(input.format) && ['grid','board'].includes(input.template) && countBuckets.has(input.photo_count))params={format:input.format,template:input.template,photo_count:input.photo_count};
+      else if(name==='share_image_save' && ['feed','story'].includes(input.format) && ['grid','board'].includes(input.template) && ['ok','error'].includes(input.result))params={format:input.format,template:input.template,result:input.result};
       else if(name==='free_post_create' && typeof input.has_line==='boolean')params={has_line:input.has_line};
       else if(name==='post_delete' && typeof input.was_stamp==='boolean')params={was_stamp:input.was_stamp};
       else if(name==='feed_view' && countBuckets.has(input.post_count_bucket))params={post_count_bucket:input.post_count_bucket};

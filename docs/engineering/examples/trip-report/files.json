@@ -1,0 +1,38 @@
+[
+  {
+    "file": "report-grid-feed.png",
+    "format": "feed",
+    "template": "grid",
+    "width": 1080,
+    "height": 1350,
+    "bytes": 112054,
+    "sha256": "44bbe16bc6a0548592bd181fe1bee72d3212f39cd1a177ede1f2ea699260498a"
+  },
+  {
+    "file": "report-board-feed.png",
+    "format": "feed",
+    "template": "board",
+    "width": 1080,
+    "height": 1350,
+    "bytes": 113847,
+    "sha256": "068944f1475e3e83021a98d04a3ac3d11f00d73d4a179359d71dbffbeed587fa"
+  },
+  {
+    "file": "report-grid-story.png",
+    "format": "story",
+    "template": "grid",
+    "width": 1080,
+    "height": 1920,
+    "bytes": 123991,
+    "sha256": "71b4ddc145eaac4789c876803062adcd36f6f18b97ab6baecc9a6ecc89666da0"
+  },
+  {
+    "file": "report-board-story.png",
+    "format": "story",
+    "template": "board",
+    "width": 1080,
+    "height": 1920,
+    "bytes": 134027,
+    "sha256": "4a9d0dcad4bfdad141b928aaeefce837a3dddac08e53ab4d3de750802af7c139"
+  }
+]
