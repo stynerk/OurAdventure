@@ -1,9 +1,11 @@
 import {readRoomIds,rememberRoom,readCreateRequest,getCreateRequest,clearCreateRequest,loadAccessibleRooms} from './session.mjs';
+import {createGroupViews} from './groups.mjs';
 const localState={getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value),removeItem:key=>localStorage.removeItem(key)};
 const app = document.querySelector('#app'), message = document.querySelector('#message');
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const say = text => {message.textContent = text;};
 let enableIndividualPilot=false;
+let groupViews;
 let api, auth, db, functions, course, user, room, me, members = [], inviteToken = '', inviteRoomId = '', stops = [], generation = 0, busy = false;
 const configMissing = () => {
   app.innerHTML = '<section class="card"><h1>함께하는 탐험을 준비하고 있어요</h1><p>아직 서비스 연결 설정이 완료되지 않았어요. 기존 경주 가족 탐험은 계속 이용할 수 있어요.</p><a class="button" href="../">경주 탐험 열기</a></section>';
@@ -77,10 +79,11 @@ async function route() {
   const version=++generation;
   clearListeners();say('');
   if(location.hash !== `#room/${inviteRoomId}`){inviteToken='';inviteRoomId='';}
-  const [view,id]=location.hash.slice(1).split('/');
+  const [view,id,tripId]=location.hash.slice(1).split('/');
   app.innerHTML='<section class="card"><p>탐험을 불러오고 있어요…</p></section>';
   try {
-    if(view==='create')createView();
+    if(groupViews && (!view || groupViews.handles(view)))await groupViews.open({view:view||'groups',groupId:id,tripId},version);
+    else if(view==='create')createView();
     else if(view==='join' && id)await joinView(id,version);
     else if(view==='room' && id) {
       if(!/^[A-Za-z0-9_-]{1,100}$/.test(id))throw new Error('탐험방 주소를 확인해 주세요.');
@@ -108,12 +111,14 @@ async function route() {
 }
 async function perform(action){
   if(busy)return;
+  const actionVersion=generation;
   busy=true;say('처리 중이에요…');
-  document.querySelectorAll('button:not(:disabled)').forEach(b=>{b.dataset.pending='1';b.disabled=true;});
-  try{await action();say('');}catch(e){say(e.message || '연결을 확인한 뒤 다시 시도해 주세요.');}
+  document.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)').forEach(b=>{b.dataset.pending='1';b.disabled=true;});
+  try{await action();if(actionVersion===generation)say('');}catch(e){if(actionVersion===generation)say(e.message || '연결을 확인한 뒤 다시 시도해 주세요.');}
   finally{busy=false;document.querySelectorAll('[data-pending]').forEach(b=>{delete b.dataset.pending;b.disabled=false;});}
 }
 app.addEventListener('submit',event=>{
+  if(!['create','join'].includes(event.target.id))return;
   event.preventDefault();const form=event.target, data=Object.fromEntries(new FormData(form));
   perform(async()=>{
     if(form.id==='create'){
@@ -173,6 +178,7 @@ try {
     api.connectAuthEmulator(auth,'http://127.0.0.1:9099');api.connectFirestoreEmulator(db,'127.0.0.1',8085);api.connectFunctionsEmulator(functions,'127.0.0.1',5001);
   }
   await api.setPersistence(auth,api.browserLocalPersistence);await auth.authStateReady();user=auth.currentUser;
+  groupViews=createGroupViews({app,api,db,getUser:()=>user,call,perform,say,isCurrent:version=>version===generation,storage:localState});
   course=await fetch('./course.json').then(r=>{if(!r.ok)throw new Error('코스를 읽을 수 없어요.');return r.json();});
   window.addEventListener('hashchange',route);
   window.addEventListener('online',updateSync);window.addEventListener('offline',updateSync);
