@@ -31,7 +31,9 @@ function createReportService({db,HttpsError,tripContext,tripRef,coordinates,uidO
         const format=data?.format,template=data?.template;
         if(!Object.hasOwn(FORMATS,format) || !TEMPLATES.includes(template))fail('invalid-argument','이미지 크기와 템플릿을 확인해주세요.');
         if(!Array.isArray(data?.postIds) || data.postIds.length<1 || data.postIds.length>6 || new Set(data.postIds).size!==data.postIds.length)fail('invalid-argument','사진을 1~6장 골라주세요.');
-        const postIds=data.postIds.map(value=>id(value,'사진 기록 ID')),fingerprint=hash([1,format,template,postIds]);
+        if(data.includeTripTitle!==undefined && typeof data.includeTripTitle!=='boolean')fail('invalid-argument','여행 이름 표시 여부를 확인해주세요.');
+        const includeTripTitle=data.includeTripTitle===true;
+        const postIds=data.postIds.map(value=>id(value,'사진 기록 ID')),fingerprint=hash(includeTripTitle?[1,format,template,postIds,true]:[1,format,template,postIds]);
         const ref=tripRef(g,t).collection('shareImages').doc(hash([uid,request])),saved=await tx.get(ref),report=await read(tx,g,t,trip);
         const selected=postIds.map(postId=>report.photos.find(p=>p.id===postId));
         if(selected.some(p=>!p))fail('failed-precondition','확정된 사진을 다시 선택해주세요.');
@@ -40,8 +42,8 @@ function createReportService({db,HttpsError,tripContext,tripRef,coordinates,uidO
           if(selected.some((p,i)=>p.photo.objectPath!==prior.config.photos[i].photo.objectPath || p.photo.generation!==prior.config.photos[i].photo.generation))fail('failed-precondition','사진이 바뀌었어요. 다시 미리보기를 만들어주세요.');
           return {...prior.config,configId:ref.id,replayed:true};
         }
-        // Export text is intentionally restricted to aliases and counts. No trip/place/free text.
-        const config={version:1,format,template,...FORMATS[format],placeCount:report.placeCount,stampCount:report.stampCount,stampTotal:report.stampTotal,members:report.members.map(m=>({alias:m.alias,stampIndices:m.stampIndices})),photos:selected.map(p=>({id:p.id,alias:p.alias,photo:p.photo}))};
+        // Trip title is server-sourced and exported only after explicit leader opt-in.
+        const config={version:1,format,template,...FORMATS[format],includeTripTitle,...(includeTripTitle?{tripTitle:trip.title}:{}),placeCount:report.placeCount,stampCount:report.stampCount,stampTotal:report.stampTotal,members:report.members.map(m=>({alias:m.alias,stampIndices:m.stampIndices})),photos:selected.map(p=>({id:p.id,alias:p.alias,photo:p.photo}))};
         tx.create(ref,{uid,fingerprint,config,createdAt:now()});return {...config,configId:ref.id,replayed:false};
       });
     }

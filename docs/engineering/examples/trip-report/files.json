@@ -5,8 +5,8 @@
     "template": "grid",
     "width": 1080,
     "height": 1350,
-    "bytes": 112054,
-    "sha256": "44bbe16bc6a0548592bd181fe1bee72d3212f39cd1a177ede1f2ea699260498a"
+    "bytes": 94500,
+    "sha256": "61431ef10f19f8670e7ccbdd993fb0c8eb455c8757926d5e491fa47e34c94b6f"
   },
   {
     "file": "report-board-feed.png",
@@ -14,8 +14,8 @@
     "template": "board",
     "width": 1080,
     "height": 1350,
-    "bytes": 113847,
-    "sha256": "068944f1475e3e83021a98d04a3ac3d11f00d73d4a179359d71dbffbeed587fa"
+    "bytes": 95224,
+    "sha256": "388fc746fe9f3ecb79faa3ce7931f8e7bc00d889ee5decdf0bc45b636c55fe03"
   },
   {
     "file": "report-grid-story.png",
@@ -23,8 +23,8 @@
     "template": "grid",
     "width": 1080,
     "height": 1920,
-    "bytes": 123991,
-    "sha256": "71b4ddc145eaac4789c876803062adcd36f6f18b97ab6baecc9a6ecc89666da0"
+    "bytes": 116187,
+    "sha256": "4a2e4e372f3ae20606f0467fb1e370a7def102d53d67bc6a2aee1adc932a2609"
   },
   {
     "file": "report-board-story.png",
@@ -32,7 +32,17 @@
     "template": "board",
     "width": 1080,
     "height": 1920,
-    "bytes": 134027,
-    "sha256": "4a9d0dcad4bfdad141b928aaeefce837a3dddac08e53ab4d3de750802af7c139"
+    "bytes": 120799,
+    "sha256": "a219f2901a08e62c63ee3f43a610fcb339b9d9a6556774845e4f199abdf835e9"
+  },
+  {
+    "file": "report-board-story-title.png",
+    "format": "story",
+    "template": "board",
+    "includeTripTitle": true,
+    "width": 1080,
+    "height": 1920,
+    "bytes": 121040,
+    "sha256": "37317ea45061d2793f9aa2de198cc4998c9e488509616b57f7524b95bc68faee"
   }
 ]

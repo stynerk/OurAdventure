@@ -8,3 +8,5 @@ Auth/Firestore/Storage demo 에뮬레이터와 Chromium에서 실제 앱의 PNG 
 | 스토리 1080×1920 | [PNG](report-grid-story.png) | [PNG](report-board-story.png) |
 
 실제 이용자 사진이나 운영 데이터가 아니다. 사진 픽셀 자체의 개인정보/위치를 자동 탐지·삭제한 결과라는 뜻은 아니다.
+
+PM 검토 반영: 한국어 문구·별칭만의 사진 캡션·하단 Our Adventure를 적용했다. 위 4종은 여행 이름 기본 꺼짐이다. [여행 이름 표시 예시](report-board-story-title.png)는 리더가 옵션을 켠 경우이며 가상 이름을 사용한다. 이 파일도 실제 다운로드와 미리보기 해시가 일치한다.

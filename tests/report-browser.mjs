@@ -44,7 +44,7 @@ async function upload(page,{groupId,tripId,placeId=null,index=0,feeling='',finis
   return page.evaluate(async data=>{
     const a=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js'),s=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-storage.js'),f=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-functions.js');
     const canvas=document.createElement('canvas');canvas.width=960;canvas.height=640;const c=canvas.getContext('2d'),palette=[['#eed8a0','#bb643d','#536e57'],['#b5dfed','#e3bf5a','#437f9a'],['#dfe8c6','#c77b41','#3b6755'],['#d7c4da','#ede0ad','#6e668c']][data.index%4];
-    c.fillStyle=palette[0];c.fillRect(0,0,960,640);c.fillStyle=palette[1];c.beginPath();c.arc(710,155,78,0,Math.PI*2);c.fill();c.fillStyle=palette[2];c.beginPath();c.moveTo(0,480);c.lineTo(250,270);c.lineTo(510,470);c.lineTo(700,330);c.lineTo(960,490);c.lineTo(960,640);c.lineTo(0,640);c.fill();c.fillStyle='#fffdf5';c.font='32px sans-serif';c.fillText('Made together',70,570);
+    c.fillStyle=palette[0];c.fillRect(0,0,960,640);c.fillStyle=palette[1];c.beginPath();c.arc(710,155,78,0,Math.PI*2);c.fill();c.fillStyle=palette[2];c.beginPath();c.moveTo(0,480);c.lineTo(250,270);c.lineTo(510,470);c.lineTo(700,330);c.lineTo(960,490);c.lineTo(960,640);c.lineTo(0,640);c.fill();
     const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png')),uid=a.getAuth().currentUser.uid,uploadId=crypto.randomUUID();
     await s.uploadBytes(s.ref(s.getStorage(),`groups/${data.groupId}/trips/${data.tripId}/uploads/${uid}/${uploadId}`),blob,{contentType:'image/png'});
     if(!data.finish)return {uploadId,uid};
@@ -63,7 +63,7 @@ try{
   browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||undefined,args:['--disable-gpu','--renderer-process-limit=2','--js-flags=--max-old-space-size=128']});
   const leader=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true}),member=await browser.newContext({viewport:{width:390,height:844}});
   await sdkCache(leader);await sdkCache(member);const owner=await leader.newPage(),peer=await member.newPage();
-  for(const page of [owner,peer]){page.setDefaultNavigationTimeout(60000);page.on('pageerror',error=>errors.push(error.message));await page.goto(origin);await page.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();}
+  for(const page of [owner,peer]){await page.addInitScript(()=>{const original=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(text,...args){(window.__exportTexts||=[]).push(String(text));return original.call(this,text,...args);};});page.setDefaultNavigationTimeout(60000);page.on('pageerror',error=>errors.push(error.message));await page.goto(origin);await page.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();}
   await auth(owner,true);await auth(peer);
   const groupId=(await request(owner,'createGroup',{title:'리포트 검증 그룹',requestId:crypto.randomUUID()})).groupId;
   const {token}=await request(owner,'createGroupInvite',{groupId});await request(peer,'joinGroup',{token,nickname:'별빛'});
@@ -114,6 +114,7 @@ try{
     assert.equal(await owner.locator('[data-report="save"]').isDisabled(),true,'Photo-content confirmation is required');
     const preview=await owner.locator('#share-preview img').evaluate(async img=>{await img.decode();const bytes=await(await fetch(img.src)).arrayBuffer();return {width:img.naturalWidth,height:img.naturalHeight,hash:Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(v=>v.toString(16).padStart(2,'0')).join('')};});
     assert.equal(preview.width,1080);assert.equal(preview.height,format==='feed'?1350:1920);
+    const rendered=await owner.evaluate(()=>window.__exportTexts||[]);assert.ok(rendered.includes('사진 4장 · 도장 2/4'));assert.ok(rendered.includes(template==='grid'?'함께 남긴 추억':'우리가 모은 도장'));assert.doesNotMatch(JSON.stringify(rendered),/PRIVATE_|Made together|MADE TOGETHER|STAMP COLLECTION|PHOTOS/);
     await owner.getByLabel('선택한 사진에 별칭 외 개인정보·위치 정보가 드러나지 않는지 확인했어요.',{exact:true}).check();
     const pending=owner.waitForEvent('download');await owner.getByRole('button',{name:'PNG 저장',exact:true}).click();const download=await pending;
     assert.equal(download.suggestedFilename(),`our-adventure-${template}-${format}.png`);
@@ -123,15 +124,36 @@ try{
     await owner.waitForFunction(()=>document.querySelector('#share-status')?.textContent.startsWith('미리보기와 같은 PNG의 다운로드를 시작했어요') && !document.querySelector('[data-report="preview"]')?.disabled);
   }
   assert.equal(downloads,4);
+  assert.equal(await owner.getByLabel('여행 이름 표시',{exact:true}).isChecked(),false);
+  assert.equal(await owner.locator('#share-title-notice').isVisible(),false);
+  const off=await request(owner,'configureShareImage',{groupId,tripId,requestId:crypto.randomUUID(),format:'feed',template:'grid',postIds:[report.photos[0].id]});
+  assert.equal(off.includeTripTitle,false);assert.equal(Object.hasOwn(off,'tripTitle'),false);
+  await owner.getByLabel('여행 이름 표시',{exact:true}).check();
+  await owner.getByText('여행 이름이 이미지에 들어가요',{exact:true}).waitFor();
+  assert.equal(await owner.locator('#share-preview img').count(),0);assert.equal(await owner.locator('[data-report="save"]').isDisabled(),true);
+  const on=await request(owner,'configureShareImage',{groupId,tripId,requestId:crypto.randomUUID(),format:'story',template:'board',postIds:[report.photos[0].id],includeTripTitle:true,tripTitle:'UNTRUSTED_TITLE'});
+  assert.equal(on.tripTitle,'PRIVATE_TRIP_REPORT');assert.equal(on.includeTripTitle,true);assert.doesNotMatch(JSON.stringify(on),/PRIVATE_LOCATION|PRIVATE_NOTE|UNTRUSTED_TITLE/);
+  await owner.getByRole('button',{name:'미리보기 만들기',exact:true}).click();await owner.locator('#share-preview img').waitFor();
+  const titleText=await owner.evaluate(()=>window.__exportTexts||[]);assert.ok(titleText.includes('PRIVATE_TRIP_REPORT'));assert.doesNotMatch(JSON.stringify(titleText),/PRIVATE_LOCATION|PRIVATE_NOTE|Made together/);
+  const titleHash=await owner.locator('#share-preview img').evaluate(async img=>{await img.decode();return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await(await fetch(img.src)).arrayBuffer()))).map(v=>v.toString(16).padStart(2,'0')).join('');});
+  await owner.getByLabel('선택한 사진에 별칭 외 개인정보·위치 정보가 드러나지 않는지 확인했어요.',{exact:true}).check();
+  const titlePending=owner.waitForEvent('download');await owner.getByRole('button',{name:'PNG 저장',exact:true}).click();const titleDownload=await titlePending;
+  await titleDownload.saveAs('test-results/report-board-story-title.png');const titleBytes=readFileSync('test-results/report-board-story-title.png');pngInfo(titleBytes);assert.equal(createHash('sha256').update(titleBytes).digest('hex'),titleHash);
+  await owner.waitForFunction(()=>document.querySelector('#share-status')?.textContent.startsWith('미리보기와 같은 PNG의 다운로드를 시작했어요') && !document.querySelector('[data-report="preview"]')?.disabled);
+  await owner.screenshot({path:'test-results/report-title-option-mobile.png',fullPage:true});
+  await owner.getByLabel('여행 이름 표시',{exact:true}).uncheck();assert.equal(await owner.locator('#share-title-notice').isVisible(),false);assert.equal(await owner.locator('#share-preview img').count(),0);
+  await owner.getByRole('button',{name:'미리보기 만들기',exact:true}).click();await owner.locator('#share-preview img').waitFor();
+  await owner.getByLabel('선택한 사진에 별칭 외 개인정보·위치 정보가 드러나지 않는지 확인했어요.',{exact:true}).check();
+  console.log('PASS REPORT REVIEW: title defaults off, explicit opt-in notice, server-sourced title, on/off invalidation and title PNG matches preview');
   await owner.screenshot({path:'test-results/report-export-mobile.png',fullPage:true});
   console.log('PASS REPORT AC-6d: all four grid/board × feed/story PNG downloads match preview SHA-256 and exact dimensions; no EXIF/text metadata');
   // A stale leader screen must not download after its server role changes.
   const ownerUid=await owner.evaluate(async()=>{const a=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js');return a.getAuth().currentUser.uid;});
   await db.doc(`groups/${groupId}/members/${ownerUid}`).update({role:'member'});
   await owner.getByRole('button',{name:'PNG 저장',exact:true}).click();await owner.getByText('저장하지 못했어요. 사진과 권한을 다시 확인하고 미리보기를 만들어주세요.',{exact:true}).waitFor();
-  assert.equal(downloads,4);assert.equal(await owner.locator('[data-report="save"]').isDisabled(),true);assert.equal(await owner.locator('#share-preview img').count(),0);
+  assert.equal(downloads,5);assert.equal(await owner.locator('[data-report="save"]').isDisabled(),true);assert.equal(await owner.locator('#share-preview img').count(),0);
   const events=[...await owner.evaluate(()=>window.__photoEvents||[]),...await peer.evaluate(()=>window.__photoEvents||[])].filter(e=>['report_view','share_image_create','share_image_save'].includes(e.name));
-  assert.equal(events.filter(e=>e.name==='share_image_create').length,4);assert.equal(events.filter(e=>e.name==='share_image_save' && e.params.result==='ok').length,4);assert.equal(events.filter(e=>e.name==='share_image_save' && e.params.result==='error').length,1);assert.ok(events.some(e=>e.name==='report_view' && e.params.role==='member'));
+  assert.equal(events.filter(e=>e.name==='share_image_create').length,6);assert.equal(events.filter(e=>e.name==='share_image_save' && e.params.result==='ok').length,5);assert.equal(events.filter(e=>e.name==='share_image_save' && e.params.result==='error').length,1);assert.ok(events.some(e=>e.name==='report_view' && e.params.role==='member'));
   assert.doesNotMatch(JSON.stringify(events),/PRIVATE_|별빛|objectPath|postIds|email|uid/);assert.deepEqual(errors,[]);
   console.log('PASS REPORT AC-6a: stale leader export is re-authorized and rejected without a new download; safe GA success/failure sequence verified');
 }catch(error){

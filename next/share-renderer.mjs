@@ -27,9 +27,9 @@ export function renderShareImage(canvas,config,images){
   canvas.width=layout.width;canvas.height=layout.height;const ctx=canvas.getContext('2d');
   if(!ctx)throw Error('이 브라우저에서 이미지를 만들지 못했어요.');
   ctx.fillStyle='#f7f2e7';ctx.fillRect(0,0,layout.width,layout.height);
-  ctx.fillStyle='#284e3f';ctx.font='bold 62px Arial, sans-serif';ctx.fillText('Our Adventure',64,112);
-  ctx.font='24px Arial, sans-serif';ctx.fillStyle='#677363';ctx.fillText(config.template==='grid'?'OUR MEMORIES':'STAMP COLLECTION',66,160);
-  ctx.font='22px Arial, sans-serif';ctx.fillText(`${config.photos.length} PHOTOS  /  ${config.stampCount} OF ${config.stampTotal} STAMPS`,66,202);
+  ctx.fillStyle='#284e3f';ctx.font='bold 62px Arial, sans-serif';label(ctx,config.includeTripTitle===true?config.tripTitle:'Our Adventure',64,112,952);
+  ctx.font='24px Arial, sans-serif';ctx.fillStyle='#677363';ctx.fillText(config.template==='grid'?'함께 남긴 추억':'우리가 모은 도장',66,160);
+  ctx.font='22px Arial, sans-serif';ctx.fillText(`사진 ${config.photos.length}장 · 도장 ${config.stampCount}/${config.stampTotal}`,66,202);
   for(const rect of layout.photos){
     ctx.save();rounded(ctx,rect.x,rect.y,rect.w,rect.h);ctx.clip();ctx.fillStyle='#ffffff';ctx.fillRect(rect.x,rect.y,rect.w,rect.h);cover(ctx,images.get(rect.id),rect);ctx.restore();
     ctx.fillStyle='#284e3f';ctx.font=`${config.template==='grid'?26:20}px Arial, sans-serif`;label(ctx,rect.alias,rect.x+16,rect.y+rect.h-15,rect.w-32);
@@ -51,7 +51,7 @@ export function renderShareImage(canvas,config,images){
       }
     });
   }
-  ctx.fillStyle='#677363';ctx.font='18px Arial, sans-serif';ctx.fillText('OUR ADVENTURE  /  MADE TOGETHER',64,layout.footerY);
+  ctx.fillStyle='#677363';ctx.font='18px Arial, sans-serif';ctx.fillText('Our Adventure',64,layout.footerY);
   return layout;
 }
 export async function sharePng(canvas){

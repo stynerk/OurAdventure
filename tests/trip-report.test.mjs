@@ -28,6 +28,15 @@ test('renderer draws only generic text, aliases and counts; private report field
   const sample={...config('story','board',3),title:'PRIVATE_TRIP',destination:'PRIVATE_LOCATION',email:'PRIVATE_EMAIL',uid:'PRIVATE_UID',feeling:'PRIVATE_LINE',photos:config().photos.map(p=>({...p,objectPath:'PRIVATE_PATH'}))};
   const canvas={getContext:()=>ctx};renderShareImage(canvas,sample,new Map(sample.photos.map(p=>[p.id,{width:600,height:400}])));
   assert.equal(canvas.width,1080);assert.equal(canvas.height,1920);assert.equal(draw.length,3);assert.doesNotMatch(JSON.stringify(text),/PRIVATE|photo-/);assert.ok(text.includes('별칭 0'));
+  assert.ok(text.includes('우리가 모은 도장'));assert.ok(text.includes('사진 3장 · 도장 20/100'));assert.ok(text.includes('Our Adventure'));
+  assert.doesNotMatch(JSON.stringify(text),/STAMP COLLECTION|PHOTOS|STAMPS|Made together|MADE TOGETHER/);
+  for(const template of ['grid','board']){
+    for(const enabled of [undefined,false,true]){
+      text.length=0;renderShareImage(canvas,{...sample,template,includeTripTitle:enabled,tripTitle:'선택한 여행 이름'},new Map(sample.photos.map(p=>[p.id,{width:600,height:400}])));
+      assert.equal(text.includes('선택한 여행 이름'),enabled===true);assert.ok(text.includes(template==='grid'?'함께 남긴 추억':'우리가 모은 도장'));
+      assert.doesNotMatch(JSON.stringify(text),/PRIVATE|Made together|MADE TOGETHER/);
+    }
+  }
 });
 test('empty selection, invalid dimensions and any missing decoded photo block rendering',()=>{
   assert.throws(()=>imageLayout(config('feed','grid',0)),/사진/);assert.throws(()=>imageLayout({...config(),height:1920}),/사진/);

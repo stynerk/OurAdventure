@@ -301,6 +301,16 @@ test('T11 configurations freeze export-only fields, deduplicate retries and reje
   const input={groupId:g,tripId:t,requestId:randomUUID(),format:'story',template:'board',postIds:[post.postId]};
   const results=await Promise.all([service.callables.configureShareImage(input,owner),service.callables.configureShareImage(input,owner)]);assert.equal(new Set(results.map(r=>r.configId)).size,1);assert.equal(results.filter(r=>!r.replayed).length,1);
   assert.equal(results[0].width,1080);assert.equal(results[0].height,1920);assert.doesNotMatch(JSON.stringify(results),/PRIVATE_LINE|대릉원|첨성대|새 여행|destination|email|displayName/);
+  assert.equal(results[0].includeTripTitle,false);assert.equal(Object.hasOwn(results[0],'tripTitle'),false);
+  await reject(service.callables.configureShareImage({...input,includeTripTitle:true},owner),'failed-precondition');
+  const namedInput={...input,requestId:randomUUID(),includeTripTitle:true,tripTitle:'UNTRUSTED_TITLE'};
+  const named=await service.callables.configureShareImage(namedInput,owner);
+  assert.equal(named.includeTripTitle,true);assert.equal(named.tripTitle,(await db.doc(`groups/${g}/trips/${t}`).get()).data().title);
+  assert.doesNotMatch(JSON.stringify(named),/UNTRUSTED_TITLE|PRIVATE_LINE|대릉원|첨성대|destination|email|displayName/);
+  assert.equal((await service.callables.configureShareImage(namedInput,owner)).configId,named.configId);
+  await reject(service.callables.configureShareImage({...namedInput,includeTripTitle:false},owner),'failed-precondition');
+  for(const includeTripTitle of ['true',1,null])await reject(service.callables.configureShareImage({...input,requestId:randomUUID(),includeTripTitle},owner),'invalid-argument');
+  await reject(service.callables.configureShareImage({...namedInput,requestId:randomUUID()},a),'permission-denied');
   await reject(service.callables.configureShareImage({...input,template:'grid'},owner),'failed-precondition');
   for(const changes of [{postIds:[]},{postIds:[post.postId,post.postId]},{postIds:Array(7).fill(post.postId)},{format:'__proto__'},{template:'unknown'}])await reject(service.callables.configureShareImage({...input,...changes,requestId:randomUUID()},owner),'invalid-argument');
   await reject(service.callables.configureShareImage({...input,postIds:['missing'],requestId:randomUUID()},owner),'failed-precondition');
