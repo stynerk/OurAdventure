@@ -152,7 +152,8 @@ try {
   assert.equal(await owner.locator('.map-route').count(),1);assert.equal(await owner.locator('.map-pin.is-done').count(),1);
   assert.equal(await owner.locator('.trip-panel a[href^="http"]').count(),0);
   await owner.screenshot({path:'test-results/trip-illustrated-map-mobile.png',fullPage:true});
-  await owner.getByRole('link',{name:'다음 탐험 · 첨성대',exact:true}).click();
+  assert.equal(await owner.getByRole('link',{name:'다음 탐험 · 첨성대',exact:true}).count(),0);
+  await owner.locator('.map-pin').nth(1).click();
   await owner.getByText('종료된 여행이에요. 스탬프는 읽기만 할 수 있어요.',{exact:true}).waitFor();
   await owner.goto(origin+`#trip/${groupId}/${firstTripId}/manage`);await owner.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();
   assert.equal(await owner.getByRole('link',{name:'초대 링크·참여 관리',exact:true}).count(),0);

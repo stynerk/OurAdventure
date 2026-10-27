@@ -58,8 +58,8 @@ export function createTripViews({app,api,db,current,getUser,call,perform,track=(
     };
     let content='';
     if(tab==='map'){
-      const next=places.find(p=>!done.has(p.id));
-      content=`<h2 id="trip-panel-title">여행 지도</h2>${places.length?illustratedMap(places,done,placeLink):empty}${next?`<a class="button" href="${placeLink(next)}">다음 탐험 · ${escape(next.name)}</a>`:places.length?'<p>모든 장소의 내 스탬프를 모았어요!</p>':''}`;
+      const next=closed?null:places.find(p=>!done.has(p.id));
+      content=`<h2 id="trip-panel-title">여행 지도</h2>${places.length?illustratedMap(places,done,placeLink):empty}${next?`<a class="button" href="${placeLink(next)}">다음 탐험 · ${escape(next.name)}</a>`:places.length && done.size===places.length?'<p>모든 장소의 내 스탬프를 모았어요!</p>':''}`;
     }else if(tab==='course'){
       content=`<h2 id="trip-panel-title">여행 코스</h2>${places.length?`<ol class="course-stops">${places.map(p=>`<li><h3><a href="${placeLink(p)}">${escape(p.name)}</a></h3>${badge(p)}${mission(p)}</li>`).join('')}</ol>`:empty}`;
     }else if(tab==='stamps'){
