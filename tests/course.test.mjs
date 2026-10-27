@@ -5,7 +5,8 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 test('versioned course reuses all nine legacy quests without changing the root app',()=>{
   const original=readFileSync('index.html','utf8');
-  assert.equal(createHash('sha256').update(original).digest('hex'),'bc3ebfb4390f68f432bee3884616baa989ea8e04b60a35800cc24b49288921d8');
+  // Git may check text files out as CRLF on Windows; compare canonical content.
+  assert.equal(createHash('sha256').update(original.replace(/\r\n/g,'\n')).digest('hex'),'bc3ebfb4390f68f432bee3884616baa989ea8e04b60a35800cc24b49288921d8');
   const legacy=JSON.parse(original.match(/var quests=(\[[\s\S]*?\n\]);/)[1]);
   const course=JSON.parse(readFileSync('next/course.json'));
   assert.deepEqual(course.quests,legacy);
