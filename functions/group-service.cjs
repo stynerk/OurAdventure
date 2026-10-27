@@ -70,6 +70,16 @@ function createGroupService(db, {HttpsError, FieldValue, verifyPhoto = async () 
   }
 
   const callables = {
+    async endTrip(data,auth) {
+      const uid=uidOf(auth),{g,t}=coordinates(data);
+      return db.runTransaction(async tx=>{
+        const trip=await tripContext(tx,g,t,uid,true);
+        if(trip.status==='closed')return {groupId:g,tripId:t,status:'closed',replayed:true};
+        open(trip);
+        tx.update(tripRef(g,t),{status:'closed',closedAt:now(),closedBy:uid});
+        return {groupId:g,tripId:t,status:'closed',replayed:false};
+      });
+    },
     async createGroupInvite(data,auth) {
       const uid=google(auth),g=id(data?.groupId,'그룹 ID'),token=randomBytes(32).toString('base64url'),key=tokenHash(token);
       await db.runTransaction(async tx=>{

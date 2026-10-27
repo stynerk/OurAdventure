@@ -12,7 +12,18 @@ export function completionSummary(placeIds,members,completions) {
   for(const c of completions)if(allowed.has(c.placeId) && byMember.has(c.uid) && c.photoCount>0)byMember.get(c.uid).add(c.placeId);
   return byMember;
 }
-export function createTripViews({app,api,db,current,getUser,track=()=>{},activate=()=>document.body.classList.add('trip-active')}) {
+export function createTripViews({app,api,db,current,getUser,call,perform,track=()=>{},activate=()=>document.body.classList.add('trip-active'),confirmEnd=()=>confirm('여행을 종료할까요? 종료 후 사진과 스탬프는 읽기 전용이 되며 되돌릴 수 없어요.')}) {
+  let active=null;
+  app.addEventListener('click',event=>{
+    const button=event.target.closest('button[data-trip-action="end"]');
+    if(!button || button.disabled || !active || active.closed || !active.group.isOwner || !current(active.context))return;
+    const {context}=active;
+    if(!confirmEnd())return;
+    perform(async()=>{
+      await call('endTrip',{groupId:context.groupId,tripId:context.tripId});
+      if(current(context))location.hash=`trip/${encodeURIComponent(context.groupId)}/${encodeURIComponent(context.tripId)}/map`;
+    });
+  });
   const timestamp=t=>t?.seconds||0;
   async function open(context,group) {
     const {groupId:g,tripId:t}=context;
@@ -67,7 +78,9 @@ export function createTripViews({app,api,db,current,getUser,track=()=>{},activat
     }else{
       content=`<h2 id="trip-panel-title">여행 관리</h2><p>그룹 멤버 ${members.length}/10명</p><p>${closed?'종료된 여행이에요. 기존 기록을 계속 볼 수 있어요.':'그룹에서 초대 링크를 발급하고 참여 현황을 확인할 수 있어요.'}</p><a class="button" href="#group/${escape(g)}">초대 링크·참여 관리</a><h3>참여 현황</h3><ul class="members">${members.map(m=>`<li><strong>${escape(m.displayName)}${m.role==='owner'?' (리더)':''}</strong>스탬프 ${summaries.get(m.id)?.size||0}/${places.length}</li>`).join('')}</ul>`;
     }
+    if(tab==='manage' && group.isOwner && !closed)content+='<hr><p>종료하면 사진·스탬프는 읽기 전용이 되고 기존 기록은 계속 볼 수 있어요.</p><button class="danger" data-trip-action="end">여행 종료</button>';
     if(!current(context))return;
+    active={context,group,closed};
     const selected=tab==='stamp'?'stamps':tab;
     app.innerHTML=`<section class="card trip-heading"><a href="#group/${escape(g)}">← ${escape(group.title)}</a><span class="badge">${closed?'종료':'진행 중'}</span><h1>${escape(trip.title)}</h1><p>${escape(trip.destination)} · ${escape(trip.startDate)} ~ ${escape(trip.endDate)}</p><p>장소 ${places.length}개 · 기록 ${Number(trip.postCount)||0}개</p>${closed?'<p>종료된 여행이에요. 기존 여행 정보는 계속 볼 수 있어요.</p>':''}${group.isOwner && !closed && tab!=='manage'?`<a class="button secondary" href="${base}/manage">여행 관리</a>`:''}</section><section class="card trip-panel" aria-labelledby="trip-panel-title">${content}</section><nav class="trip-tabs" aria-label="여행 화면">${[['map','🗺️','지도'],['course','🧭','코스'],['stamps','🏅','스탬프'],['memory','📷','추억']].map(([key,icon,label])=>`<a href="${base}/${key}" ${selected===key?'aria-current="page"':''}><span aria-hidden="true">${icon}</span>${label}</a>`).join('')}</nav>`;
     activate();

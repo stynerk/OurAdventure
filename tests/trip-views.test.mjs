@@ -27,7 +27,7 @@ test('illustrated map uses one internal pin per place, stable route order and es
   assert.doesNotMatch(html,/<script>|https?:\/\//);assert.match(html,/&lt;script&gt;/);
 });
 function fixture({owner=true,closed=false}={}) {
-  const app={innerHTML:'initial'},calls=[],events=[];let active=true,activated=0,expectedContext;
+  const app={innerHTML:'initial',addEventListener:()=>{}},calls=[],events=[];let active=true,activated=0,expectedContext;
   const docs=rows=>({docs:rows.map(({id,...data})=>({id,data:()=>data}))});
   const api={doc:(_db,...path)=>path.join('/'),collection:(_db,...path)=>path.join('/'),where:(...args)=>({where:args}),limit:n=>({limit:n}),query:(path,...constraints)=>({path,constraints}),getDocFromServer:async()=>({exists:()=>true,data:()=>({title:'여행',destination:'경주',status:closed?'closed':'open',placeIds:['p1','p2'],postCount:1})}),getDocsFromServer:async query=>{
     calls.push(query);const path=typeof query==='string'?query:query.path;
@@ -47,7 +47,7 @@ test('closed trips retain all four routes and personal progress without write co
     await f.open(tab);
     assert.match(f.app.innerHTML,/aria-label="여행 화면"/);
     for(const label of ['지도','코스','스탬프','추억'])assert.ok(f.app.innerHTML.includes(label));
-    assert.match(f.app.innerHTML,/종료된 여행/);assert.doesNotMatch(f.app.innerHTML,/<form|data-v2-action/);
+    assert.match(f.app.innerHTML,/종료된 여행/);assert.doesNotMatch(f.app.innerHTML,/<form|data-v2-action|data-trip-action/);
     assert.doesNotMatch(f.app.innerHTML,/>여행 관리<|\/manage/);
     if(tab==='stamps')assert.match(f.app.innerHTML,/내 스탬프 1\/2/);
   }
@@ -66,6 +66,11 @@ test('member DOM excludes management and direct management route does not read g
   f.calls.length=0;await f.open('manage');
   assert.match(f.app.innerHTML,/리더만 여행을 관리/);assert.equal(f.calls.length,0);
   assert.equal(f.events.length,1);
+});
+test('only open leader management includes end action',async()=>{
+  const leader=fixture();await leader.open('manage');assert.match(leader.app.innerHTML,/data-trip-action="end"/);
+  const closed=fixture({closed:true});await closed.open('manage');assert.doesNotMatch(closed.app.innerHTML,/data-trip-action/);
+  const member=fixture({owner:false});await member.open('manage');assert.doesNotMatch(member.app.innerHTML,/data-trip-action/);
 });
 test('stale responses and denied reads never render a former trip',async()=>{
   const f=fixture();f.deactivate();await f.open('memory');
