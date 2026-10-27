@@ -1,0 +1,29 @@
+PASS: three authenticated SDK sessions; callable auth rejection, room create/join, realtime stamp, closed-room rejection
+PASS UI: login, 320/375/390px, 44px touch, no emoji/native file control, axe contrast/labels, reduced motion
+PASS: Google-emulator leader creates group and separate trips; fresh empty forms, zero places and closed-trip reentry
+PASS: lost creation response preserves form; recovery reuses one trip without duplicates
+PASS UI: groups, 320/375/390px, 44px touch, no emoji/native file control, axe contrast/labels, reduced motion
+PASS UI: map, 320/375/390px, 44px touch, no emoji/native file control, axe contrast/labels, reduced motion
+PASS UI: stamps, 320/375/390px, 44px touch, no emoji/native file control, axe contrast/labels, reduced motion
+PASS: both roles retain four closed-trip tabs; UID-based stamp progress differs, only published memories display and member management is denied
+PASS: illustrated map pins and dotted path, next stamp, closed management hidden, direct closed route read-only and 320/390px content clearance
+PASS UI: stamp-detail, 320/375/390px, 44px touch, no emoji/native file control, axe contrast/labels, reduced motion
+PASS UI: stamp-complete, 320/375/390px, 44px touch, no emoji/native file control, axe contrast/labels, reduced motion
+PASS: actual Storage upload stays private until server confirmation; failed upload/save preserves input; lost-response and repeated submits make one photo/stamp
+PASS: A completes without changing B, empty feeling works, second photo keeps one stamp, camera/gallery and safe GA event sequence verified
+PASS UI: memories, 320/375/390px, 44px touch, no emoji/native file control, axe contrast/labels, reduced motion
+PASS T9: authenticated photo feed, newest order, combined place/person filters and cursor pagination without duplicate IDs
+PASS T9: optional free post creates no stamp; own edit survives lost response; leader cannot mutate another author; deleting last photo removes only own stamp
+PASS: member end denied; leader cancel preserves open; committed end survives lost-response retry with unchanged closedAt
+PASS: newly ended trip retains four read-only tabs for both roles, no management/write controls and callable rejects new place
+PASS: member management controls absent, direct create route denied, closed-trip reads and outsider denial
+PASS: leader generates and copies link; anonymous nickname join and repeated-link reentry do not duplicate membership
+PASS: full race clears introduction; full, malformed and revoked links expose no group content; rotation preserves members
+PASS: header brand and badge do not overlap at 320px and 390px
+PASS UI: report, 320/375/390px, 44px touch, no emoji/native file control, axe contrast/labels, reduced motion
+PASS REPORT: ended member/leader report, period and actual published counts, deduplicated stamps, representative photos, lines and member configure rejection
+PASS REPORT: zero photos cannot preview or download a blank image
+PASS REPORT: actual Storage read failure blocks PNG and preserves selected photos for retry
+PASS REPORT REVIEW: title defaults off, explicit opt-in notice, server-sourced title, on/off invalidation and title PNG matches preview
+PASS REPORT AC-6d: all four grid/board × feed/story PNG downloads match preview SHA-256 and exact dimensions; no EXIF/text metadata
+PASS REPORT AC-6a: stale leader export is re-authorized and rejected without a new download; safe GA success/failure sequence verified

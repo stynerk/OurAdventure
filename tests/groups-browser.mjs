@@ -1,3 +1,4 @@
+import {auditUi} from './ui-audit.mjs';
 // Real SDK + exported handlers, demo emulators only; no production credentials.
 import {chromium} from 'playwright';
 import {createServer} from 'node:http';
@@ -9,13 +10,14 @@ import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw Error('Demo emulators required');
 const root=process.cwd(),origin='http://127.0.0.1:8080/next/';
-const files=new Set(['index.html','style.css','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','report-views.mjs','share-renderer.mjs','analytics.mjs','analytics-source.mjs','course.json']);
+const files=new Set(['index.html','style.css','icons.mjs','ui.mjs','app.js','session.mjs','groups.mjs','trip-views.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','report-views.mjs','share-renderer.mjs','analytics.mjs','analytics-source.mjs','course.json']);
 const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app',storageBucket:'demo-our-adventure.firebasestorage.app'};export const useEmulators=true;";
 const server=createServer((req,res)=>{
   const name=new URL(req.url,origin).pathname.replace(/^\/next\//,'');
   if(name==='firebase-config.js'){res.writeHead(200,{'Content-Type':'text/javascript'});res.end(config);return;}
   if(name==='analytics.mjs'){res.writeHead(200,{'Content-Type':'text/javascript'});res.end("export {countBucket,daysBucket} from './analytics-source.mjs';export async function createAnalytics(){return {setAuthType:()=>{},track:(name,params)=>{(window.__photoEvents||=[]).push({name,params});}};}");return;}
   const file=name===''?'index.html':name;
+  if(/^assets\/(travel-cover-v2\.(webp|jpg)|PretendardVariable\.woff2|Jua-Regular\.ttf)$/.test(file)){res.writeHead(200,{'Content-Type':file.endsWith('.webp')?'image/webp':file.endsWith('.jpg')?'image/jpeg':file.endsWith('.ttf')?'font/ttf':'font/woff2'});res.end(readFileSync(resolve(root,'next',file)));return;}
   if(!files.has(file)){res.writeHead(404);res.end();return;}
   res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':'text/javascript'});
   res.end(readFileSync(resolve(root,'next',file==='analytics-source.mjs'?'analytics.mjs':file)));
@@ -49,7 +51,7 @@ try {
   await sdkCache(leader);await sdkCache(member);
   const owner=await leader.newPage(),peer=await member.newPage();
   for(const page of [owner,peer]){page.setDefaultNavigationTimeout(60000);page.on('pageerror',e=>{errors.push(e.message);console.error('UI error:',e.message);});}
-  await owner.goto(origin);await owner.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();
+  await owner.goto(origin);await owner.getByRole('heading',{name:/내 그룹|오늘의 여행이/}).waitFor();
   for(const width of [320,390]){
     await owner.setViewportSize({width,height:844});
     const layout=await owner.evaluate(()=>{
@@ -58,7 +60,7 @@ try {
     });
     assert.equal(layout.overlap,false,`header overlaps at ${width}px`);assert.equal(layout.overflow,false);
   }
-  await auth(owner,true);await owner.getByRole('link',{name:'새 그룹 만들기',exact:true}).click();
+  await auditUi(owner,'login');await auth(owner,true);await owner.getByRole('link',{name:'새 그룹 만들기',exact:true}).click();
   await owner.getByLabel('그룹 이름',{exact:true}).fill('브라우저 테스트 그룹');
   await owner.getByRole('button',{name:'그룹 만들기',exact:true}).click();
   await owner.getByRole('heading',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
@@ -94,6 +96,7 @@ try {
   console.log('PASS: lost creation response preserves form; recovery reuses one trip without duplicates');
 
   await owner.goto(origin+'#group/'+groupId);
+  await owner.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).waitFor();await auditUi(owner,'groups');
   await owner.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).click();
   const inviteInput=owner.getByLabel('그룹 초대 링크',{exact:true});await inviteInput.waitFor();
   const inviteLink=await inviteInput.inputValue();assert.match(inviteLink,/#group-join\/[A-Za-z0-9_-]{43}$/);
@@ -154,6 +157,7 @@ try {
   assert.equal(await owner.locator('.illustrated-map .map-pin').count(),2);
   assert.equal(await owner.locator('.map-route').count(),1);assert.equal(await owner.locator('.map-pin.is-done').count(),1);
   assert.equal(await owner.locator('.trip-panel a[href^="http"]').count(),0);
+  await auditUi(owner,'map');
   await owner.screenshot({path:'test-results/trip-illustrated-map-mobile.png',fullPage:true});
   assert.equal(await owner.getByRole('link',{name:'다음 탐험 · 첨성대',exact:true}).count(),0);
   await owner.locator('.map-pin').nth(1).click();
@@ -174,7 +178,8 @@ try {
     await owner.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
     assert.equal(await owner.evaluate(()=>document.querySelector('.trip-panel').getBoundingClientRect().bottom<=document.querySelector('.trip-tabs').getBoundingClientRect().top),true);
   }
-  mkdirSync('test-results',{recursive:true});await owner.screenshot({path:'test-results/trip-tabs-mobile.png',fullPage:true});
+  mkdirSync('test-results',{recursive:true});await auditUi(owner,'stamps');
+  await owner.screenshot({path:'test-results/trip-tabs-mobile.png',fullPage:true});
   console.log('PASS: both roles retain four closed-trip tabs; UID-based stamp progress differs, only published memories display and member management is denied');
   console.log('PASS: illustrated map pins and dotted path, next stamp, closed management hidden, direct closed route read-only and 320/390px content clearance');
 
@@ -185,8 +190,9 @@ try {
   await owner.waitForFunction(()=>!document.querySelector('#photo-stamp fieldset')?.disabled && !document.querySelector('#photo-stamp button')?.disabled);
   const imageData=await owner.evaluate(()=>{const c=document.createElement('canvas');c.width=600;c.height=400;const x=c.getContext('2d');x.fillStyle='#ddeacc';x.fillRect(0,0,600,400);x.fillStyle='#e7bd57';x.beginPath();x.arc(455,90,45,0,Math.PI*2);x.fill();x.fillStyle='#7b9b77';x.fillRect(0,260,600,140);x.fillStyle='#fffdf7';x.font='32px sans-serif';x.fillText('Our Adventure',145,325);return c.toDataURL('image/png').split(',')[1];});
   const image={name:'test-landscape.png',mimeType:'image/png',buffer:Buffer.from(imageData,'base64')};
-  await owner.locator('input[name=gallery]').setInputFiles(image);
+  const chooserReady=owner.waitForEvent('filechooser');await owner.getByRole('button',{name:'앨범에서 사진 선택',exact:true}).click();await(await chooserReady).setFiles(image);
   await owner.getByLabel('한 줄 느낌 (선택)',{exact:true}).fill('테스트 사진의 한 줄 느낌');
+  await auditUi(owner,'stamp-detail');
   await owner.screenshot({path:'test-results/photo-selected-mobile.png',fullPage:true});
   let firstFinalize,releaseFinalize;const finalizeSeen=new Promise(resolve=>{firstFinalize=resolve;}),gate=new Promise(resolve=>{releaseFinalize=resolve;});
   let requestBody,finalizeCount=0;
@@ -214,7 +220,9 @@ try {
   assert.equal((await db.collection(photoRoot+'/posts').get()).size,1);assert.equal((await db.collection(photoRoot+'/completions').get()).size,1);
   assert.ok((await readPhoto(peer,objectPath)).size>0);
   assert.equal(await owner.locator('[data-trip-post-count]').textContent(),'1');
+  await auditUi(owner,'stamp-complete');
   await owner.screenshot({path:'test-results/photo-complete-mobile.png',fullPage:true});
+  await owner.getByRole('button',{name:'사진 더 남기기',exact:true}).click();
   await peer.goto(origin+`#trip/${groupId}/${openTripId}/stamps`);await peer.getByRole('heading',{name:'내 스탬프 0/1',exact:true}).waitFor();
   // Camera input, a failed Storage request and an empty feeling: photo two, same one stamp.
   await owner.locator('input[name=camera]').setInputFiles(image);
@@ -239,7 +247,7 @@ try {
   await owner.waitForFunction(()=>document.querySelectorAll('.memory-photo img').length===2);
   assert.equal(await owner.locator('.memory-item').count(),2);
   const firstStampId=savedPhotos.docs[0].id,secondStampId=savedPhotos.docs[1].id;
-  await owner.locator(`[data-post="${firstStampId}"] [data-memory="edit"]`).click();
+  await owner.locator(`[data-post="${firstStampId}"] .post-menu summary`).click();await owner.locator(`[data-post="${firstStampId}"] [data-memory="edit"]`).click();
   await owner.getByLabel('한 줄 느낌 수정 (선택)',{exact:true}).fill('수정한 여행 느낌');
   let editAbort=true;const editBodies=[];
   await owner.route('**/editPost',async route=>{if(route.request().method()!=='POST'){await route.continue();return;}editBodies.push(route.request().postDataJSON().data);if(editAbort){editAbort=false;await route.fetch();await route.abort('failed');}else await route.continue();});
@@ -260,9 +268,9 @@ try {
   const freeId=freeDocs.docs[0].id;assert.equal(freeDocs.docs[0].data().placeId,null);assert.equal(freeDocs.docs[0].data().feeling,'');
   assert.equal((await db.collection(photoRoot+'/completions').where('uid','==',peerUid).get()).size,0);
   assert.equal(await peer.locator('.memory-item').first().getAttribute('data-post'),freeId);
-  await peer.getByLabel('장소별',{exact:true}).selectOption(photoPlace);await peer.waitForFunction(()=>document.querySelectorAll('.memory-item').length===2);
-  await peer.getByLabel('사람별',{exact:true}).selectOption(peerUid);await peer.getByText('조건에 맞는 추억이 없어요.',{exact:true}).waitFor();
-  await peer.getByLabel('장소별',{exact:true}).selectOption('free');await peer.waitForFunction(()=>document.querySelectorAll('.memory-item').length===1);
+  await peer.getByLabel('장소별',{exact:true}).selectOption(photoPlace,{force:true});await peer.waitForFunction(()=>document.querySelectorAll('.memory-item').length===2);
+  await peer.getByLabel('사람별',{exact:true}).selectOption(peerUid,{force:true});await peer.getByText('조건에 맞는 추억이 없어요.',{exact:true}).waitFor();
+  await peer.getByLabel('장소별',{exact:true}).selectOption('free',{force:true});await peer.waitForFunction(()=>document.querySelectorAll('.memory-item').length===1);
   await peer.waitForFunction(()=>document.querySelectorAll('.memory-photo img').length===1);
   assert.equal(await peer.locator('.memory-item').first().getAttribute('data-post'),freeId);
   await peer.screenshot({path:'test-results/t9-filtered-memory-mobile.png',fullPage:true});
@@ -271,14 +279,15 @@ try {
   await owner.getByRole('button',{name:'추억 새로고침',exact:true}).click();
   await owner.waitForFunction(()=>document.querySelectorAll('.memory-photo img').length===3);
   assert.equal(await owner.locator('[data-trip-post-count]').textContent(),'3');
+  await auditUi(owner,'memories');
   await owner.screenshot({path:'test-results/t9-memory-feed-mobile.png',fullPage:true});
   // More than one page of controlled published fixtures, with equal timestamps, tests cursor ties.
   const batch=db.batch();for(let i=0;i<13;i++){batch.set(db.doc(photoRoot+'/posts/paging-'+String(i).padStart(2,'0')),{uid:peerUid,placeId:null,status:'published',feeling:'페이지 검증 '+i,revision:0,photo:freeDocs.docs[0].data().photo,createdAt:FieldValue.serverTimestamp()});}batch.update(db.doc(photoRoot),{postCount:16});await batch.commit();
   await owner.getByRole('button',{name:'추억 새로고침',exact:true}).click();await owner.waitForFunction(()=>document.querySelectorAll('.memory-item').length===12);
   await owner.getByRole('button',{name:'추억 더 보기',exact:true}).click();await owner.waitForFunction(()=>document.querySelectorAll('.memory-item').length===16);
   const ids=await owner.locator('.memory-item').evaluateAll(nodes=>nodes.map(n=>n.dataset.post));assert.equal(new Set(ids).size,16);
-  await owner.getByLabel('장소별',{exact:true}).selectOption(photoPlace);await owner.waitForFunction(()=>document.querySelectorAll('.memory-item').length===2);
-  for(const id of [firstStampId,secondStampId]){owner.once('dialog',dialog=>dialog.accept());await owner.locator(`[data-post="${id}"] [data-memory="delete"]`).click();await owner.waitForFunction(id=>!document.querySelector(`[data-post="${id}"]`),id);}
+  await owner.getByLabel('장소별',{exact:true}).selectOption(photoPlace,{force:true});await owner.waitForFunction(()=>document.querySelectorAll('.memory-item').length===2);
+  for(const id of [firstStampId,secondStampId]){owner.once('dialog',dialog=>dialog.accept());await owner.locator(`[data-post="${id}"] .post-menu summary`).click();await owner.locator(`[data-post="${id}"] [data-memory="delete"]`).click();await owner.waitForFunction(id=>!document.querySelector(`[data-post="${id}"]`),id);}
   await owner.getByText('기록을 삭제했어요. 이 장소의 내 스탬프는 미완료예요.',{exact:true}).waitFor();
   await owner.screenshot({path:'test-results/t9-last-stamp-deleted-mobile.png',fullPage:true});
   assert.equal((await db.collection(photoRoot+'/completions').where('uid','==',ownerUid).get()).size,0);
@@ -356,7 +365,7 @@ try {
   await peer.goto(origin+'#group/'+groupId);await peer.getByRole('heading',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
   await peer.goto(origin+'#groups');await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
   await peer.evaluate(async()=>{const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js');await sdk.signOut(sdk.getAuth());});
-  await peer.getByRole('button',{name:'Google로 로그인',exact:true}).waitFor();
+  await peer.getByRole('button',{name:'Google로 시작하기',exact:true}).waitFor();
   assert.equal(await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).count(),0);
   assert.deepEqual(errors,[]);
   await stranger.screenshot({path:'test-results/invite-full-invalid-mobile.png',fullPage:true});
@@ -364,6 +373,6 @@ try {
   console.log('PASS: full race clears introduction; full, malformed and revoked links expose no group content; rotation preserves members');
   console.log('PASS: header brand and badge do not overlap at 320px and 390px');
   console.log('Physical mobile, production OAuth/Functions and visual font quality remain untested.');
-} catch(error){console.error('Browser page errors:',errors);if(browser){let i=0;for(const context of browser.contexts())for(const page of context.pages()){await page.screenshot({path:`test-results/t9-browser-failure-${i++}.png`,fullPage:true}).catch(()=>{});console.error('Memory diagnostics:',await page.locator('.post-editor').count(),await page.locator('[data-edit-post]').count(),await page.locator('#message').textContent().catch(()=>''),await page.locator('#app').innerText().catch(()=>''));}}throw error;} finally {
+} catch(error){console.error('Browser page errors:',errors);if(browser){let i=0;for(const context of browser.contexts())for(const page of context.pages()){await page.screenshot({path:'test-results/ui-failure-'+(i++)+'.png',fullPage:true,timeout:5000}).catch(()=>{});console.error('UI diagnostic:',await page.evaluate(()=>({message:document.querySelector('#message')?.textContent,screen:document.querySelector('#app')?.textContent?.slice(0,500)})).catch(()=>({})));}}throw error;} finally {
   await browser?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(admin);
 }

@@ -51,7 +51,7 @@ test('closed trips retain all four routes and personal progress without write co
     assert.match(f.app.innerHTML,/종료된 여행/);assert.doesNotMatch(f.app.innerHTML,/<form|data-v2-action|data-trip-action/);
     assert.doesNotMatch(f.app.innerHTML,/>여행 관리<|\/manage/);
     assert.doesNotMatch(f.app.innerHTML,/다음 탐험/);
-    if(tab==='stamps')assert.match(f.app.innerHTML,/내 스탬프 1\/2/);
+    if(tab==='stamps'){assert.match(f.app.innerHTML,/내 스탬프 1\/2/);assert.doesNotMatch(f.app.innerHTML,/is-next/);}
   }
   assert.equal(f.activated(),4);
   assert.deepEqual(f.events.filter(e=>e.name==='screen_view').map(e=>e.params.screen_name),TRIP_TABS);

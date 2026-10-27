@@ -1,0 +1,71 @@
+✔ Storage allows only member-owned creates with bounded size/type and rejects overwrite/delete/outsiders (6020.7889ms)
+✔ AC-4a/4b/4c/4f/5b: pending bytes private; optional-line finalize publishes one photo and only own completion; retries deduplicate (4402.9938ms)
+✔ missing upload, mismatched signature and excessive line never publish or reveal photo (722.2792ms)
+✔ ended trip denies new Storage uploads and unfinished-photo finalization while published photos remain member readable (802.3986ms)
+✔ T9 AC-5a/5b: member-only published feed, stable newest pagination and combined filters exclude unconfirmed records (1001.6225ms)
+✔ T9 AC-5c: other member, leader, outsider and unauthenticated caller cannot edit/delete another author; direct writes denied (744.8489ms)
+✔ T9 own optional feeling edit validates sixty Unicode characters, deduplicates lost-response retries and rejects stale edits (4125.4198ms)
+✔ T9 concurrent own deletion/retry removes only own last stamp, decrements counts once and revokes photo reads for everyone (4565.8224ms)
+✔ T9 free record deletion never changes stamps; failed physical cleanup remains private and retries safely (814.6183ms)
+✔ T9 closed trip rejects own edit/delete/free create and pending finalize; ended published feed stays readable (898.4236ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24998.8058
+✔ only Google auth can create groups and trips; client ownership is ignored (3725.7059ms)
+✔ concurrent group retries are idempotent; request ID cannot change its content (3471.5012ms)
+✔ group is reusable; new trips have no posts or completions and can have zero places (358.8146ms)
+✔ concurrent trip creation keeps one trip and preserves retry content identity (3611.5892ms)
+✔ same nickname does not share completion; trips and groups are isolated (491.503ms)
+✔ same request and same photo cannot duplicate completion or photo counts (3422.5907ms)
+✔ free photos are posts but never create a stamp; feeling may be omitted (183.5817ms)
+✔ photo verifier failure or missing media never changes posts and completion (157.3085ms)
+✔ adding a place preserves prior individual completion and is retry safe (3226.474ms)
+✔ closed trip remains readable but cannot accept new places or photos (441.3784ms)
+✔ rules deny outsiders, role escalation, completion forgery and peer post mutation (649.521ms)
+✔ only published posts are readable and membership loss also removes old-trip access (291.4903ms)
+✔ AC-3a: two simultaneous joins at nine members commit exactly one final seat (3555.3927ms)
+✔ AC-3b: concurrent duplicate reentry never increases membership or overwrites nickname, even when full (4261.4466ms)
+✔ AC-3c: invalid and full links reveal only state; raw invite and group secrets cannot be read or forged (471.1227ms)
+✔ only leader can regenerate links; old links are invalidated without removing members or old-trip access (568.4508ms)
+✔ AC-6a: endTrip rejects members and outsiders, and leader retries preserve one server closure (289.4276ms)
+✔ ended trip rejects new leader/member photo finalization, place writes and direct completion/reopen attempts while preserving reads (750.4434ms)
+✔ photo verification started before end cannot finalize after end commits (264.9478ms)
+✔ concurrent end and photo commit serialize; no new write commits against an already closed trip (3208.2536ms)
+✔ T10 report requires ended membership and derives deduplicated member stamps, representatives and lines from published photos (906.1758ms)
+✔ T11 AC-6a: only ended-trip leader can configure results; no direct config writes or another member overrides (368.7167ms)
+✔ T11 configurations freeze export-only fields, deduplicate retries and reject zero/duplicate/missing/pending selections (4273.5469ms)
+✔ T10/T11 zero-place and zero-photo ended report remains readable but cannot create a blank image (184.9328ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39728.6522
+✔ Google provider required; client cannot choose another owner or course (413.6793ms)
+✔ production default blocks individual pilot and includes owner in the ten-member cap (6932.0702ms)
+✔ invite preview reveals only safe room summary, invalid and path-injection inputs fail (86.6163ms)
+✔ joining twice preserves role, nickname, progress and unique member count (335.9021ms)
+✔ shared concurrent completion yields one stamp and one audit event (3600.3087ms)
+✔ individual progress isolated, server rejects early submission and deduplicates final submit (3241.1573ms)
+✔ only owner rotates invites; old invite revoked without removing existing members (264.2305ms)
+✔ room closure blocks all future progress, submissions, joins, and rotation; close is idempotent (284.6182ms)
+✔ capacity enforced transactionally and empty or excessive nickname rejected (3580.1102ms)
+✔ nonmembers cannot mutate or manage any known room ID (130.3143ms)
+✔ Firestore rules deny unauthenticated, nonmember, peer, invite and all direct writes (517.6076ms)
+✔ same creation request survives concurrent retries without duplicate rooms or plaintext invites (3527.6689ms)
+✔ a full-room preview still permits an existing member to return (241.3476ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23707.4952
