@@ -89,15 +89,28 @@ try {
   assert.equal((await db.collection(`groups/${groupId}/trips`).get()).size,3);
   console.log('PASS: lost creation response preserves form; recovery reuses one trip without duplicates');
 
-  await peer.goto(origin);await peer.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();await auth(peer);
+  await owner.goto(origin+'#group/'+groupId);
+  await owner.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).click();
+  const inviteInput=owner.getByLabel('그룹 초대 링크',{exact:true});await inviteInput.waitFor();
+  const inviteLink=await inviteInput.inputValue();assert.match(inviteLink,/#group-join\/[A-Za-z0-9_-]{43}$/);
+  await leader.grantPermissions(['clipboard-read','clipboard-write']);
+  await owner.getByRole('button',{name:'초대 링크 복사',exact:true}).click();
+  await owner.getByText('초대 링크를 복사했어요.',{exact:true}).waitFor();
+  assert.equal(await owner.evaluate(()=>navigator.clipboard.readText()),inviteLink);
+  await peer.goto(inviteLink);
+  await peer.getByRole('heading',{name:'그룹에 초대받았어요',exact:true}).waitFor();
+  await peer.getByText('다른 기기에서는 이어서 쓰기 어려울 수 있어요.',{exact:false}).waitFor();
+  await peer.getByLabel('탐험가 별칭',{exact:true}).fill('테스트 멤버');
+  await peer.getByRole('button',{name:'그룹 참여하기',exact:true}).click();
+  await peer.waitForURL(url=>url.hash===`#group/${groupId}`);
+  await peer.getByRole('heading',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
   const peerUid=await peer.evaluate(async()=>{const a=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js');return a.getAuth().currentUser.uid;});
-  await db.runTransaction(async tx=>{
-    const ref=db.doc(`groups/${groupId}`),g=await tx.get(ref);
-    tx.create(ref.collection('members').doc(peerUid),{role:'member',displayName:'테스트 멤버',joinedAt:FieldValue.serverTimestamp()});
-    tx.update(ref,{memberIds:[...g.data().memberIds,peerUid],memberCount:g.data().memberCount+1});
-  });
-  await peer.reload();await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).click();
+  await peer.goto(inviteLink);await peer.waitForURL(url=>url.hash===`#group/${groupId}`);await peer.getByRole('heading',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
+  assert.equal((await db.doc(`groups/${groupId}`).get()).data().memberCount,2);
+  assert.equal((await db.collection(`groups/${groupId}/members`).get()).size,2);
+  assert.equal((await db.doc(`groups/${groupId}/members/${peerUid}`).get()).data().displayName,'테스트 멤버');
   await peer.getByRole('heading',{name:'지난 여행',exact:true}).waitFor();
+  assert.equal(await peer.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).count(),0);
   assert.equal(await peer.getByRole('link',{name:'새 여행 만들기',exact:true}).count(),0);
   await peer.getByRole('link',{name:'첫 여행',exact:true}).click();
   await peer.getByRole('heading',{name:'첫 여행',exact:true}).waitFor();
@@ -106,13 +119,45 @@ try {
   await peer.goto(origin+'#group/not-a-member');await peer.getByRole('heading',{name:'목록이나 여행을 불러오지 못했어요',exact:true}).waitFor();
   assert.equal(await peer.getByText('브라우저 테스트 그룹',{exact:true}).count(),0);
   await peer.goto(origin+'#groups');await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
-  await peer.evaluate(async()=>{const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js');await sdk.signOut(sdk.getAuth());});
-  await peer.getByRole('button',{name:'Google로 로그인',exact:true}).waitFor();
-  assert.equal(await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).count(),0);
   assert.equal(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   mkdirSync('test-results',{recursive:true});await owner.screenshot({path:'test-results/groups-mobile.png',fullPage:true});
   assert.deepEqual(errors,[]);
-  console.log('PASS: member management controls absent, direct create route denied, closed-trip reads, outsider denial and sign-out isolation');
+  console.log('PASS: member management controls absent, direct create route denied, closed-trip reads and outsider denial');
+
+  // Group details may be introduced by a valid invite, but a full/invalid state must clear them.
+  const outsiderContext=await browser.newContext({viewport:{width:320,height:740}}),stranger=await outsiderContext.newPage();
+  stranger.on('pageerror',e=>errors.push(e.message));
+  await stranger.goto(inviteLink);await stranger.getByRole('heading',{name:'그룹에 초대받았어요',exact:true}).waitFor();
+  await db.runTransaction(async tx=>{
+    const ref=db.doc(`groups/${groupId}`),snapshot=await tx.get(ref),ids=Array.from({length:8},(_,i)=>`ui-capacity-${i}`);
+    for(const uid of ids)tx.create(ref.collection('members').doc(uid),{role:'member',displayName:'정원 테스트',joinedAt:FieldValue.serverTimestamp()});
+    tx.update(ref,{memberIds:[...snapshot.data().memberIds,...ids],memberCount:10});
+  });
+  await stranger.getByLabel('탐험가 별칭',{exact:true}).fill('초과 멤버');
+  await stranger.getByRole('button',{name:'그룹 참여하기',exact:true}).click();
+  await stranger.getByRole('heading',{name:'그룹 정원이 모두 찼어요',exact:true}).waitFor();
+  assert.equal(await stranger.getByText('브라우저 테스트 그룹',{exact:true}).count(),0);
+  assert.equal(await stranger.locator('form').count(),0);
+  await stranger.reload();await stranger.getByRole('heading',{name:'그룹 정원이 모두 찼어요',exact:true}).waitFor();
+  assert.equal(await stranger.getByText('브라우저 테스트 그룹',{exact:true}).count(),0);
+  await stranger.goto(origin+'#group-join/not-a-valid-link');
+  await stranger.getByRole('heading',{name:'초대 링크를 확인해주세요',exact:true}).waitFor();
+  assert.equal(await stranger.getByText('브라우저 테스트 그룹',{exact:true}).count(),0);
+  await owner.goto(origin+'#group/'+groupId);await owner.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).click();
+  await owner.getByLabel('그룹 초대 링크',{exact:true}).waitFor();
+  await owner.waitForFunction(old=>document.querySelector('#v2-invite-link')?.value && document.querySelector('#v2-invite-link').value!==old,inviteLink);
+  await stranger.goto(inviteLink);await stranger.getByRole('heading',{name:'초대 링크를 확인해주세요',exact:true}).waitFor();
+  assert.equal(await stranger.getByText('브라우저 테스트 그룹',{exact:true}).count(),0);
+  await peer.goto(origin+'#group/'+groupId);await peer.getByRole('heading',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
+  await peer.goto(origin+'#groups');await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).waitFor();
+  await peer.evaluate(async()=>{const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js');await sdk.signOut(sdk.getAuth());});
+  await peer.getByRole('button',{name:'Google로 로그인',exact:true}).waitFor();
+  assert.equal(await peer.getByRole('link',{name:'브라우저 테스트 그룹',exact:true}).count(),0);
+  assert.deepEqual(errors,[]);
+  await stranger.screenshot({path:'test-results/invite-full-invalid-mobile.png',fullPage:true});
+  console.log('PASS: leader generates and copies link; anonymous nickname join and repeated-link reentry do not duplicate membership');
+  console.log('PASS: full race clears introduction; full, malformed and revoked links expose no group content; rotation preserves members');
+  console.log('PASS: header brand and badge do not overlap at 320px and 390px');
   console.log('Physical mobile, production OAuth/Functions and visual font quality remain untested.');
 } finally {
   await browser?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(admin);
