@@ -12,6 +12,7 @@ const rejects=(action,code)=>assert.rejects(action,e=>e.code===code);
 
 test('group and trip creation reject unauthenticated and anonymous requests before DB use',async()=>{
   await rejects(service.callables.createGroup({},null),'unauthenticated');
+  await rejects(service.callables.createTrip(valid,null),'unauthenticated');
   await rejects(service.callables.createGroup({},anonymous),'permission-denied');
   await rejects(service.callables.createTrip(valid,anonymous),'permission-denied');
 });
