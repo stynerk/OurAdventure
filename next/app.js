@@ -18,7 +18,7 @@ const configMissing = () => {
   app.innerHTML = '<section class="card"><h1>함께하는 탐험을 준비하고 있어요</h1><p>아직 서비스 연결 설정이 완료되지 않았어요. 기존 경주 가족 탐험은 계속 이용할 수 있어요.</p><a class="button" href="../">경주 탐험 열기</a></section>';
 };
 function clearListeners() {stops.forEach(stop=>stop());stops=[];room=null;me=null;members=[];}
-async function call(name, data) {return (await api.httpsCallable(functions,name)(data)).data;}
+async function call(name,data){try{return (await api.httpsCallable(functions,name)(data)).data;}catch(error){analytics.track('operation_error',{operation:name,error_code:error.code});throw error;}}
 async function ensureUser() {
   await auth.authStateReady();
   if (!auth.currentUser) await api.signInAnonymously(auth);
@@ -88,6 +88,7 @@ async function route() {
   clearListeners();say('');
   if(location.hash !== `#room/${inviteRoomId}`){inviteToken='';inviteRoomId='';}
   const [view,id,tripId,tab,placeId]=location.hash.slice(1).split('/');
+  analytics.track('page_view',{screen_name:view||'groups'});
   app.innerHTML='<section class="card"><p>탐험을 불러오고 있어요…</p></section>';
   try {
     if(view==='group-join'){await ensureUser();if(version!==generation)return;}
@@ -159,10 +160,10 @@ app.addEventListener('click',event=>{
       // Linking preserves the anonymous participant's UID rather than discarding progress.
       if(auth.currentUser?.isAnonymous)await api.linkWithPopup(auth.currentUser,new api.GoogleAuthProvider());
       else await api.signInWithPopup(auth,new api.GoogleAuthProvider());
-      user=auth.currentUser;await route();
+      user=auth.currentUser;analytics.setAuthType('google');analytics.track('login',{method:'google'});await route();
     } else if(action==='logout'){
       if(!confirm('로그아웃할까요? 익명 참여 기록은 이 브라우저에서도 다시 연결하지 못할 수 있어요.'))return;
-      clearListeners();groupViews?.clearPhotos();await api.signOut(auth);analytics.setAuthType(null);user=null;inviteToken='';location.hash='';await route();
+      clearListeners();groupViews?.clearPhotos();await api.signOut(auth);analytics.setAuthType(null);analytics.track('logout');user=null;inviteToken='';location.hash='';await route();
     } else if(action==='copy'){
       await navigator.clipboard.writeText(inviteUrl(inviteToken));alert('초대 링크를 복사했어요.');
     } else if(action==='rotate'){

@@ -95,6 +95,9 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
     const selected=tab==='stamp'?'stamps':['report','share'].includes(tab)?'memory':tab;
     app.innerHTML=`<header class="trip-heading ${closed?'is-closed':''}" aria-label="여행 상단"><a class="trip-back" href="#group/${escape(g)}" aria-label="← ${escape(group.title)}">${icon('arrow-left')}</a><h1>${escape(trip.title)}</h1>${closed?'<span class="badge" aria-label="종료된 여행">종료</span>':''}${closed && !['report','share'].includes(tab)?`<a class="trip-report" href="${base}/report" aria-label="여행 리포트 보기">리포트</a>`:''}${group.isOwner && !closed && tab!=='manage'?`<a class="trip-manage" href="${base}/manage" aria-label="여행 관리">${icon('settings')}</a>`:''}<span hidden data-trip-post-count>${Number(trip.postCount)||0}</span></header><section class="card trip-panel view-${tab}" aria-labelledby="trip-panel-title">${content}</section><nav class="trip-tabs" aria-label="여행 화면">${[['map','map','지도'],['course','route','코스'],['stamps','stamp','스탬프'],['memory','image','추억']].map(([key,glyph,label])=>`<a href="${base}/${key}" ${selected===key?'aria-current="page"':''}>${icon(glyph)}<span>${label}</span></a>`).join('')}</nav>`;
     activate();
+    if(closed){const age=trip.closedAt?.seconds?Math.max(0,Math.floor((Date.now()/1000-trip.closedAt.seconds)/86400)):null;
+      track('past_trip_open',{group_id:g,trip_id:t,role:group.isOwner?'leader':'member',trip_status:'ended',days_since_end_bucket:age===null?'unknown':age===0?'0':age<=7?'1-7':age<=30?'8-30':'31+'});
+    }
     placeEditor.mount(context,group,trip);
     if(api.onSnapshot){
       let initial=JSON.stringify(trip.placeIds);

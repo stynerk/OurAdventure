@@ -2,15 +2,17 @@ import {readPending,prepareRequest,finishRequest} from './creation-requests.mjs'
 import {createTripViews} from './trip-views.mjs';
 import {icon} from './icons.mjs';
 import {cover} from './ui.mjs';
+import {countBucket,daysBucket} from './analytics.mjs';
 import {inactiveForm} from './place-editor.mjs';
 
-export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,say,isCurrent,storage,track=()=>{}}) {
+export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,say,isCurrent,storage,activateTrip,track=()=>{}}) {
+  const confirmedRequests=new Set();
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safeId=value=>typeof value==='string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
   const routes=new Set(['groups','group','group-create','trip-create','trip','group-join']);
   let active=null;
   const current=context=>active===context && isCurrent(context.version) && getUser()?.uid===context.uid;
-  const tripViews=createTripViews({app,api,db,photoStorage,current,getUser,track,call,perform,storage});
+  const tripViews=createTripViews({app,api,db,photoStorage,current,getUser,track,call,perform,storage,activate:activateTrip});
   const login=()=>'<p>그룹을 만들려면 Google 로그인이 필요해요.</p><button data-action="login">Google로 로그인</button>';
   const account=()=>getUser()?'<button class="secondary" data-action="logout">로그아웃</button>':'';
   const errorCard=(title,href='#groups')=>`<section class="card"><h1>${esc(title)}</h1><p>로그인·그룹 참여 상태와 연결을 확인해주세요.</p><a href="${href}">목록으로 돌아가기</a> <button class="secondary" data-v2-action="refresh">다시 확인</button></section>`;
@@ -49,6 +51,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
     const trips=await api.getDocsFromServer(api.collection(db,'groups',g.id,'trips'));
     if(!current(context))return;
     const rows=trips.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>timestamp(b.createdAt)-timestamp(a.createdAt));
+    track('group_open',{group_id:g.id,role:g.isOwner?'leader':'member',trip_count:countBucket(rows.length)});
     const section=(closed,title)=>`<section class="card"><h2>${title}</h2>${rows.filter(t=>(t.status==='closed')===closed).map(t=>`<article class="trip-list-item ${closed?'is-past':'is-active'}">${cover("trip-thumb")}<span class="badge">${status(t)}</span><h3><a href="#trip/${esc(g.id)}/${esc(t.id)}">${esc(t.title)}</a></h3><p>${esc(t.destination)} · ${esc(t.startDate)} ~ ${esc(t.endDate)}</p><p class="muted">장소 ${Number(t.placeCount)||0}개 · 기록 ${Number(t.postCount)||0}개</p></article>`).join('')||`<p>${closed?'종료된 여행이 없어요.':'진행 중인 여행이 없어요.'}</p>`}</section>`;
     app.innerHTML=`<section class="card"><a href="#groups">← 내 그룹</a><h1>${esc(g.title)}</h1><div class="avatar-stack" aria-hidden="true">${Array.from({length:Math.min(3,Number(g.memberCount)||0)},()=>`<span class="avatar">${icon("user")}</span>`).join('')}</div><p>멤버 ${Number(g.memberCount)||0}명 / 10명 · 여행 ${rows.length}개</p>${g.isOwner?`<a class="button ink new-trip-button" href="#trip-create/${esc(g.id)}">${icon("plus")}새 여행 만들기</a>`:''}</section>${g.isOwner?'<section class="card"><h2>멤버 초대</h2><p>방장 포함 최대 10명이 함께해요. 재발급하면 이전 링크는 새 참여에 사용할 수 없고, 기존 멤버는 유지돼요.</p><button data-v2-action="create-invite">초대 링크 생성·재발급</button><div id="v2-invite"></div></section>':''}${section(false,'진행 중인 여행')}${section(true,'지난 여행')}<button class="secondary" data-v2-action="refresh">목록 새로고침</button>`;
   }
@@ -66,6 +69,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
     const g=await getGroup(context);if(!current(context))return;
     if(!g.isOwner){app.innerHTML=`<section class="card"><h1>리더만 여행을 만들 수 있어요</h1><a href="#group/${esc(g.id)}">그룹으로 돌아가기</a></section>`;return;}
     app.innerHTML=`<section class="card"><a href="#group/${esc(g.id)}">← ${esc(g.title)}</a><h1>새 여행 만들기</h1><p>이전 여행의 장소·사진·완료 기록을 가져오지 않아요.</p><form id="v2-trip-create"><label>여행 이름<input name="title" maxlength="80" required autocomplete="off"></label><label>목적지<input name="destination" maxlength="100" required autocomplete="off" placeholder="예: 경주, 제주, 도쿄"></label><div class="row"><label>시작 날짜<input name="startDate" type="date" required></label><label>종료 날짜<input name="endDate" type="date" required></label></div><label>방문 장소 <span class="muted">선택</span><textarea name="places" rows="5" placeholder="한 줄에 장소 하나씩, 최대 10개"></textarea></label><p class="muted">장소 없이 여행을 만들고 나중에 추가해도 괜찮아요.</p><button>여행 만들기</button></form></section><div id="v2-pending"></div>`;
+    track('trip_create_start',{group_id:g.id,role:'leader',trip_status:'draft'});
     // Always a fresh form. Unresolved requests are recoverable in a separate panel.
     pendingPanel(context,'trip');
   }
@@ -88,6 +92,10 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
   async function sendCreation(context,pending) {
     const name=pending.kind==='group'?'createGroup':'createTrip';
     const result=await call(name,{...pending.payload,requestId:pending.requestId});
+    if(current(context) && !result.replayed && !confirmedRequests.has(pending.requestId)){
+      confirmedRequests.add(pending.requestId);
+      track(pending.kind==='group'?'group_create':'trip_create',{group_id:result.groupId,role:'leader',...(pending.kind==='trip'?{trip_id:result.tripId,trip_status:'active',place_count:countBucket(pending.payload.places.length),days:daysBucket(Math.round((Date.parse(pending.payload.endDate)-Date.parse(pending.payload.startDate))/86400000)+1)}:{})});
+    }
     // Remove only this account's matching request, never any other account's state.
     try{finishRequest(storage,pending);}catch {if(current(context))say('생성은 확인됐지만 이 기기의 요청 기록을 정리하지 못했어요.');}
     if(!current(context))return;
