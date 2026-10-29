@@ -1,0 +1,8 @@
+node_modules/
+*-debug.log
+.firebase/
+next/firebase-config.js
+test-results/
+public/
+hs_err_pid*.log
+replay_pid*.log

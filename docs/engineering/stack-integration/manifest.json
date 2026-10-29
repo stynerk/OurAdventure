@@ -1,0 +1,150 @@
+{
+  "baseline": "e1ab8bde93df2fda94cb49e684e3f67e0ae436b4",
+  "preparedHead": "115c44fb158d3cd9a81941580773f1372d6ea3f5",
+  "unitPasses": 44,
+  "integrationPasses": 52,
+  "viewportChecks": 30,
+  "physicalDevices": false,
+  "production": false,
+  "prs": {
+    "3": {
+      "ref": "engineering/shared-adventure-firebase",
+      "head": "10678c00c802da787339c47e809be57729da3948",
+      "included": true
+    },
+    "7": {
+      "ref": "engineering/group-trip-model",
+      "head": "54c6b99ad9aa57c180edd67fb67a1fceed66913d",
+      "included": true
+    },
+    "8": {
+      "ref": "engineering/group-trip-views",
+      "head": "351637d90870d89deb92d5b17d062fb1abf4ef6c",
+      "included": true
+    },
+    "9": {
+      "ref": "docs/pm-status",
+      "head": "d99c7cbc4e27463b7401fdf026609225cb2faab7",
+      "included": true
+    },
+    "10": {
+      "ref": "docs/analytics-spec",
+      "head": "8d134355d8ed72e2b653b3662250b148d98d4ae6",
+      "included": true
+    },
+    "11": {
+      "ref": "engineering/firebase-analytics",
+      "head": "a4ab2d921aa78b10243b337f1cf99e543a2b470d",
+      "included": true
+    },
+    "12": {
+      "ref": "engineering/group-invite",
+      "head": "834610986b079d18a74827d7ee6e17c1b513aeb8",
+      "included": true
+    },
+    "13": {
+      "ref": "engineering/trip-tabs",
+      "head": "94f068b2b374e691f99fe2bf82fab74d2912adbb",
+      "included": true
+    },
+    "14": {
+      "ref": "engineering/trip-end",
+      "head": "31964342a84f83937bdcc179f79d68d21b2adc82",
+      "included": true
+    },
+    "15": {
+      "ref": "docs/ux-audit",
+      "head": "2e298f13d45ca60ef9c0180790ea98960acb440f",
+      "included": true
+    },
+    "16": {
+      "ref": "engineering/photo-stamp",
+      "head": "0cb35e5f606a8dc5d7d943aa3f2269c95954da17",
+      "included": true
+    },
+    "17": {
+      "ref": "engineering/memory-feed",
+      "head": "535c1b6e22552c5230ade8e36e1b6fdc621ec8ba",
+      "included": true
+    },
+    "18": {
+      "ref": "engineering/trip-report",
+      "head": "fd8cdfec00b325fa1a9b7f3dc2d326690d3dc165",
+      "included": true
+    },
+    "19": {
+      "ref": "docs/design-system",
+      "head": "2b888387b4b7a55442137349896be82783d77340",
+      "included": true
+    },
+    "20": {
+      "ref": "engineering/qa-v2",
+      "head": "c64b59904f778866288153340f4039d3ed091bbe",
+      "included": true
+    },
+    "21": {
+      "ref": "engineering/ui-refresh",
+      "head": "5f0b9a8b31545e6b081630f154dd58adc01c6ddd",
+      "included": true
+    },
+    "22": {
+      "ref": "engineering/place-edit",
+      "head": "e36b4c603177f8a2669e42ef53aa1eb10ed41152",
+      "included": true
+    }
+  },
+  "sourceSha256": {
+    "functions/group-service.cjs": "e6b93f12d3dc252b5051fa5b6fbb7fa4c72209c4b9978bb08a61e6fa0295545f",
+    "functions/index.cjs": "2ced04c7bcd21433e856d17527b3d45b7649deaa67855dbcc0523997261c9e4a",
+    "functions/photo-verifier.cjs": "95e83461817b1a7744dee1e1a23385c75e8cccb2cdb3753df58c12bd8d80f412",
+    "functions/report-service.cjs": "debfccc536a4866693c53be586d4d569eb47e2ac174596954f37ece24e0fa1e1",
+    "functions/service.cjs": "7344ae3228bec962c09ca19bb131466b07520e483bbe6ad449e8c2ce0e67ccda",
+    "next/analytics.mjs": "e58f610bd44264d2a013ebe7112b251c03fac3466003d29ff1bfd7e7e79d548c",
+    "next/app.js": "2e4727e4475192adee0fb1d52eeb2814fc012ba14178d5ba3163c4d1018a8e07",
+    "next/creation-requests.mjs": "f1622d3eff0d5a6642f3fe8a9c854fee27ede5192777ec645ad5680dedc249b2",
+    "next/firebase-config.example.js": "f942fbccfddac53bf43128320bfad5fc2e952af62ee34e5a0161b817c3521899",
+    "next/groups.mjs": "9634f4977b812bef4379aa498b77feeb1f1ea03dbf99be38030cd590aa9fd421",
+    "next/icons.mjs": "5a00db9cef179a81a426dd6453219e233a0939ee4ce7657b8767b55faffbc5ef",
+    "next/illustrated-map.mjs": "ba2fb3d53baaa29ce9f02bcf996c0153d7186461c0a86f0b5756835b371e0bff",
+    "next/memory-feed.mjs": "68b8cbd01fdc01c6d45d14d1d195d14985a43ed5ce1b13c29a6b57b477c52fd3",
+    "next/photo-drafts.mjs": "63a45e6d4b4b773d98b0ba2c01ba7d6b45b60c25249291e96a25fd52d419f850",
+    "next/photo-upload.mjs": "3686c26961a74d9cccd6da823c3327afa742ba85b463fe55c16be3af570db6ef",
+    "next/photo-views.mjs": "6ff24bfdd8f2deaf3aad2f8bf049dc78551b83717a91813b2b35d9b5d48d0a63",
+    "next/place-editor.mjs": "1d1bf1997a8c999db7c42223aeb92868dd14f468a2e5ec8a332e5fb6ac9110a1",
+    "next/report-views.mjs": "1592f13a95c50ec522c80e0269984fae757f93023c04043e5ce66c1909f29ba2",
+    "next/session.mjs": "29fd76d63c7cd3299a048ce0ae9b0adaf60b6186b822d083703938caf296fa23",
+    "next/share-renderer.mjs": "30f00ae73f07fcd9bf7bf6a9ead39070a7ecf1e3c082499502cc4085fb8aee95",
+    "next/style.css": "9d50b2ac4303d919fa240a516f46f7bba94d8336847933f6e983f134a1d15a3e",
+    "next/trip-views.mjs": "dbf94e93506c75d76d77583bc8c26591ec5b4ed97309f33c1859d76061f06dfb",
+    "next/ui.mjs": "d8cdff889cde024915d9848c75811692116d7e1092aec49bc9ee4334a516b999",
+    "scripts/extract-course.mjs": "e2c8d448df72b4d6ee4d6d7fffd21730708ce2bfc032cd54550b3d192a7e32f3",
+    "scripts/prepare-pages.mjs": "92fbd28cce51d96fba760540e08169b2c065385120f8e0498c910a5cc2ee262b",
+    "scripts/test-photos.mjs": "7ecb4aed3fe514951f1cc8610f7b363834be8176e8fbd6e14ecd2149a604a373",
+    "scripts/test-reports.mjs": "0b55a2a29c63dfea538447859e79e96a0cc454937b2c3b3a7bf924aaa1479ffa",
+    "tests/analytics.test.mjs": "bf9e6ecf37c2baed92c05bafc12a4d79b42d2d867632296fd2640ff05e121f93",
+    "tests/browser.mjs": "a1dfa29bc212ed292dbe3b3119b271ca3d3ae6e01f9c6b49db6aa63ae1c4535a",
+    "tests/callable-http.mjs": "aa5bd53e585d7c2762682c2b5cd03e6b686756a1a1168228601a73dd392abf09",
+    "tests/client.mjs": "0c6d7dce827120b725a67f546fec92020fbad47c86d65c718679041ad4edba92",
+    "tests/course.test.mjs": "5ac45b8ee56a7b1b75be197b162c1d2d59ddf71b3860fb3b0099aeb6b0e9be63",
+    "tests/creation-requests.test.mjs": "f4fe170dc84986cb9c8d6eabd9b62a73012307f70e816104416b5ac5769c138c",
+    "tests/group-contract.test.mjs": "0ef78b7d28919eb8d3f3c2ba739452a8037cea3e88657b7640f1b6019234a0b0",
+    "tests/group-model.integration.test.mjs": "99c1aabc8b1d1b752cad40dcc8ffdb4dce768369ce311168c4a4c98aa5a28383",
+    "tests/groups-browser.mjs": "b5af14e04091fb9a1d5f689b81df2b1bfd721ba2ac2cc7836aaf1721fe2a70be",
+    "tests/integration.test.mjs": "ba75627ce721383c91b47c3c24babd14d6797b4afdf43b52a53c77428dac4ab2",
+    "tests/memory-feed.test.mjs": "a1a04aab5970922875ba441ed735b6832d76923b25f98ef1843c1c18d003b475",
+    "tests/photo-storage.integration.test.mjs": "4955f47e53b5ac9697b2ea513d6b1173d11ce1c5605581d8ca86d94953a39d22",
+    "tests/photo-upload.test.mjs": "16f4a261a2968127b7ae4699a6d8365ba0c57157cb0cc3b470176e69d4631883",
+    "tests/place-edit-browser.mjs": "271eba938e3e7a6e26078795b9982f948342aeff8dc814db175f5f34843a8c64",
+    "tests/qa-browser-verify.mjs": "50079f659712a2130434d4d16c058c18bcde6feef52f7382c07e9e3771e58392",
+    "tests/report-browser.mjs": "6da17e3269144ede37147201f6c1b0d34c803b3b043ff9041d4e662e1024f902",
+    "tests/report-verify.mjs": "22a7feaf139d63b295b15145f96ed46db587ad60f72f4419e8cc5376821988fe",
+    "tests/session.test.mjs": "ce8acedee75036821a071bbb6768ba482cd265c87efac4779bb281c722464d05",
+    "tests/t6-verify.mjs": "868091fc70c00290c68de53e76531f91f175e87a9abf19598e7064f033a41fed",
+    "tests/t8-verify.mjs": "f73ee820f3e4613fbd7f421e8a31432da8808d385c533562d748ed4aae49169d",
+    "tests/trip-report.test.mjs": "373a0ce3c6d36ca9362ece05bb61555ba1b8e5316247d6eccd4de350709e369a",
+    "tests/trip-views.test.mjs": "4d3cd2dba6d780b73fdce857d91450554bbadf894ae045289d9105f902940035",
+    "tests/ui-audit.mjs": "37900f463d9a35f971396d1c5bcd0a488e788b33db8706e72a476c1b29e68543",
+    "tests/ui-style.test.mjs": "2b88137a51ed1391e1edca7c20cda217b5dd300db387ea3adcb1315a5c322674",
+    "tests/ui-verify.mjs": "2fa9a9e6e37c54a71d8751785054b1f8108f8dd9700900a19983b5db638faa97"
+  }
+}
