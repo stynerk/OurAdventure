@@ -29,3 +29,5 @@
 현재 [Pages workflow](../../.github/workflows/pages.yml)는 `main`의 `next/**` 등이 바뀌면 공개 사이트를 자동 배포한다. 따라서 기능 PR을 main에 병합하면 사이트 배포도 시작된다. 기존 workflow나 저장소 설정을 바꿔 이 동작을 우회하지 않았다. 실제 main 병합·Pages 배포는 별도 확인 전까지 실행하지 않는다.
 
 Pages 배포는 Functions·Firestore/Storage Rules 배포를 대신하지 않는다. 운영 프로젝트·Blaze·필요한 키와 서비스 연결을 확인하고, 승인된 범위에서 서버/규칙과 웹의 버전을 맞춰야 한다. 기존의 추천/AI 관련 QA 6개와 실기기 PNG 저장 보류1개도 남아 있다.
+
+2026-10-29 후속: 사용자가 운영 연결·배포 진행을 요청해 Firebase 인증과 Blaze를 확인하고, 서울 사진 버킷·접근 규칙·Functions 21개를 운영에 반영했다. main과 Pages는 아직 변경하지 않았다. 현재 상태와 실제 운영 접근 차단 검사 결과는 [운영 연결 점검](PRODUCTION_CONNECTION.md)을 따른다. 위 배포 대기 설명은 최초 통합 준비 시점의 기록이다.
