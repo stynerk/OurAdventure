@@ -2,6 +2,28 @@
 const validId = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(id);
 const roomKey = uid => `oa-next-rooms-v1:${uid}`;
 const requestKey = uid => `oa-next-create-v1:${uid}`;
+// Retry reads only; creation/upload retries retain their existing request IDs.
+export function withDeadline(operation,timeoutMs,message='연결 응답이 늦어지고 있어요. 다시 시도해주세요.') {
+  let timer;
+  const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>{const error=new Error(message);error.code='app/read-timeout';reject(error);},timeoutMs);});
+  return Promise.race([Promise.resolve().then(operation),timeout]).finally(()=>clearTimeout(timer));
+}
+export function createServerReads({getDocFromServer,getDocsFromServer,reconnect,timeoutMs=12000}) {
+  let recovering=null;
+  const recover=()=>{
+    if(!recovering)recovering=withDeadline(reconnect,timeoutMs).finally(()=>{recovering=null;});
+    return recovering;
+  };
+  const read=method=>async(...args)=>{
+    try{return await withDeadline(()=>method(...args),timeoutMs);}
+    catch(error){
+      if(error.code!=='app/read-timeout' && !['unavailable','firestore/unavailable'].includes(error.code))throw error;
+      await recover();
+      return withDeadline(()=>method(...args),timeoutMs);
+    }
+  };
+  return {getDocFromServer:read(getDocFromServer),getDocsFromServer:read(getDocsFromServer)};
+}
 export function readRoomIds(storage,uid) {
   if (!uid) return [];
   try {

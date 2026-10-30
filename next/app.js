@@ -1,4 +1,4 @@
-import {readRoomIds,rememberRoom,readCreateRequest,getCreateRequest,clearCreateRequest,loadAccessibleRooms} from './session.mjs';
+import {readRoomIds,rememberRoom,readCreateRequest,getCreateRequest,clearCreateRequest,loadAccessibleRooms,createServerReads} from './session.mjs';
 import {createGroupViews} from './groups.mjs';
 import {createAnalytics} from './analytics.mjs';
 import {icon} from './icons.mjs';
@@ -18,7 +18,7 @@ const configMissing = () => {
   app.innerHTML = '<section class="card"><h1>함께하는 탐험을 준비하고 있어요</h1><p>아직 서비스 연결 설정이 완료되지 않았어요. 기존 경주 가족 탐험은 계속 이용할 수 있어요.</p><a class="button" href="../">경주 탐험 열기</a></section>';
 };
 function clearListeners() {stops.forEach(stop=>stop());stops=[];room=null;me=null;members=[];}
-async function call(name,data){try{return (await api.httpsCallable(functions,name)(data)).data;}catch(error){analytics.track('operation_error',{operation:name,error_code:error.code});throw error;}}
+async function call(name,data){try{return (await api.httpsCallable(functions,name,{timeout:35000})(data)).data;}catch(error){analytics.track('operation_error',{operation:name,error_code:error.code});throw error;}}
 async function ensureUser() {
   await auth.authStateReady();
   if (!auth.currentUser) await api.signInAnonymously(auth);
@@ -182,7 +182,12 @@ try {
   const modules=await Promise.all(['firebase-app.js','firebase-auth.js','firebase-firestore.js','firebase-functions.js','firebase-storage.js'].map(name=>import(sdk+name)));
   api=Object.assign({},...modules);
   const firebaseApp=api.initializeApp(config.firebaseConfig);
-  auth=api.getAuth(firebaseApp);db=api.getFirestore(firebaseApp);functions=api.getFunctions(firebaseApp,config.functionsRegion || 'asia-northeast3');
+  auth=api.getAuth(firebaseApp);
+  // Finite responses also work through browsers/proxies that buffer streams.
+  db=api.initializeFirestore(firebaseApp,{experimentalForceLongPolling:true});
+  const serverReads=createServerReads({getDocFromServer:api.getDocFromServer,getDocsFromServer:api.getDocsFromServer,reconnect:async()=>{await api.disableNetwork(db);await api.enableNetwork(db);}});
+  api={...api,...serverReads};
+  functions=api.getFunctions(firebaseApp,config.functionsRegion || 'asia-northeast3');
   const photoStorage=config.firebaseConfig.storageBucket?api.getStorage(firebaseApp):api.getStorage(firebaseApp,`gs://${config.firebaseConfig.projectId}.firebasestorage.app`);
   photoStorage.maxOperationRetryTime=5000;photoStorage.maxUploadRetryTime=20000;
   if(config.useEmulators){
