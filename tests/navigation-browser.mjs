@@ -20,6 +20,8 @@ try{
  page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(request.isNavigationRequest()&&request.frame()===page.mainFrame())navigations++;});
  await page.goto(origin);await page.getByRole('button',{name:'Google로 시작하기',exact:true}).waitFor();
  const popupPromise=page.waitForEvent('popup');await page.getByRole('button',{name:'Google로 시작하기',exact:true}).click();const popup=await popupPromise;
+ await page.locator('#message.is-loading .loading-spinner').waitFor();
+ mkdirSync('test-results',{recursive:true});await page.screenshot({path:'test-results/loading-login-pending-390.png',fullPage:true});
  await popup.waitForLoadState('domcontentloaded');
  mkdirSync('test-results',{recursive:true});await popup.screenshot({path:'test-results/navigation-auth-popup.png'});
  // Complete the emulator's real popup flow, using only a synthetic account.
@@ -27,6 +29,7 @@ try{
  await popup.getByLabel('Email',{exact:true}).fill('navigation-owner@example.test');
  await popup.getByRole('button',{name:'Sign in with Google.com',exact:true}).click();
  await page.getByRole('heading',{name:'내 그룹',exact:true}).waitFor();
+ assert.equal(await page.locator('#message.is-loading').count(),0);
  assert.equal(await page.getByRole('button',{name:'로그아웃',exact:true}).isEnabled(),true);
  console.log('PASS: actual Google popup login button completes and opens groups without reload');
  await page.getByRole('link',{name:'새 그룹 만들기',exact:true}).click();
@@ -50,11 +53,21 @@ try{
  await context.route('**/google.firestore.v1.Firestore/Listen/channel**',async route=>{if(blocking){blocked.add(route);return;}await route.continue();});
  await page.evaluate(async()=>{const sdk=await import('https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js');await sdk.disableNetwork(sdk.getFirestore());await sdk.enableNetwork(sdk.getFirestore());});
  await page.evaluate(g=>{location.hash='group/'+g;},groupId);
+ await page.locator('.loading-card .loading-spinner').waitFor();
+ for(const width of [320,390]){
+   await page.setViewportSize({width,height:844});
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   await page.screenshot({path:`test-results/loading-route-${width}.png`,fullPage:true});
+ }
+ await page.emulateMedia({reducedMotion:'reduce'});
+ assert.equal(await page.locator('.loading-card .loading-spinner').evaluate(n=>getComputedStyle(n).animationName),'none');
+ await page.emulateMedia({reducedMotion:'no-preference'});
  await page.getByRole('heading',{name:'목록이나 여행을 불러오지 못했어요',exact:true}).waitFor({timeout:45000});
  assert.equal(await page.getByRole('button',{name:'다시 확인',exact:true}).isEnabled(),true);
  blocking=false;for(const route of blocked)await route.abort().catch(()=>{});
  await context.unroute('**/google.firestore.v1.Firestore/Listen/channel**');
  await page.getByRole('button',{name:'다시 확인',exact:true}).click();await page.getByRole('heading',{name:'로딩 전환 QA',exact:true}).waitFor({timeout:30000});
  assert.equal(navigations,1);assert.deepEqual(errors,[]);
+ assert.equal(await page.locator('.loading-card .loading-spinner').count(),0);
  console.log('PASS: stalled Firestore response exits loading; in-app retry recovers without reload');
 }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
