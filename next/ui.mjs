@@ -1,4 +1,8 @@
 import {icon} from './icons.mjs';
+export function loadingStatus(text='불러오고 있어요…'){
+  const escaped=String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  return `<div class="loading-status" role="status" aria-live="polite"><span class="loading-spinner" aria-hidden="true"></span><span>${escaped}</span></div>`;
+}
 export const cover=(className='')=>`<picture class="cover-picture ${className}"><source srcset="./assets/travel-cover-v2.webp" type="image/webp"><img src="./assets/travel-cover-v2.jpg" alt="" width="1170" height="2532" decoding="async"></picture>`;
 export const avatar=(name='')=>`<span class="avatar" aria-hidden="true">${String(name).trim().slice(0,1).replace(/[&<>"']/g,'')||icon('user')}</span>`;
 export function celebrateStamp({app,context,result,photo,feeling}){

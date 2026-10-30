@@ -2,7 +2,7 @@ import {readRoomIds,rememberRoom,readCreateRequest,getCreateRequest,clearCreateR
 import {createGroupViews} from './groups.mjs';
 import {createAnalytics} from './analytics.mjs';
 import {icon} from './icons.mjs';
-import {initUi} from './ui.mjs';
+import {initUi,loadingStatus} from './ui.mjs';
 import {inactiveForm} from './place-editor.mjs';
 initUi();
 const pendingAnalytics=[];
@@ -10,7 +10,12 @@ let analytics={track:(name,params)=>{if(pendingAnalytics.length<30)pendingAnalyt
 const localState={getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value),removeItem:key=>localStorage.removeItem(key)};
 const app = document.querySelector('#app'), message = document.querySelector('#message');
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const say = text => {message.textContent = text;};
+const say = (text,loading=false) => {
+  message.classList.toggle('is-loading',loading);
+  message.replaceChildren();
+  if(loading){const spinner=document.createElement('span');spinner.className='loading-spinner';spinner.setAttribute('aria-hidden','true');message.append(spinner);}
+  message.append(document.createTextNode(text));
+};
 let enableIndividualPilot=false;
 let groupViews;
 let api, auth, db, functions, course, user, room, me, members = [], inviteToken = '', inviteRoomId = '', stops = [], generation = 0, busy = false;
@@ -89,7 +94,7 @@ async function route() {
   if(location.hash !== `#room/${inviteRoomId}`){inviteToken='';inviteRoomId='';}
   const [view,id,tripId,tab,placeId]=location.hash.slice(1).split('/');
   analytics.track('page_view',{screen_name:view||'groups'});
-  app.innerHTML='<section class="card"><p>탐험을 불러오고 있어요…</p></section>';
+  app.innerHTML=`<section class="card loading-card">${loadingStatus('탐험을 불러오고 있어요…')}</section>`;
   try {
     if(view==='group-join'){await ensureUser();if(version!==generation)return;}
     if(groupViews && (!view || groupViews.handles(view)))await groupViews.open({view:view||'groups',groupId:id,tripId,tab,placeId},version);
@@ -122,7 +127,7 @@ async function route() {
 async function perform(action){
   if(busy)return;
   const actionVersion=generation;
-  busy=true;say('처리 중이에요…');
+  busy=true;say('처리 중이에요…',true);
   document.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)').forEach(b=>{b.dataset.pending='1';b.disabled=true;});
   try{await action();if(actionVersion===generation)say('');}catch(e){if(actionVersion===generation)say(e.message || '연결을 확인한 뒤 다시 시도해 주세요.');}
   finally{busy=false;document.querySelectorAll('[data-pending]').forEach(b=>{delete b.dataset.pending;b.disabled=false;});}
