@@ -13,6 +13,7 @@
     "test:callable-http": "firebase emulators:exec --project demo-our-adventure --only auth,firestore 'node tests/callable-http.mjs'",
     "test:callable-client": "firebase emulators:exec --project demo-our-adventure --only auth,firestore 'node tests/callable-http.mjs --client-only'",
     "test:groups-browser": "firebase emulators:exec --project demo-our-adventure --only auth,firestore 'node tests/callable-http.mjs --groups-ui'",
+    "test:navigation": "firebase emulators:exec --project demo-our-adventure --only auth,firestore \"node tests/callable-http.mjs --navigation-ui\"",
     "test:memories": "node scripts/test-photos.mjs",
     "test:reports": "node scripts/test-reports.mjs"
   },

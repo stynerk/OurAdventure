@@ -87,7 +87,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
       else if(params.view==='trip-create')await tripForm(context);
       else if(params.view==='trip')await tripDetail(context);
       else await groupList(context);
-    }catch {if(current(context))app.innerHTML=errorCard('목록이나 여행을 불러오지 못했어요');}
+    }catch(error) {if(current(context)){app.innerHTML=errorCard('목록이나 여행을 불러오지 못했어요');if(error.code==='app/read-timeout')say('연결 응답이 늦어지고 있어요. 새로고침 없이 아래 ‘다시 확인’으로 재시도할 수 있어요.');}}
   }
   async function sendCreation(context,pending) {
     const name=pending.kind==='group'?'createGroup':'createTrip';
