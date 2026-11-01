@@ -1,9 +1,10 @@
 import {readPending,prepareRequest,finishRequest} from './creation-requests.mjs';
 import {createTripViews} from './trip-views.mjs';
 import {icon} from './icons.mjs';
-import {cover} from './ui.mjs';
+import {cover,invitePanel} from './ui.mjs';
 import {countBucket,daysBucket} from './analytics.mjs';
 import {inactiveForm} from './place-editor.mjs';
+import {importMarkup,mountImport,parseItinerary} from './itinerary-editor.mjs';
 
 export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,say,isCurrent,storage,activateTrip,track=()=>{}}) {
   const confirmedRequests=new Set();
@@ -11,6 +12,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
   const safeId=value=>typeof value==='string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
   const routes=new Set(['groups','group','group-create','trip-create','trip','group-join']);
   let active=null;
+  let creationImport=null;
   const current=context=>active===context && isCurrent(context.version) && getUser()?.uid===context.uid;
   const tripViews=createTripViews({app,api,db,photoStorage,current,getUser,track,call,perform,storage,activate:activateTrip});
   const login=()=>'<p>그룹을 만들려면 Google 로그인이 필요해요.</p><button data-action="login">Google로 로그인</button>';
@@ -53,7 +55,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
     const rows=trips.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>timestamp(b.createdAt)-timestamp(a.createdAt));
     track('group_open',{group_id:g.id,role:g.isOwner?'leader':'member',trip_count:countBucket(rows.length)});
     const section=(closed,title)=>`<section class="card"><h2>${title}</h2>${rows.filter(t=>(t.status==='closed')===closed).map(t=>`<article class="trip-list-item ${closed?'is-past':'is-active'}">${cover("trip-thumb")}<span class="badge">${status(t)}</span><h3><a href="#trip/${esc(g.id)}/${esc(t.id)}">${esc(t.title)}</a></h3><p>${esc(t.destination)} · ${esc(t.startDate)} ~ ${esc(t.endDate)}</p><p class="muted">장소 ${Number(t.placeCount)||0}개 · 기록 ${Number(t.postCount)||0}개</p></article>`).join('')||`<p>${closed?'종료된 여행이 없어요.':'진행 중인 여행이 없어요.'}</p>`}</section>`;
-    app.innerHTML=`<section class="card"><a href="#groups">← 내 그룹</a><h1>${esc(g.title)}</h1><div class="avatar-stack" aria-hidden="true">${Array.from({length:Math.min(3,Number(g.memberCount)||0)},()=>`<span class="avatar">${icon("user")}</span>`).join('')}</div><p>멤버 ${Number(g.memberCount)||0}명 / 10명 · 여행 ${rows.length}개</p>${g.isOwner?`<a class="button ink new-trip-button" href="#trip-create/${esc(g.id)}">${icon("plus")}새 여행 만들기</a>`:''}</section>${g.isOwner?'<section class="card"><h2>멤버 초대</h2><p>방장 포함 최대 10명이 함께해요. 재발급하면 이전 링크는 새 참여에 사용할 수 없고, 기존 멤버는 유지돼요.</p><button data-v2-action="create-invite">초대 링크 생성·재발급</button><div id="v2-invite"></div></section>':''}${section(false,'진행 중인 여행')}${section(true,'지난 여행')}<button class="secondary" data-v2-action="refresh">목록 새로고침</button>`;
+    app.innerHTML=`<section class="card"><a href="#groups">← 내 그룹</a><h1>${esc(g.title)}</h1><p>멤버 ${Number(g.memberCount)||0}명 / 10명 · 여행 ${rows.length}개</p>${g.isOwner?`<a class="button ink new-trip-button" href="#trip-create/${esc(g.id)}">${icon("plus")}새 여행 만들기</a>`:''}</section>${section(false,'진행 중인 여행')}${section(true,'지난 여행')}${g.isOwner?invitePanel():''}<button class="secondary" data-v2-action="refresh">목록 새로고침</button>`;
   }
   function inviteUnavailable(state) {
     app.innerHTML=`<section class="card"><h1>${state==='full'?'그룹 정원이 모두 찼어요':'초대 링크를 확인해주세요'}</h1><p>${state==='full'?'최대 10명까지 참여할 수 있어요. 리더에게 문의해주세요.':'유효하지 않거나 재발급된 링크예요. 리더에게 새 링크를 요청해주세요.'}</p><a href="#groups">내 그룹으로</a></section>`;
@@ -69,6 +71,10 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
     const g=await getGroup(context);if(!current(context))return;
     if(!g.isOwner){app.innerHTML=`<section class="card"><h1>리더만 여행을 만들 수 있어요</h1><a href="#group/${esc(g.id)}">그룹으로 돌아가기</a></section>`;return;}
     app.innerHTML=`<section class="card"><a href="#group/${esc(g.id)}">← ${esc(g.title)}</a><h1>새 여행 만들기</h1><p>이전 여행의 장소·사진·완료 기록을 가져오지 않아요.</p><form id="v2-trip-create"><label>여행 이름<input name="title" maxlength="80" required autocomplete="off"></label><label>목적지<input name="destination" maxlength="100" required autocomplete="off" placeholder="예: 경주, 제주, 도쿄"></label><div class="row"><label>시작 날짜<input name="startDate" type="date" required></label><label>종료 날짜<input name="endDate" type="date" required></label></div><label>방문 장소 <span class="muted">선택</span><textarea name="places" rows="5" placeholder="한 줄에 장소 하나씩, 최대 10개"></textarea></label><p class="muted">장소 없이 여행을 만들고 나중에 추가해도 괜찮아요.</p><button>여행 만들기</button></form></section><div id="v2-pending"></div>`;
+    const form=app.querySelector('#v2-trip-create');if(form){form.elements.places.placeholder='1일차\n10:00~11:00 해동용궁사\n2일차\n09:00 해운대 (최대 60개)';
+    form.querySelector('button').insertAdjacentHTML('beforebegin',importMarkup());
+    creationImport=mountImport(form.querySelector('.itinerary-import'),{trip:()=>({startDate:form.elements.startDate.value,endDate:form.elements.endDate.value,destination:form.elements.destination.value}),valid:()=>current(context),analyze:data=>call('analyzeItinerary',{...data,groupId:context.groupId}),lookup:name=>call('lookupPlaceInfo',{groupId:context.groupId,name,destination:form.elements.destination.value}),onResult:result=>{for(const key of ['title','destination','startDate','endDate'])if(result[key]&&!form.elements[key].value)form.elements[key].value=result[key];}});
+    const editRaw=document.createElement('button');editRaw.type='button';editRaw.className='secondary';editRaw.textContent='입력한 장소 목록 편집';form.elements.places.closest('label').after(editRaw);editRaw.addEventListener('click',()=>{if(!form.elements.places.value.trim())return;try{const parsed=parseItinerary(form.elements.places.value,{startDate:form.elements.startDate.value,endDate:form.elements.endDate.value});creationImport.set([...(creationImport.hasEntries()?creationImport.read():[]),...parsed.entries],{lookupAll:true});form.elements.places.value='';say('입력한 장소를 아래 목록에서 날짜·시간별로 수정할 수 있어요.');}catch(error){say(error.message);}});}
     track('trip_create_start',{group_id:g.id,role:'leader',trip_status:'draft'});
     // Always a fresh form. Unresolved requests are recoverable in a separate panel.
     pendingPanel(context,'trip');
@@ -78,6 +84,7 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
     await tripViews.open(context,group);
   }
   async function open(params,version) {
+    creationImport=null;
     tripViews.clearMemory();
     const context={...params,version,uid:getUser()?.uid};active=context;
     try {
@@ -119,11 +126,13 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
       return;
     }
     const data=Object.fromEntries(new FormData(form)),kind=form.id==='v2-group-create'?'group':'trip';
-    const payload=kind==='group'?{title:data.title.trim()}:{groupId:context.groupId,title:data.title.trim(),destination:data.destination.trim(),startDate:data.startDate,endDate:data.endDate,places:data.places.split('\n').map(s=>s.trim()).filter(Boolean).map(name=>({name}))};
+    let payload;
+    try{payload=kind==='group'?{title:data.title.trim()}:{groupId:context.groupId,title:data.title.trim(),destination:data.destination.trim(),startDate:data.startDate,endDate:data.endDate,places:[...parseItinerary(data.places,{startDate:data.startDate,endDate:data.endDate}).entries,...(creationImport?.hasEntries()?creationImport.read():[])]};}
+    catch(error){say(error.message);return;}
     perform(async()=>{
       try {
         if(kind==='trip' && payload.endDate<payload.startDate)throw new Error('종료 날짜는 시작 날짜보다 빠를 수 없어요.');
-        if(payload.places?.length>10)throw new Error('장소는 최대 10개까지 입력해주세요.');
+        if(payload.places?.length>60)throw new Error('일정은 최대 60개까지 입력해주세요.');
         let pending;
         try{pending=prepareRequest(storage,context.uid,kind,context.groupId||'',payload,()=>crypto.randomUUID());}
         catch(error){throw new Error('생성 요청을 보관하지 못했어요. '+error.message);}
@@ -144,13 +153,16 @@ export function createGroupViews({app,api,db,photoStorage,getUser,call,perform,s
   app.addEventListener('click',event=>{
     const button=event.target.closest('button[data-v2-action]');if(!button || button.disabled)return;
     const context=active;if(!context || !current(context))return;
-    if(button.dataset.v2Action==='create-invite'){
+    if(['create-invite','rotate-invite'].includes(button.dataset.v2Action)){
+      const rotate=button.dataset.v2Action==='rotate-invite';
+      if(rotate&&!confirm('초대 링크를 재발급할까요? 이전 링크는 더 이상 새 참여에 사용할 수 없어요.'))return;
       perform(async()=>{
         const pendingPanel=app.querySelector('#v2-invite');
         if(pendingPanel)pendingPanel.innerHTML='<p>새 초대 링크를 준비하고 있어요…</p>';
-        const result=await call('createGroupInvite',{groupId:context.groupId});
+        const result=await call(rotate?'createGroupInvite':'getGroupInvite',{groupId:context.groupId});
         if(!current(context))return;
         const panel=app.querySelector('#v2-invite');if(!panel)return;
+        if(!result.token){panel.textContent='이전에 공유한 링크는 계속 유효해요. 기존 방식으로 만든 링크는 다시 표시할 수 없어, 새 링크가 필요할 때만 아래에서 재발급해주세요.';return;}
         const link=`${location.origin}${location.pathname}#group-join/${result.token}`;
         panel.innerHTML=`<label>그룹 초대 링크<input id="v2-invite-link" readonly value="${esc(link)}"></label><button class="secondary" data-v2-action="copy-invite">초대 링크 복사</button><p id="v2-invite-status" class="muted">이 링크를 공유하면 별칭만으로 참여할 수 있어요.</p>`;
       });return;

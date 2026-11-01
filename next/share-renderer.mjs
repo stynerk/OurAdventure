@@ -2,7 +2,7 @@ export const SHARE_FORMATS=Object.freeze({feed:{width:1080,height:1350},story:{w
 export function imageLayout(config){
   const size=SHARE_FORMATS[config?.format];
   if(!size || config.version!==1 || config.width!==size.width || config.height!==size.height || !['grid','board'].includes(config.template) || !Array.isArray(config.photos) || config.photos.length<1 || config.photos.length>6 || new Set(config.photos.map(p=>p.id)).size!==config.photos.length)throw Error('사진을 1~6장 선택하고 미리보기를 다시 만들어주세요.');
-  if(!Number.isInteger(config.placeCount) || config.placeCount<0 || config.placeCount>10 || !Array.isArray(config.members) || config.members.length<1 || config.members.length>10)throw Error('도장 정보를 확인하지 못했어요.');
+  if(!Number.isInteger(config.placeCount) || config.placeCount<0 || config.placeCount>60 || !Array.isArray(config.members) || config.members.length<1 || config.members.length>10)throw Error('도장 정보를 확인하지 못했어요.');
   const {width,height}=size,margin=64,gap=24,top=236,available=width-margin*2,photos=[];
   const boardSpace=36+config.members.length*(config.format==='story'?88:64);
   const photoArea=config.template==='grid'?height-top-122:height-top-122-64-boardSpace,columns=config.template==='board' && config.members.length>6?3:2,rows=Math.ceil(config.photos.length/columns),tileHeight=(photoArea-gap*(rows-1))/rows;
@@ -37,12 +37,13 @@ export function renderShareImage(canvas,config,images){
   if(config.template==='board'){
     const left=240,cell=(layout.width-64-left)/Math.max(config.placeCount,1);
     ctx.font='18px Pretendard, sans-serif';ctx.fillStyle='#626a79';
-    for(let i=0;i<config.placeCount;i++){ctx.textAlign='center';ctx.fillText(String(i+1).padStart(2,'0'),left+cell*(i+.5),layout.boardY);}
+    for(let i=0;i<(config.placeCount>10?0:config.placeCount);i++){ctx.textAlign='center';ctx.fillText(String(i+1).padStart(2,'0'),left+cell*(i+.5),layout.boardY);}
     ctx.textAlign='left';
     config.members.forEach((member,index)=>{
       const cy=layout.boardY+30+layout.rowHeight*index+layout.rowHeight/2;
       ctx.fillStyle='#111827';ctx.font='22px Pretendard, sans-serif';label(ctx,member.alias,64,cy+7,160);
       if(!config.placeCount){ctx.font='20px Pretendard, sans-serif';ctx.fillText('0 / 0',left,cy+7);}
+      if(config.placeCount>10){ctx.font='24px Pretendard, sans-serif';ctx.fillText(`${member.stampIndices.length} / ${config.placeCount}`,left,cy+7);return;}
       for(let i=1;i<=config.placeCount;i++){
         const x=left+cell*(i-.5),done=member.stampIndices.includes(i),radius=Math.min(21,cell*.33,layout.rowHeight*.33);
         ctx.beginPath();ctx.arc(x,cy,radius,0,Math.PI*2);ctx.fillStyle=done?'#d63e1b':'#e9ecf1';ctx.fill();

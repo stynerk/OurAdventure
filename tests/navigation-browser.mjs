@@ -47,6 +47,32 @@ try{
  assert.equal(navigations,1,'all transitions must complete in the same document without reload');
  await page.screenshot({path:'test-results/navigation-course-without-reload.png',fullPage:true});
  console.log('PASS: popup login -> group -> trip -> course -> place add completes with one document load');
+ // User feedback: edit an existing stop, upload a multi-day timetable and keep
+ // invitations below the course without rotating the link on normal retrieval.
+ await page.getByRole('button',{name:'성산일출봉 장소 수정',exact:true}).click();
+ let editor=page.getByRole('dialog',{name:'장소·시간 수정',exact:true});
+ await editor.getByLabel('일차',{exact:true}).selectOption('1');await editor.getByLabel('시작 시간',{exact:true}).fill('09:00');await editor.getByLabel('종료 시간',{exact:true}).fill('10:00');
+ await editor.getByRole('button',{name:'변경 저장',exact:true}).click();await editor.waitFor({state:'detached'});
+ await page.locator('#day-1').getByRole('heading',{name:'성산일출봉',exact:true}).waitFor();
+ await page.getByRole('button',{name:'일정 일괄 가져오기',exact:true}).click();
+ editor=page.getByRole('dialog',{name:'시간표·장소 가져오기',exact:true});
+ await editor.getByLabel('일정 파일',{exact:true}).setInputFiles({name:'synthetic-trip.csv',mimeType:'text/csv',buffer:Buffer.from('일차,시작,종료,장소,메모\n1,09:00,10:00,성산일출봉,기존 장소 유지\n2,11:00,12:00,제주 새 장소,둘째 날')});
+ await editor.getByRole('button',{name:'텍스트 규칙으로 읽기',exact:true}).click();await editor.locator('.import-row').nth(1).waitFor();
+ assert.equal(await editor.locator('.import-row').nth(0).locator('[name=day]').inputValue(),'1');assert.equal(await editor.locator('.import-row').nth(1).locator('[name=day]').inputValue(),'2');
+ await page.screenshot({path:'test-results/itinerary-upload-preview-390.png',fullPage:true});
+ await editor.getByRole('button',{name:'검토한 일정 반영',exact:true}).click();await editor.waitFor({state:'detached'});
+ await page.locator('#day-2').getByRole('heading',{name:'제주 새 장소',exact:true}).waitFor();assert.equal(await page.getByRole('heading',{name:'성산일출봉',exact:true}).count(),1);
+ await page.getByRole('button',{name:'장소 추가',exact:true}).click();editor=page.getByRole('dialog',{name:'장소 추가',exact:true});
+ await editor.getByLabel('장소 이름',{exact:true}).fill('숙소로 이동');await editor.getByLabel('일정 유형',{exact:true}).selectOption('note');await editor.getByLabel('일차',{exact:true}).selectOption('2');await editor.getByRole('button',{name:'장소 추가하기',exact:true}).click();await editor.waitFor({state:'detached'});
+ await page.getByRole('heading',{name:'숙소로 이동',exact:true}).waitFor();
+ await page.getByRole('link',{name:'지도',exact:true}).click();await page.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();await page.locator('.day-navigation a[href$="/day-2"]').click();await page.waitForFunction(()=>location.hash.endsWith('/day-2')&&document.querySelectorAll('.map-pin').length===1);assert.equal(await page.locator('.map-pin').count(),1);
+ await page.getByRole('link',{name:'스탬프',exact:true}).click();await page.locator('.day-navigation a[href$="/day-1"]').click();await page.getByRole('heading',{name:'내 스탬프 0/1',exact:true}).waitFor();assert.equal(await page.locator('.stamp-tile').count(),1);
+ await page.getByRole('link',{name:'코스',exact:true}).click();await page.getByRole('heading',{name:'숙소로 이동',exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>!!([...document.querySelectorAll('.itinerary-day')].at(-1)?.compareDocumentPosition(document.querySelector('.invite-section'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);
+ await page.getByRole('button',{name:'초대 링크 보기',exact:true}).click();await page.getByLabel('그룹 초대 링크',{exact:true}).waitFor();const invite=await page.getByLabel('그룹 초대 링크',{exact:true}).inputValue();
+ await page.getByRole('button',{name:'초대 링크 보기',exact:true}).click();assert.equal(await page.getByLabel('그룹 초대 링크',{exact:true}).inputValue(),invite);
+ for(const width of [320,390]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:`test-results/itinerary-course-${width}.png`,fullPage:true});}
+ assert.equal(navigations,1);console.log('PASS: date/time editing, CSV review/merge, per-day course, invite below course and stable link without reload');
  // Buffer Firestore responses to reproduce a read that never settles. Both attempts
  // must finish in an error state with a usable in-app retry, then recover in place.
  const blocked=new Set();let blocking=true;
@@ -70,4 +96,5 @@ try{
  assert.equal(navigations,1);assert.deepEqual(errors,[]);
  assert.equal(await page.locator('.loading-card .loading-spinner').count(),0);
  console.log('PASS: stalled Firestore response exits loading; in-app retry recovers without reload');
-}finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+}catch(error){for(const context of browser?.contexts()||[])for(const page of context.pages()){console.error('Navigation diagnostic:',await page.evaluate(()=>({message:document.querySelector('#message')?.textContent,dialog:document.querySelector('dialog')?.textContent?.slice(0,600),fields:[...document.querySelectorAll('dialog input,dialog select')].map(n=>({name:n.name,label:n.getAttribute('aria-label'),disabled:n.disabled}))})).catch(()=>({})));}throw error;}
+finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}

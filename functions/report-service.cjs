@@ -2,7 +2,7 @@ const FORMATS=Object.freeze({feed:{width:1080,height:1350},story:{width:1080,hei
 const TEMPLATES=['grid','board'];
 const time=value=>(value?.seconds||0)*1000+(value?.nanoseconds||0)/1e6;
 function buildReport(trip,members,places,posts){
-  const ordered=(trip.placeIds||[]).map(id=>places.find(p=>p.id===id)).filter(Boolean);
+  const ordered=(trip.placeIds||[]).map(id=>places.find(p=>p.id===id)).filter(p=>p&&p.kind!=='note');
   const allowed=new Set(ordered.map(p=>p.id)),names=new Map(members.map(m=>[m.id,m.displayName||'멤버']));
   const published=posts.filter(p=>p.status==='published').sort((a,b)=>time(b.createdAt)-time(a.createdAt)||b.id.localeCompare(a.id));
   const photos=published.map(p=>({id:p.id,uid:p.uid,alias:names.get(p.uid)||'멤버',placeId:p.placeId||null,feeling:p.feeling||'',photo:{objectPath:p.photo?.objectPath||'',generation:p.photo?.generation||'',contentType:p.photo?.contentType||'',size:p.photo?.size||0}}));

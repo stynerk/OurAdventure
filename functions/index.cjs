@@ -12,6 +12,8 @@ const bucketName=process.env.PHOTO_STORAGE_BUCKET || firebaseApp.options.storage
 const bucket=getStorage().bucket(bucketName);
 const groups=createGroupService(db,{HttpsError,FieldValue,verifyPhoto:createPhotoVerifier(bucket,{HttpsError}),deletePhoto:photo=>bucket.file(photo.objectPath).delete({ignoreNotFound:true,...(photo.generation?{ifGenerationMatch:photo.generation}:{})})});
 const service={...legacy,...groups.callables};
+const analysisSecrets=process.env.ENABLE_ITINERARY_AI==='true'?[require('firebase-functions/params').defineSecret('OPENAI_API_KEY')]:[];
+const placeSecrets=process.env.ENABLE_PLACES_INFO==='true'?[require('firebase-functions/params').defineSecret('GOOGLE_PLACES_API_KEY')]:[];
 for (const [name, action] of Object.entries(service)) {
-  exports[name] = onCall({region:'asia-northeast3', maxInstances:3, timeoutSeconds:30}, request => action(request.data,request.auth));
+  exports[name] = onCall({region:'asia-northeast3', maxInstances:3, timeoutSeconds:30,...(name==='analyzeItinerary'&&analysisSecrets.length?{secrets:analysisSecrets}:{}),...(name==='lookupPlaceInfo'&&placeSecrets.length?{secrets:placeSecrets}:{})}, request => action(request.data,request.auth));
 }
