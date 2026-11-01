@@ -3,7 +3,8 @@ import {createPhotoViews,photoForm} from './photo-views.mjs';
 import {createMemoryFeed} from './memory-feed.mjs';
 import {createReportViews} from './report-views.mjs';
 import {icon} from './icons.mjs';
-import {cover} from './ui.mjs';
+import {cover,invitePanel} from './ui.mjs';
+import {groupItinerary} from './itinerary-editor.mjs';
 import {createPlaceEditor} from './place-editor.mjs';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const TRIP_TABS=Object.freeze(['map','course','stamps','memory']);
@@ -26,6 +27,7 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
   const memories=createMemoryFeed({app,api,db,photoStorage,getUser,current,call,perform,track});
   const photos=createPhotoViews({app,api,photoStorage,getUser,current,call,perform,track,onSaved:context=>memories.refresh(context)});
   let active=null;
+  app.addEventListener('click',event=>{const link=event.target.closest('[data-scroll-day]');if(!link)return;event.preventDefault();document.getElementById(link.dataset.scrollDay)?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});
   app.addEventListener('click',event=>{
     const button=event.target.closest('button[data-trip-action="end"]');
     if(!button || button.disabled || !active || active.closed || !active.group.isOwner || !current(active.context))return;
@@ -77,7 +79,8 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
       const next=closed?null:places.find(p=>!done.has(p.id));
       content=`<h2 id="trip-panel-title">여행 지도</h2>${places.length?illustratedMap(places,done,placeLink,{closed}):empty}${next?`<div class="next-adventure">${cover("next-thumb")}<div><span class="eyebrow">다음 발견</span><a class="button" href="${placeLink(next)}">다음 탐험 · ${escape(next.name)} ${icon("arrow-right")}</a></div></div>`:places.length && done.size===places.length?'<p>모든 장소의 내 스탬프를 모았어요!</p>':''}`;
     }else if(tab==='course'){
-      content=`<h2 id="trip-panel-title">여행 코스</h2>${group.isOwner && !closed?`<button class="secondary" data-place-action="add">${icon('plus')}장소 추가</button>`:''}${places.length?`<ol class="course-stops">${places.map(p=>`<li><h3><a href="${placeLink(p)}">${escape(p.name)}</a></h3>${badge(p)}${mission(p)}${group.isOwner && !closed?`<button class="place-remove secondary" data-place-action="remove" data-place-id="${escape(p.id)}" aria-label="${escape(p.name)} 장소 삭제">${icon('trash-2')}장소 삭제</button>`:''}</li>`).join('')}</ol>`:empty}`;
+      const controls=group.isOwner&&!closed;
+      content=`<h2 id="trip-panel-title">여행 코스</h2>${controls?`<div class="row"><button class="secondary" data-place-action="add">${icon('plus')}장소 추가</button><button class="secondary" data-place-action="import">${icon('upload')}일정 일괄 가져오기</button></div>`:''}<div class="day-navigation" aria-label="여행 일차">${groupItinerary(places,trip).map(d=>`<a href="#trip/${encodeURIComponent(g)}/${encodeURIComponent(t)}/course" data-scroll-day="day-${d.day||'pending'}">${escape(d.label)}</a>`).join('')}</div>${groupItinerary(places,trip).map(day=>`<section class="itinerary-day" id="day-${day.day||'pending'}"><h3>${escape(day.label)}</h3>${day.places.length?`<ol class="course-stops">${day.places.map(p=>`<li><p class="schedule-time">${escape(p.startTime||'시간 미정')}${p.endTime?' ~ '+escape(p.endTime):''}</p><h3><a href="${placeLink(p)}">${escape(p.name)}</a></h3>${badge(p)}${p.description?`<p class="place-description">${escape(p.description)}</p>`:''}${/^https:\/\/(ko|en)\.wikipedia\.org\/wiki\//.test(p.sourceUrl||'')?`<a class="source-credit" href="${escape(p.sourceUrl)}" target="_blank" rel="noopener noreferrer">위키백과 참고 · CC BY-SA</a>`:''}${p.note?`<p class="schedule-note">${escape(p.note)}</p>`:''}${mission(p)}${controls?`<div class="row"><button class="secondary" data-place-action="edit" data-place-id="${escape(p.id)}" aria-label="${escape(p.name)} 장소 수정">${icon('pencil')}장소·시간 수정</button><button class="place-remove secondary" data-place-action="remove" data-place-id="${escape(p.id)}" aria-label="${escape(p.name)} 장소 삭제">${icon('trash-2')}장소 삭제</button></div>`:''}</li>`).join('')}</ol>`:'<p class="muted">아직 등록한 일정이 없어요.</p>'}</section>`).join('')}${!places.length?empty:''}${controls?invitePanel():''}`;
     }else if(tab==='stamps'){
       content=`<h2 id="trip-panel-title">내 스탬프 ${done.size}/${places.length}</h2><div class="stamp-grid">${places.map((p,index)=>`<a class="stamp-tile ${done.has(p.id)?'is-done':!closed && places.find(item=>!done.has(item.id))?.id===p.id?'is-next':''}" href="${placeLink(p)}"><span class="clay-seal" aria-hidden="true">${done.has(p.id)?`<span>${escape(p.mission?.stampName||p.name)}</span>`:!closed && places.find(item=>!done.has(item.id))?.id===p.id?icon("camera"):String(index+1).padStart(2,"0")}</span><strong>${escape(p.name)}</strong><small>${done.has(p.id)?'완료':'미완료'}</small></a>`).join('')}</div>${places.length?'':empty}<h3>멤버별 진행</h3><ul class="members">${members.map(m=>`<li class="${m.id===getUser()?.uid?'is-me':''}"><strong>${escape(m.displayName)}${m.id===getUser()?.uid?' (나)':''}</strong>스탬프 ${summaries.get(m.id)?.size||0}/${places.length}</li>`).join('')}</ul>`;
     }else if(tab==='memory'){
@@ -98,12 +101,12 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
     if(closed){const age=trip.closedAt?.seconds?Math.max(0,Math.floor((Date.now()/1000-trip.closedAt.seconds)/86400)):null;
       track('past_trip_open',{group_id:g,trip_id:t,role:group.isOwner?'leader':'member',trip_status:'ended',days_since_end_bucket:age===null?'unknown':age===0?'0':age<=7?'1-7':age<=30?'8-30':'31+'});
     }
-    placeEditor.mount(context,group,trip);
+    placeEditor.mount(context,group,trip,places);
     if(api.onSnapshot){
-      let initial=JSON.stringify(trip.placeIds);
+      let initial=JSON.stringify([trip.placeIds,trip.itineraryRevision||0]);
       stopPlaces=api.onSnapshot(api.doc(db,...root),{includeMetadataChanges:true},snapshot=>{
         if(!current(context) || !snapshot.exists() || snapshot.metadata.fromCache)return;
-        const updated=JSON.stringify(snapshot.data().placeIds);
+        const updated=JSON.stringify([snapshot.data().placeIds,snapshot.data().itineraryRevision||0]);
         if(updated!==initial){initial=updated;if(!placeEditor.isMutating())refresh();}
       },()=>{});
     }

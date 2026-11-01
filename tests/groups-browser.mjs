@@ -11,7 +11,7 @@ import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw Error('Demo emulators required');
 const root=process.cwd(),origin='http://127.0.0.1:8080/next/';
-const files=new Set(['index.html','style.css','icons.mjs','ui.mjs','app.js','session.mjs','groups.mjs','trip-views.mjs','place-editor.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','report-views.mjs','share-renderer.mjs','analytics.mjs','analytics-source.mjs','course.json']);
+const files=new Set(['index.html','style.css','icons.mjs','ui.mjs','app.js','session.mjs','groups.mjs','trip-views.mjs','place-editor.mjs','itinerary-editor.mjs','illustrated-map.mjs','creation-requests.mjs','photo-upload.mjs','photo-views.mjs','photo-drafts.mjs','memory-feed.mjs','report-views.mjs','share-renderer.mjs','analytics.mjs','analytics-source.mjs','course.json']);
 const config="export const firebaseConfig={apiKey:'demo-key',authDomain:'demo-our-adventure.firebaseapp.com',projectId:'demo-our-adventure',appId:'demo-app',storageBucket:'demo-our-adventure.firebasestorage.app'};export const useEmulators=true;";
 const server=createServer((req,res)=>{
   if(req.url==='/' || req.url==='/index.html'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(readFileSync(resolve(root,'index.html')));return;}
@@ -120,8 +120,8 @@ try {
   console.log('PASS QA A3: closed browser context restores persisted Auth and the same group/trip list');
 
   await owner.goto(origin+'#group/'+groupId);
-  await owner.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).waitFor();await auditUi(owner,'groups');
-  await owner.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).click();
+  await owner.getByRole('button',{name:'초대 링크 보기',exact:true}).waitFor();await auditUi(owner,'groups');
+  await owner.getByRole('button',{name:'초대 링크 보기',exact:true}).click();
   const inviteInput=owner.getByLabel('그룹 초대 링크',{exact:true});await inviteInput.waitFor();
   const inviteLink=await inviteInput.inputValue();assert.match(inviteLink,/#group-join\/[A-Za-z0-9_-]{43}$/);
   await leader.grantPermissions(['clipboard-read','clipboard-write']);
@@ -141,7 +141,7 @@ try {
   assert.equal((await db.collection(`groups/${groupId}/members`).get()).size,2);
   assert.equal((await db.doc(`groups/${groupId}/members/${peerUid}`).get()).data().displayName,'테스트 멤버');
   await peer.getByRole('heading',{name:'지난 여행',exact:true}).waitFor();
-  assert.equal(await peer.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).count(),0);
+  assert.equal(await peer.getByRole('button',{name:'초대 링크 보기',exact:true}).count(),0);
   assert.equal(await peer.getByRole('link',{name:'새 여행 만들기',exact:true}).count(),0);
   await peer.getByRole('link',{name:'첫 여행',exact:true}).click();
   await peer.getByRole('heading',{name:'첫 여행',exact:true}).waitFor();
@@ -406,7 +406,7 @@ try {
   await stranger.goto(origin+'#group-join/not-a-valid-link');
   await stranger.getByRole('heading',{name:'초대 링크를 확인해주세요',exact:true}).waitFor();
   assert.equal(await stranger.getByText('브라우저 테스트 그룹',{exact:true}).count(),0);
-  await owner.goto(origin+'#group/'+groupId);await owner.getByRole('button',{name:'초대 링크 생성·재발급',exact:true}).click();
+  await owner.goto(origin+'#group/'+groupId);owner.once('dialog',d=>d.accept());await owner.getByRole('button',{name:'초대 링크 재발급',exact:true}).click();
   await owner.getByLabel('그룹 초대 링크',{exact:true}).waitFor();
   await owner.waitForFunction(old=>document.querySelector('#v2-invite-link')?.value && document.querySelector('#v2-invite-link').value!==old,inviteLink);
   await stranger.goto(inviteLink);await stranger.getByRole('heading',{name:'초대 링크를 확인해주세요',exact:true}).waitFor();

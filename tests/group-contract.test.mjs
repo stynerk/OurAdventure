@@ -17,11 +17,11 @@ test('group and trip creation reject unauthenticated and anonymous requests befo
   await rejects(service.callables.createTrip(valid,anonymous),'permission-denied');
 });
 test('invalid trip paths, impossible dates, reverse date ranges and excessive places are rejected',async()=>{
-  for(const update of [{groupId:'../other'},{startDate:'2026-02-30'}, {endDate:'2026-10-26'}, {places:Array(11).fill({name:'장소'})}, {places:[{name:''}]}])
+  for(const update of [{groupId:'../other'},{startDate:'2026-02-30'}, {endDate:'2026-10-26'}, {places:Array(61).fill({name:'장소'})}, {places:[{name:''}]}])
     await rejects(service.callables.createTrip({...valid,...update},owner),'invalid-argument');
 });
 test('photo finalization is not an exposed callable and client verification claims cannot publish',async()=>{
-  assert.deepEqual(Object.keys(service.callables).sort(),['addTripPlace','configureShareImage','createGroup','createGroupInvite','createTrip','deletePost','editPost','endTrip','finalizePhoto','getTripReport','joinGroup','previewGroupInvite','previewTripPlaceRemoval','removeTripPlace']);
+  assert.deepEqual(Object.keys(service.callables).sort(),['addTripPlace','analyzeItinerary','applyTripItinerary','configureShareImage','createGroup','createGroupInvite','createTrip','deletePost','editPost','editTripPlace','endTrip','finalizePhoto','getGroupInvite','getTripReport','joinGroup','lookupPlaceInfo','previewGroupInvite','previewTripPlaceRemoval','removeTripPlace']);
   assert.equal(service.callables.finalizeVerifiedPost,undefined);
   await rejects(service.finalizeVerifiedPost({...valid,tripId:'t',placeId:'p',verified:true,photo:{url:'https://invalid.test/photo.jpg'}},anonymous),'failed-precondition');
 });

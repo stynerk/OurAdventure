@@ -29,6 +29,33 @@ async function publish(g,t,p,user=a,changes={}) {
   return service.finalizeVerifiedPost({groupId:g,tripId:t,placeId:p,requestId:randomUUID(),uploadId:randomUUID(),feeling:'',...changes},user);
 }
 async function places(g,t){return (await db.doc(`groups/${g}/trips/${t}`).get()).data().placeIds;}
+test('itinerary editing and bulk merge retain photo/completion identity and reject outsiders, stale writes and closed trips',async()=>{
+ const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId,p=(await places(g,t))[0],root=`groups/${g}/trips/${t}`;await publish(g,t,p,a);
+ const before=(await db.collection(root+'/completions').get()).docs.map(d=>({id:d.id,...d.data()}));
+ const input={groupId:g,tripId:t,placeId:p,requestId:randomUUID(),revision:0,place:{name:'수정한 대릉원',day:2,startTime:'10:00',endTime:'11:00',note:'여유 있게'}};
+ for(const user of [a,outsider])await reject(service.callables.editTripPlace(input,user),'permission-denied');
+ const first=await service.callables.editTripPlace(input,owner);assert.equal(first.placeId,p);assert.equal((await service.callables.editTripPlace(input,owner)).replayed,true);
+ await reject(service.callables.editTripPlace({...input,requestId:randomUUID()},owner),'aborted');
+ const entries=[{name:'수정한 대릉원',day:1,startTime:'09:00'},{name:'새 일정',day:2,startTime:'13:00'}],batch={groupId:g,tripId:t,requestId:randomUUID(),revision:1,entries};
+ const merged=await service.callables.applyTripItinerary(batch,owner);assert.equal(merged.updated,1);assert.equal(merged.added,1);assert.equal((await service.callables.applyTripItinerary(batch,owner)).replayed,true);
+ assert.equal((await places(g,t)).length,3);assert.equal((await db.doc(root+'/places/'+p).get()).data().day,1);
+ assert.deepEqual((await db.collection(root+'/completions').get()).docs.map(d=>({id:d.id,...d.data()})),before);
+ await reject(service.callables.applyTripItinerary({...batch,requestId:randomUUID()},owner),'aborted');
+ await service.callables.endTrip({groupId:g,tripId:t},owner);
+ await reject(service.callables.editTripPlace({...input,requestId:randomUUID(),revision:2},owner),'failed-precondition');
+ await reject(service.callables.applyTripItinerary({...batch,requestId:randomUUID(),revision:2},owner),'failed-precondition');
+});
+test('invitation retrieval is stable until explicit rotation and only owner can retrieve token',async()=>{
+ const g=(await group()).groupId;await member(g,a);
+ const results=await Promise.all(Array.from({length:3},()=>service.callables.getGroupInvite({groupId:g},owner)));
+ assert.equal(new Set(results.map(r=>r.token)).size,1);const token=results[0].token;
+ assert.equal((await service.callables.getGroupInvite({groupId:g},owner)).token,token);
+ await reject(service.callables.getGroupInvite({groupId:g},a),'permission-denied');
+ assert.equal((await service.callables.previewGroupInvite({token},outsider)).state,'ready');
+ const next=await service.callables.createGroupInvite({groupId:g},owner);assert.notEqual(next.token,token);
+ assert.equal((await service.callables.previewGroupInvite({token},outsider)).state,'invalid');
+ assert.equal((await service.callables.getGroupInvite({groupId:g},owner)).token,next.token);
+});
 before(async()=>{
   assert.ok(process.env.FIRESTORE_EMULATOR_HOST,'Production must never be used');
   app=initializeApp({projectId},'v2-model-admin');db=getFirestore(app);

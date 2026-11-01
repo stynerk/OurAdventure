@@ -1,12 +1,14 @@
 const {createHash,randomBytes} = require('node:crypto');
 const {createReportService}=require('./report-service.cjs');
+const {MAX_STOPS,normalizeStop}=require('./itinerary.cjs');
+const {analyzeDocument,lookupPlace}=require('./itinerary-analysis.cjs');
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const LIMITS = Object.freeze({members:10, places:10, feeling:60});
+const LIMITS = Object.freeze({members:10, places:MAX_STOPS, feeling:60});
 
 // V2 lives beside the legacy rooms collection. No legacy records are read or migrated.
 // Auth is provided by onCall; no client-supplied owner/uid/completion is trusted.
-function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}, verifyPhoto = async () => {
+function createGroupService(db, {HttpsError, FieldValue, analyze=analyzeDocument, lookup=lookupPlace, deletePhoto=async()=>{}, verifyPhoto = async () => {
   throw new HttpsError('failed-precondition', '사진 저장 연결이 아직 준비되지 않았어요.');
 }}) {
   const fail = (code, message) => {throw new HttpsError(code,message);};
@@ -41,10 +43,11 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
     if(!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0,10)!==value)fail('invalid-argument','여행 날짜를 확인해주세요.');
     return value;
   };
-  const placeInput = value => ({
-    name:text(value?.name,100,'장소 이름'),
-    icon:value?.icon===undefined?'📍':text(value.icon,20,'스탬프 아이콘')
-  });
+  const placeInput = (value,trip) => {
+    text(value?.name,100,'장소 이름');
+    try{return {...normalizeStop(value,trip),icon:value?.icon===undefined?'📍':text(value.icon,20,'스탬프 아이콘')};}
+    catch(error){fail('invalid-argument',error.message);}
+  };
   async function groupContext(tx,g,uid,owner=false) {
     const [gs,ms]=await tx.getAll(groupRef(g),groupRef(g).collection('members').doc(uid));
     if(!gs.exists || !ms.exists)fail('permission-denied','이 그룹의 구성원이 아니에요.');
@@ -84,6 +87,76 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
   }
 
   const callables = {
+    async analyzeItinerary(data,auth){
+      const uid=google(auth),g=id(data?.groupId,'그룹 ID');
+      if(typeof data.text!=='string'||data.text.length>50000)fail('invalid-argument','입력은 5만 자까지 분석할 수 있어요.');
+      await db.runTransaction(async tx=>{
+        await groupContext(tx,g,uid,true);
+        if(data.tripId){const trip=await tripContext(tx,g,id(data.tripId,'여행 ID'),uid,true);open(trip);}
+        if(analyze===analyzeDocument&&(!process.env.OPENAI_API_KEY||!process.env.OPENAI_MODEL))fail('failed-precondition','AI 분석용 API 키와 모델 연결이 아직 준비되지 않았어요. 텍스트·CSV·JSON은 규칙 가져오기를 사용할 수 있어요.');
+        const ref=db.doc(`v2Usage/${hash(['import',uid,new Date().toISOString().slice(0,10)])}`),saved=await tx.get(ref);
+        if((saved.data()?.count||0)>=10)fail('resource-exhausted','문서 분석은 하루 10회까지 사용할 수 있어요.');
+        tx.set(ref,{count:(saved.data()?.count||0)+1,updatedAt:now()});
+      });
+      try{return await analyze(data);}catch(error){fail(error.code==='failed-precondition'?'failed-precondition':'unavailable',error.message);}
+    },
+    async lookupPlaceInfo(data,auth){
+      const uid=google(auth),g=id(data?.groupId,'그룹 ID'),name=text(data.name,100,'장소 이름'),destination=text(data.destination,100,'목적지',true);
+      await db.runTransaction(tx=>groupContext(tx,g,uid,true));
+      try{return await lookup(name,destination);}catch(error){fail('unavailable',error.message);}
+    },
+    async getGroupInvite(data,auth){
+      const uid=google(auth),g=id(data?.groupId,'그룹 ID');
+      return db.runTransaction(async tx=>{
+        await groupContext(tx,g,uid,true);
+        const secretRef=db.doc(`v2GroupSecrets/${g}`),saved=await tx.get(secretRef);
+        if(saved.exists)return {token:saved.data().token||null,legacy:!saved.data().token};
+        const token=randomBytes(32).toString('base64url'),key=tokenHash(token);
+        tx.create(db.doc(`v2Invites/${key}`),{groupId:g,createdAt:now()});
+        tx.create(secretRef,{inviteHash:key,token,createdAt:now()});return {token,legacy:false};
+      });
+    },
+    async editTripPlace(data,auth){
+      const uid=uidOf(auth),{g,t}=coordinates(data),p=id(data?.placeId,'장소 ID'),request=requestId(data);
+      const replay=db.doc(`v2Requests/${hash(['edit-place',uid,g,t,p,request])}`),fingerprint=hash(data?.place);
+      return db.runTransaction(async tx=>{
+        const trip=await tripContext(tx,g,t,uid,true);open(trip);
+        const [prior,saved]=await tx.getAll(placeRef(g,t,p),replay);
+        if(saved.exists){if(saved.data().fingerprint!==fingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');return {placeId:p,replayed:true};}
+        if(!prior.exists||!trip.placeIds.includes(p))fail('not-found','이 여행에 없는 장소예요.');
+        if((prior.data().revision||0)!==data.revision)fail('aborted','다른 화면에서 수정했어요. 최신 코스를 다시 열어주세요.');
+        const place=placeInput(data.place,trip);
+        tx.update(placeRef(g,t,p),{...place,revision:(prior.data().revision||0)+1,updatedAt:now()});
+        tx.update(tripRef(g,t),{itineraryRevision:(trip.itineraryRevision||0)+1});
+        tx.create(replay,{uid,fingerprint,createdAt:now()});return {placeId:p,replayed:false};
+      });
+    },
+    async applyTripItinerary(data,auth){
+      const uid=uidOf(auth),{g,t}=coordinates(data),request=requestId(data);
+      if(!Array.isArray(data.entries)||!data.entries.length||data.entries.length>LIMITS.places)fail('invalid-argument','일정은 1~60개까지 반영할 수 있어요.');
+      const fingerprint=hash([data.entries,data.revision]),replay=db.doc(`v2Requests/${hash(['itinerary',uid,g,t,request])}`);
+      return db.runTransaction(async tx=>{
+        const trip=await tripContext(tx,g,t,uid,true);open(trip);
+        const saved=await tx.get(replay);
+        if(saved.exists){if(saved.data().fingerprint!==fingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');return {...saved.data().result,replayed:true};}
+        if((trip.itineraryRevision||0)!==data.revision)fail('aborted','코스가 바뀌었어요. 최신 코스를 열고 다시 반영해주세요.');
+        const places=await tx.get(tripRef(g,t).collection('places'));
+        const existing=new Map(places.docs.filter(d=>trip.placeIds.includes(d.id)).map(d=>[d.id,d.data()])),used=new Set(),updates=[];
+        for(const [index,entry]of data.entries.entries()){
+          const place=placeInput({...entry,order:index},trip);
+          let p=entry.placeId;
+          if(!p&&entry.createNew!==true){const matches=[...existing].filter(([key,v])=>!used.has(key)&&v.name===place.name);if(matches.length>1)fail('invalid-argument','같은 이름의 기존 장소가 여러 개예요. 연결할 장소를 선택해주세요.');if(matches.length===1)p=matches[0][0];}
+          if(p&&(!existing.has(p)||used.has(p)))fail('invalid-argument','장소 연결을 확인해주세요.');
+          const ref=p?placeRef(g,t,p):tripRef(g,t).collection('places').doc();used.add(ref.id);updates.push({ref,place,old:p?existing.get(p):null});
+        }
+        const ids=[...trip.placeIds,...updates.filter(u=>!u.old).map(u=>u.ref.id)];
+        if(ids.length>LIMITS.places)fail('resource-exhausted','한 여행의 일정은 최대 60개예요.');
+        updates.forEach(({ref,place,old})=>old?tx.update(ref,{...place,revision:(old.revision||0)+1,updatedAt:now()}):tx.create(ref,{...place,revision:0,postCount:0,createdAt:now()}));
+        tx.update(tripRef(g,t),{placeIds:ids,placeCount:ids.length,itineraryRevision:(trip.itineraryRevision||0)+1});
+        const result={updated:updates.filter(u=>u.old).length,added:updates.filter(u=>!u.old).length};
+        tx.create(replay,{uid,fingerprint,result,createdAt:now()});return {...result,replayed:false};
+      });
+    },
     async previewTripPlaceRemoval(data,auth) {
       const uid=uidOf(auth),{g,t}=coordinates(data),p=id(data?.placeId,'장소 ID');
       return db.runTransaction(async tx=>{
@@ -103,7 +176,7 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
         // Keep a tombstone so authors can still delete their own retained posts.
         const ids=impact.trip.placeIds.filter(value=>value!==p);
         tx.update(placeRef(g,t,p),{status:'deleted',deletedAt:now(),deletedBy:uid});
-        tx.update(tripRef(g,t),{placeIds:ids,placeCount:ids.length});
+        tx.update(tripRef(g,t),{placeIds:ids,placeCount:ids.length,itineraryRevision:(impact.trip.itineraryRevision||0)+1});
         return {placeId:p,replayed:false};
       });
     },
@@ -172,7 +245,7 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
         const secretRef=db.doc(`v2GroupSecrets/${g}`),prior=await tx.get(secretRef);
         if(prior.exists)tx.delete(db.doc(`v2Invites/${prior.data().inviteHash}`));
         tx.create(db.doc(`v2Invites/${key}`),{groupId:g,createdAt:now()});
-        tx.set(secretRef,{inviteHash:key,createdAt:now()});
+        tx.set(secretRef,{inviteHash:key,token,createdAt:now()});
       });
       return {token};
     },
@@ -224,18 +297,19 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
       const startDate=date(data?.startDate),endDate=date(data?.endDate);
       if(endDate<startDate)fail('invalid-argument','종료 날짜는 시작 날짜보다 빠를 수 없어요.');
       if(!Array.isArray(data?.places) || data.places.length>LIMITS.places)fail('invalid-argument','장소 목록을 확인해주세요.');
-      const places=data.places.map(placeInput);
+      const places=data.places.map((p,i)=>placeInput({...p,order:i},{startDate,endDate}));
       const fingerprint=hash([title,destination,startDate,endDate,places]);
+      const legacyFingerprint=data.places.every(p=>Object.keys(p).every(k=>['name','icon'].includes(k)))?hash([title,destination,startDate,endDate,places.map(p=>({name:p.name,icon:p.icon}))]):null;
       const replayRef=db.doc(`v2Requests/${hash(['trip',uid,g,request])}`),ref=groupRef(g).collection('trips').doc();
       const refs=places.map(()=>ref.collection('places').doc());
       return db.runTransaction(async tx=>{
         await groupContext(tx,g,uid,true);
         const saved=await tx.get(replayRef);
         if(saved.exists) {
-          if(saved.data().fingerprint!==fingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
+          if(saved.data().fingerprint!==fingerprint&&saved.data().fingerprint!==legacyFingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
           return {groupId:g,tripId:saved.data().tripId,replayed:true};
         }
-        tx.create(ref,{schemaVersion:2,title,destination,startDate,endDate,status:'open',createdBy:uid,
+        tx.create(ref,{schemaVersion:2,title,destination,startDate,endDate,status:'open',createdBy:uid,itineraryRevision:0,
           placeIds:refs.map(p=>p.id),placeCount:places.length,postCount:0,createdAt:now(),closedAt:null});
         places.forEach((p,i)=>tx.create(refs[i],{...p,postCount:0,createdAt:now()}));
         tx.create(replayRef,{uid,fingerprint,groupId:g,tripId:ref.id,createdAt:now()});
@@ -244,18 +318,20 @@ function createGroupService(db, {HttpsError, FieldValue, deletePhoto=async()=>{}
     },
     async addTripPlace(data,auth) {
       const uid=uidOf(auth),{g,t}=coordinates(data),request=requestId(data),place=placeInput(data?.place);
+      const legacyFingerprint=Object.keys(data.place).every(k=>['name','icon'].includes(k))?hash({name:place.name,icon:place.icon}):null;
       const replayRef=db.doc(`v2Requests/${hash(['place',uid,g,t,request])}`),fingerprint=hash(place);
       const ref=tripRef(g,t).collection('places').doc();
       return db.runTransaction(async tx=>{
         const trip=await tripContext(tx,g,t,uid,true),saved=await tx.get(replayRef);
         if(saved.exists) {
-          if(saved.data().fingerprint!==fingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
+          if(saved.data().fingerprint!==fingerprint&&saved.data().fingerprint!==legacyFingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
           return {placeId:saved.data().placeId,replayed:true};
         }
         open(trip);
-        if(trip.placeIds.length>=LIMITS.places)fail('resource-exhausted','한 여행에 장소는 최대 10개예요.');
+        placeInput(data.place,trip);
+        if(trip.placeIds.length>=LIMITS.places)fail('resource-exhausted','한 여행에 일정은 최대 60개예요.');
         tx.create(ref,{...place,postCount:0,createdAt:now()});
-        tx.update(tripRef(g,t),{placeIds:[...trip.placeIds,ref.id],placeCount:trip.placeIds.length+1});
+        tx.update(tripRef(g,t),{placeIds:[...trip.placeIds,ref.id],placeCount:trip.placeIds.length+1,itineraryRevision:(trip.itineraryRevision||0)+1});
         tx.create(replayRef,{uid,fingerprint,groupId:g,tripId:t,placeId:ref.id,createdAt:now()});
         return {placeId:ref.id,replayed:false};
       });

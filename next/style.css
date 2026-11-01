@@ -1600,6 +1600,25 @@ body.emulator-mode .view-map .next-adventure {bottom:176px}
 .place-dialog .row>button {flex:1}
 .place-impact {padding:16px;background:var(--accent-soft);color:var(--accent-ink);border-radius:18px;font-weight:700}
 .place-remove {margin-top:16px}
+.schedule-fields {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.schedule-fields label {font-size:12px;min-width:0}
+.schedule-fields input,.schedule-fields select {padding:10px 6px;font-size:14px}
+.itinerary-import {margin:24px 0;padding:20px 16px;background:var(--bg);border-radius:20px}
+.import-row {margin:16px 0;padding:16px;background:var(--surface);border-radius:16px}
+.import-row summary {font-weight:750;min-height:44px;overflow-wrap:anywhere}
+.import-filename {display:block;font-size:13px;overflow-wrap:anywhere;margin:8px 0}
+.import-status,.place-info-status {font-size:13px;white-space:pre-line;overflow-wrap:anywhere}
+.day-navigation {display:flex;gap:8px;overflow-x:auto;margin:20px 0;padding:4px 0}
+.day-navigation a {flex-shrink:0;padding:10px 16px;border-radius:999px;background:var(--ink);color:white;text-decoration:none;font-size:13px;font-weight:700}
+.itinerary-day {scroll-margin-top:20px;border-top:1px solid var(--line);padding-top:12px;margin-top:24px}
+.itinerary-day>h3 {color:var(--accent-ink)}
+.schedule-time {font-variant-numeric:tabular-nums;font-size:13px;font-weight:750;color:var(--accent-ink)}
+.schedule-note {padding:12px;background:var(--accent-soft);border-radius:12px;white-space:pre-line}
+.source-credit {font-size:12px;color:var(--muted)}
+.invite-section {margin-top:32px;box-shadow:none;border:1px solid var(--line)}
+.invite-section>button {margin:8px 0}
+.place-dialog .itinerary-import {padding:12px}
+@media(max-width:375px){.schedule-fields{grid-template-columns:1fr}.itinerary-import{padding:16px 12px}.import-row{padding:12px}}
 
 /* Ring spinner inspired by Loading.io Pure CSS Loaders (CC0).
    https://loading.io/css/ — locally rendered, no image or CDN dependency. */

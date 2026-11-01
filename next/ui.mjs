@@ -1,4 +1,5 @@
 import {icon} from './icons.mjs';
+export const invitePanel=()=>'<section class="card invite-section"><h2>멤버 초대</h2><p>링크는 직접 재발급하기 전까지 유지돼요. 그룹 정원은 10명이에요.</p><button data-v2-action="create-invite">초대 링크 보기</button><div id="v2-invite"></div><button class="secondary" data-v2-action="rotate-invite">초대 링크 재발급</button></section>';
 export function loadingStatus(text='불러오고 있어요…'){
   const escaped=String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return `<div class="loading-status" role="status" aria-live="polite"><span class="loading-spinner" aria-hidden="true"></span><span>${escaped}</span></div>`;
