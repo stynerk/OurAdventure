@@ -11,7 +11,7 @@ export function showPlaceReference(node,result){
  link('지도에서 확인',result.sourceUrl);for(const a of result.attributions||[])link(a.name,a.url);
 }
 export const tripDays=trip=>Math.max(1,Math.min(366,Math.floor((Date.parse(trip.endDate)-Date.parse(trip.startDate))/86400000)+1||1));
-export function dayLabel(day,trip){if(!day)return '일정 미정';const d=new Date(Date.parse(trip.startDate)+(day-1)*86400000);return `${day}일차${Number.isFinite(d.getTime())?' · '+d.toISOString().slice(5).replace('-','/') :''}`;}
+export function dayLabel(day,trip){if(!day)return '일정 미정';const d=new Date(Date.parse(trip.startDate)+(day-1)*86400000);return `${day}일차${Number.isFinite(d.getTime())?' · '+d.toISOString().slice(5,10).replace('-','/') :''}`;}
 export function groupItinerary(places,trip){
  const buckets=new Map();for(let day=1;day<=Math.min(tripDays(trip),31);day++)buckets.set(day,[]);
  for(const [index,p]of places.entries()){const day=p.day===undefined?1:Number.isInteger(p.day)&&p.day>=1&&p.day<=tripDays(trip)?p.day:null;if(!buckets.has(day))buckets.set(day,[]);buckets.get(day).push({...p,_order:index});}

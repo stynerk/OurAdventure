@@ -10,7 +10,7 @@ test('CSV quoted commas, nested JSON and legacy unscheduled places are preserved
  const csv=parseItinerary('일차,시작,장소,메모\n2,09:00,"바다, 카페","아침, 휴식"',trip);assert.equal(csv.entries[0].name,'바다, 카페');assert.equal(csv.entries[0].day,2);
  assert.equal(parseItinerary('{"days":[{"day":3,"places":[{"name":"부산역"}]}]}',trip).entries[0].day,3);
  const days=groupItinerary([{id:'old',name:'기존 장소'},{id:'unknown',name:'일정 미정',day:null},{id:'new',name:'새 장소',day:2,startTime:'10:00'}],trip);
- assert.equal(days.length,4);assert.equal(days.at(-1).day,null);assert.equal(days[1].places[0].id,'new');assert.equal(days[0].places[0].id,'old');assert.equal(days.at(-1).places[0].id,'unknown');
+ assert.equal(days.length,4);assert.equal(days[0].label,'1일차 · 11/01');assert.equal(days[1].label,'2일차 · 11/02');assert.equal(days.at(-1).day,null);assert.equal(days[1].places[0].id,'new');assert.equal(days[0].places[0].id,'old');assert.equal(days.at(-1).places[0].id,'unknown');
 });
 test('server rejects out-of-range days and invalid times without silently correcting them',()=>{
  for(const p of [{day:4},{day:-1},{day:1.5},{startTime:'25:00'},{startTime:'16:00',endTime:'16:00'}])assert.throws(()=>normalizeStop({name:'장소',...p},trip));
