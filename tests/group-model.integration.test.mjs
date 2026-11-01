@@ -29,6 +29,15 @@ async function publish(g,t,p,user=a,changes={}) {
   return service.finalizeVerifiedPost({groupId:g,tripId:t,placeId:p,requestId:randomUUID(),uploadId:randomUUID(),feeling:'',...changes},user);
 }
 async function places(g,t){return (await db.doc(`groups/${g}/trips/${t}`).get()).data().placeIds;}
+test('general schedule entries retain day/time but cannot become stamps and do not change stamp totals',async()=>{
+ const g=(await group()).groupId;await member(g,a);const t=(await trip(g,{places:[{name:'기차 이동',kind:'note',day:1,startTime:'09:00'},{name:'해운대',kind:'place',day:2,startTime:'10:00'}]})).tripId;
+ const [note,p]=await places(g,t);const saved=(await db.doc(`groups/${g}/trips/${t}`).get()).data();assert.equal(saved.placeCount,1);assert.deepEqual(saved.stampPlaceIds,[p]);
+ await reject(publish(g,t,note,a),'invalid-argument');const completed=await publish(g,t,p,a);assert.equal(completed.stampsTotal,1);
+ await reject(service.callables.editTripPlace({groupId:g,tripId:t,placeId:p,revision:0,requestId:randomUUID(),place:{name:'해운대',kind:'note',day:2}},owner),'failed-precondition');
+ const metadata=await service.callables.lookupPlaceInfo({groupId:g,tripId:t,placeId:p},a);assert.equal(metadata.state,'unconfigured');
+ await reject(service.callables.lookupPlaceInfo({groupId:g,tripId:t,placeId:p},outsider),'permission-denied');
+ await service.callables.endTrip({groupId:g,tripId:t},owner);const report=await service.callables.getTripReport({groupId:g,tripId:t},a);assert.equal(report.placeCount,1);assert.equal(report.stampTotal,2);
+});
 test('itinerary editing and bulk merge retain photo/completion identity and reject outsiders, stale writes and closed trips',async()=>{
  const g=(await group()).groupId;await member(g,a);const t=(await trip(g)).tripId,p=(await places(g,t))[0],root=`groups/${g}/trips/${t}`;await publish(g,t,p,a);
  const before=(await db.collection(root+'/completions').get()).docs.map(d=>({id:d.id,...d.data()}));
@@ -61,7 +70,7 @@ before(async()=>{
   app=initializeApp({projectId},'v2-model-admin');db=getFirestore(app);
   env=await initializeTestEnvironment({projectId,firestore:{host:'127.0.0.1',port:8085,rules:readFileSync('firestore.rules','utf8')}});
   await env.clearFirestore();
-  service=createGroupService(db,{HttpsError,FieldValue,verifyPhoto:async({groupId,tripId,uid,uploadId})=>({
+  service=createGroupService(db,{HttpsError,FieldValue,lookup:async()=>({state:'unconfigured'}),verifyPhoto:async({groupId,tripId,uid,uploadId})=>({
     objectPath:`groups/${groupId}/trips/${tripId}/uploads/${uid}/${uploadId}.jpg`,contentType:'image/jpeg',size:100
   })});
 });

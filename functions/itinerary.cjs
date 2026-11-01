@@ -8,7 +8,6 @@ function normalizeStop(value,trip={}){
   const time=v=>{if(!v)return '';if(typeof v!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(v))throw Error('시간은 HH:MM 형식으로 입력해주세요.');return v;};
   const startTime=time(value.startTime),endTime=time(value.endTime);
   if(startTime&&endTime&&endTime<=startTime)throw Error('종료 시간은 시작 시간보다 늦어야 해요. 확인되지 않은 시간은 비워주세요.');
-  const sourceUrl=typeof value.sourceUrl==='string'&&/^https:\/\/(ko|en)\.wikipedia\.org\/wiki\/[^\s]+$/.test(value.sourceUrl)?value.sourceUrl.slice(0,1000):'';
-  return {name,day,startTime,endTime,note:clean(value.note),description:clean(value.description),sourceUrl,order:Number.isInteger(value.order)&&value.order>=0&&value.order<MAX_STOPS?value.order:0};
+  return {name,day,startTime,endTime,note:clean(value.note),description:clean(value.description),sourceUrl:'',googlePlaceId:typeof value.googlePlaceId==='string'&&/^[A-Za-z0-9_-]{1,255}$/.test(value.googlePlaceId)?value.googlePlaceId:'',kind:value.kind==='note'?'note':'place',order:Number.isInteger(value.order)&&value.order>=0&&value.order<MAX_STOPS?value.order:0};
 }
 module.exports={MAX_STOPS,normalizeStop};

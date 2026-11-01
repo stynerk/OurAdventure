@@ -101,9 +101,10 @@ function createGroupService(db, {HttpsError, FieldValue, analyze=analyzeDocument
       try{return await analyze(data);}catch(error){fail(error.code==='failed-precondition'?'failed-precondition':'unavailable',error.message);}
     },
     async lookupPlaceInfo(data,auth){
-      const uid=google(auth),g=id(data?.groupId,'그룹 ID'),name=text(data.name,100,'장소 이름'),destination=text(data.destination,100,'목적지',true);
-      await db.runTransaction(tx=>groupContext(tx,g,uid,true));
-      try{return await lookup(name,destination);}catch(error){fail('unavailable',error.message);}
+      const uid=uidOf(auth),g=id(data?.groupId,'그룹 ID');let name,destination,placeId='';
+      if(data.tripId&&data.placeId){await db.runTransaction(async tx=>{const trip=await tripContext(tx,g,id(data.tripId,'여행 ID'),uid);const p=id(data.placeId,'장소 ID'),snap=await tx.get(placeRef(g,data.tripId,p));if(!snap.exists||!trip.placeIds.includes(p))fail('not-found','장소를 찾지 못했어요.');name=snap.data().name;destination=trip.destination;placeId=snap.data().googlePlaceId||'';});}
+      else{google(auth);name=text(data.name,100,'장소 이름');destination=text(data.destination,100,'목적지',true);await db.runTransaction(tx=>groupContext(tx,g,uid,true));}
+      try{return await lookup(name,destination,{placeId});}catch(error){fail('unavailable',error.message);}
     },
     async getGroupInvite(data,auth){
       const uid=google(auth),g=id(data?.groupId,'그룹 ID');
@@ -126,8 +127,11 @@ function createGroupService(db, {HttpsError, FieldValue, analyze=analyzeDocument
         if(!prior.exists||!trip.placeIds.includes(p))fail('not-found','이 여행에 없는 장소예요.');
         if((prior.data().revision||0)!==data.revision)fail('aborted','다른 화면에서 수정했어요. 최신 코스를 다시 열어주세요.');
         const place=placeInput(data.place,trip);
+        if((prior.data().kind||'place')!==place.kind&&prior.data().postCount>0)fail('failed-precondition','사진이 있는 장소는 일반 일정으로 바꿀 수 없어요.');
         tx.update(placeRef(g,t,p),{...place,revision:(prior.data().revision||0)+1,updatedAt:now()});
-        tx.update(tripRef(g,t),{itineraryRevision:(trip.itineraryRevision||0)+1});
+        const stampSet=new Set(trip.stampPlaceIds||trip.placeIds);place.kind==='note'?stampSet.delete(p):stampSet.add(p);
+        const stampPlaceIds=trip.placeIds.filter(id=>stampSet.has(id));
+        tx.update(tripRef(g,t),{itineraryRevision:(trip.itineraryRevision||0)+1,stampPlaceIds,placeCount:stampPlaceIds.length});
         tx.create(replay,{uid,fingerprint,createdAt:now()});return {placeId:p,replayed:false};
       });
     },
@@ -148,11 +152,13 @@ function createGroupService(db, {HttpsError, FieldValue, analyze=analyzeDocument
           if(!p&&entry.createNew!==true){const matches=[...existing].filter(([key,v])=>!used.has(key)&&v.name===place.name);if(matches.length>1)fail('invalid-argument','같은 이름의 기존 장소가 여러 개예요. 연결할 장소를 선택해주세요.');if(matches.length===1)p=matches[0][0];}
           if(p&&(!existing.has(p)||used.has(p)))fail('invalid-argument','장소 연결을 확인해주세요.');
           const ref=p?placeRef(g,t,p):tripRef(g,t).collection('places').doc();used.add(ref.id);updates.push({ref,place,old:p?existing.get(p):null});
+          if(p&&(existing.get(p).kind||'place')!==place.kind&&existing.get(p).postCount>0)fail('failed-precondition','사진이 있는 장소의 일정 유형은 유지해주세요.');
         }
         const ids=[...trip.placeIds,...updates.filter(u=>!u.old).map(u=>u.ref.id)];
         if(ids.length>LIMITS.places)fail('resource-exhausted','한 여행의 일정은 최대 60개예요.');
         updates.forEach(({ref,place,old})=>old?tx.update(ref,{...place,revision:(old.revision||0)+1,updatedAt:now()}):tx.create(ref,{...place,revision:0,postCount:0,createdAt:now()}));
-        tx.update(tripRef(g,t),{placeIds:ids,placeCount:ids.length,itineraryRevision:(trip.itineraryRevision||0)+1});
+        const prospective=new Map(existing);updates.forEach(u=>prospective.set(u.ref.id,u.place));const stampPlaceIds=ids.filter(p=>prospective.get(p)?.kind!=='note');
+        tx.update(tripRef(g,t),{placeIds:ids,stampPlaceIds,placeCount:stampPlaceIds.length,itineraryCount:ids.length,itineraryRevision:(trip.itineraryRevision||0)+1});
         const result={updated:updates.filter(u=>u.old).length,added:updates.filter(u=>!u.old).length};
         tx.create(replay,{uid,fingerprint,result,createdAt:now()});return {...result,replayed:false};
       });
@@ -176,7 +182,8 @@ function createGroupService(db, {HttpsError, FieldValue, analyze=analyzeDocument
         // Keep a tombstone so authors can still delete their own retained posts.
         const ids=impact.trip.placeIds.filter(value=>value!==p);
         tx.update(placeRef(g,t,p),{status:'deleted',deletedAt:now(),deletedBy:uid});
-        tx.update(tripRef(g,t),{placeIds:ids,placeCount:ids.length,itineraryRevision:(impact.trip.itineraryRevision||0)+1});
+        const stampPlaceIds=(impact.trip.stampPlaceIds||impact.trip.placeIds).filter(id=>id!==p);
+        tx.update(tripRef(g,t),{placeIds:ids,stampPlaceIds,placeCount:stampPlaceIds.length,itineraryCount:ids.length,itineraryRevision:(impact.trip.itineraryRevision||0)+1});
         return {placeId:p,replayed:false};
       });
     },
@@ -300,17 +307,18 @@ function createGroupService(db, {HttpsError, FieldValue, analyze=analyzeDocument
       const places=data.places.map((p,i)=>placeInput({...p,order:i},{startDate,endDate}));
       const fingerprint=hash([title,destination,startDate,endDate,places]);
       const legacyFingerprint=data.places.every(p=>Object.keys(p).every(k=>['name','icon'].includes(k)))?hash([title,destination,startDate,endDate,places.map(p=>({name:p.name,icon:p.icon}))]):null;
+      const previousFingerprint=data.places.every(p=>!Object.hasOwn(p,'kind')&&!Object.hasOwn(p,'googlePlaceId'))?hash([title,destination,startDate,endDate,places.map(({kind,googlePlaceId,...p})=>p)]):null;
       const replayRef=db.doc(`v2Requests/${hash(['trip',uid,g,request])}`),ref=groupRef(g).collection('trips').doc();
       const refs=places.map(()=>ref.collection('places').doc());
       return db.runTransaction(async tx=>{
         await groupContext(tx,g,uid,true);
         const saved=await tx.get(replayRef);
         if(saved.exists) {
-          if(saved.data().fingerprint!==fingerprint&&saved.data().fingerprint!==legacyFingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
+          if(![fingerprint,legacyFingerprint,previousFingerprint].includes(saved.data().fingerprint))fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
           return {groupId:g,tripId:saved.data().tripId,replayed:true};
         }
         tx.create(ref,{schemaVersion:2,title,destination,startDate,endDate,status:'open',createdBy:uid,itineraryRevision:0,
-          placeIds:refs.map(p=>p.id),placeCount:places.length,postCount:0,createdAt:now(),closedAt:null});
+          placeIds:refs.map(p=>p.id),stampPlaceIds:refs.filter((_,i)=>places[i].kind!=='note').map(p=>p.id),placeCount:places.filter(p=>p.kind!=='note').length,itineraryCount:places.length,postCount:0,createdAt:now(),closedAt:null});
         places.forEach((p,i)=>tx.create(refs[i],{...p,postCount:0,createdAt:now()}));
         tx.create(replayRef,{uid,fingerprint,groupId:g,tripId:ref.id,createdAt:now()});
         return {groupId:g,tripId:ref.id,replayed:false};
@@ -319,19 +327,21 @@ function createGroupService(db, {HttpsError, FieldValue, analyze=analyzeDocument
     async addTripPlace(data,auth) {
       const uid=uidOf(auth),{g,t}=coordinates(data),request=requestId(data),place=placeInput(data?.place);
       const legacyFingerprint=Object.keys(data.place).every(k=>['name','icon'].includes(k))?hash({name:place.name,icon:place.icon}):null;
+      const {kind,googlePlaceId,...priorPlace}=place;const previousFingerprint=!Object.hasOwn(data.place,'kind')&&!Object.hasOwn(data.place,'googlePlaceId')?hash(priorPlace):null;
       const replayRef=db.doc(`v2Requests/${hash(['place',uid,g,t,request])}`),fingerprint=hash(place);
       const ref=tripRef(g,t).collection('places').doc();
       return db.runTransaction(async tx=>{
         const trip=await tripContext(tx,g,t,uid,true),saved=await tx.get(replayRef);
         if(saved.exists) {
-          if(saved.data().fingerprint!==fingerprint&&saved.data().fingerprint!==legacyFingerprint)fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
+          if(![fingerprint,legacyFingerprint,previousFingerprint].includes(saved.data().fingerprint))fail('failed-precondition','동일 요청의 내용이 달라졌어요.');
           return {placeId:saved.data().placeId,replayed:true};
         }
         open(trip);
         placeInput(data.place,trip);
         if(trip.placeIds.length>=LIMITS.places)fail('resource-exhausted','한 여행에 일정은 최대 60개예요.');
         tx.create(ref,{...place,postCount:0,createdAt:now()});
-        tx.update(tripRef(g,t),{placeIds:[...trip.placeIds,ref.id],placeCount:trip.placeIds.length+1,itineraryRevision:(trip.itineraryRevision||0)+1});
+        const stampPlaceIds=[...(trip.stampPlaceIds||trip.placeIds),...(place.kind==='note'?[]:[ref.id])];
+        tx.update(tripRef(g,t),{placeIds:[...trip.placeIds,ref.id],stampPlaceIds,placeCount:stampPlaceIds.length,itineraryCount:trip.placeIds.length+1,itineraryRevision:(trip.itineraryRevision||0)+1});
         tx.create(replayRef,{uid,fingerprint,groupId:g,tripId:t,placeId:ref.id,createdAt:now()});
         return {placeId:ref.id,replayed:false};
       });
@@ -370,10 +380,12 @@ function createGroupService(db, {HttpsError, FieldValue, analyze=analyzeDocument
         const snapshots=await tx.getAll(placeRef(g,t,p),completionRef);
         if(!snapshots[0].exists)fail('invalid-argument','이 여행에 없는 장소예요.');
         place=snapshots[0].data();completion=snapshots[1].exists?snapshots[1].data():null;
+        if(place.kind==='note')fail('invalid-argument','이동·휴식 등 일반 일정에는 스탬프를 저장할 수 없어요.');
       }
       const mine=p?await tx.get(tripRef(g,t).collection('completions').where('uid','==',uid)):null;
-      const activeDone=mine?mine.docs.filter(d=>trip.placeIds.includes(d.data().placeId) && d.data().photoCount>0).length:0;
-      const completionResult={newCompletion:!!p && !completion,stampsDone:p?activeDone+(completion?0:1):0,stampsTotal:trip.placeIds.length,postCount:trip.postCount+1};
+      const stampIds=trip.stampPlaceIds||trip.placeIds;
+      const activeDone=mine?mine.docs.filter(d=>stampIds.includes(d.data().placeId) && d.data().photoCount>0).length:0;
+      const completionResult={newCompletion:!!p && !completion,stampsDone:p?activeDone+(completion?0:1):0,stampsTotal:stampIds.length,postCount:trip.postCount+1};
       const uploadId=id(data?.uploadId,'사진 ID');
       tx.create(tripRef(g,t).collection('uploads').doc(uid).collection('items').doc(uploadId),{uid,status:'published',postId:postRef.id,createdAt:now()});
       tx.create(postRef,{uid,placeId:p,feeling,status:'published',revision:0,fingerprint,completionResult,

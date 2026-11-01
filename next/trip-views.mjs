@@ -4,7 +4,7 @@ import {createMemoryFeed} from './memory-feed.mjs';
 import {createReportViews} from './report-views.mjs';
 import {icon} from './icons.mjs';
 import {cover,invitePanel} from './ui.mjs';
-import {groupItinerary} from './itinerary-editor.mjs';
+import {groupItinerary,showPlaceReference} from './itinerary-editor.mjs';
 import {createPlaceEditor} from './place-editor.mjs';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const TRIP_TABS=Object.freeze(['map','course','stamps','memory']);
@@ -59,11 +59,16 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
     ]);
     if(!current(context))return;
     const byId=new Map(placeSnap.docs.map(d=>[d.id,{id:d.id,...d.data()}]));
-    const places=(trip.placeIds||[]).map(id=>byId.get(id)).filter(Boolean);
+    const itinerary=(trip.placeIds||[]).map(id=>byId.get(id)).filter(Boolean),places=itinerary.filter(p=>p.kind!=='note');
     const members=memberSnap.docs.map(d=>({id:d.id,...d.data()}));
     const summaries=completionSummary(places.map(p=>p.id),members,doneSnap.docs.map(d=>d.data()));
     const done=summaries.get(getUser()?.uid)||new Set(),closed=trip.status==='closed';
     const base=`#trip/${encodeURIComponent(g)}/${encodeURIComponent(t)}`;
+    const selectedDay=context.placeId?.match(/^day-(\d+|pending)$/)?.[1]||'';
+    const shown=selectedDay?places.filter(p=>String(p.day===undefined?1:p.day??'pending')===selectedDay):places;
+    const shownIds=new Set(shown.map(p=>p.id)),shownDone=new Set([...done].filter(id=>shownIds.has(id)));
+    const memberDone=uid=>[...(summaries.get(uid)||[])].filter(id=>shownIds.has(id)).length;
+    const dayFilters=tab=>`<div class="day-navigation" aria-label="여행 일차"><a href="${base}/${tab}">모든 날</a>${groupItinerary(itinerary,trip).map(d=>`<a href="${base}/${tab}/day-${d.day||'pending'}">${escape(d.label)}</a>`).join('')}</div>`;
     const placeLink=p=>`${base}/stamp/${encodeURIComponent(p.id)}`;
     const badge=p=>`<span class="badge" data-own-stamp>${done.has(p.id)?'내 스탬프 완료':'내 스탬프 미완료'}</span>`;
     const empty='<p>아직 장소를 정하지 않았어요.</p>';
@@ -76,13 +81,13 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
     if(tab==='report' || tab==='share'){
       content=closed?await reports.render(context,group,tab):'<h2 id="trip-panel-title">여행 종료 후 결과를 볼 수 있어요</h2>';
     }else if(tab==='map'){
-      const next=closed?null:places.find(p=>!done.has(p.id));
-      content=`<h2 id="trip-panel-title">여행 지도</h2>${places.length?illustratedMap(places,done,placeLink,{closed}):empty}${next?`<div class="next-adventure">${cover("next-thumb")}<div><span class="eyebrow">다음 발견</span><a class="button" href="${placeLink(next)}">다음 탐험 · ${escape(next.name)} ${icon("arrow-right")}</a></div></div>`:places.length && done.size===places.length?'<p>모든 장소의 내 스탬프를 모았어요!</p>':''}`;
+      const next=closed?null:shown.find(p=>!done.has(p.id));
+      content=`<h2 id="trip-panel-title">여행 지도</h2>${dayFilters('map')}${shown.length?illustratedMap(shown,done,placeLink,{closed}):empty}${next?`<div class="next-adventure">${cover("next-thumb")}<div><span class="eyebrow">다음 발견</span><a class="button" href="${placeLink(next)}">다음 탐험 · ${escape(next.name)} ${icon("arrow-right")}</a></div></div>`:places.length && done.size===places.length?'<p>모든 장소의 내 스탬프를 모았어요!</p>':''}`;
     }else if(tab==='course'){
       const controls=group.isOwner&&!closed;
-      content=`<h2 id="trip-panel-title">여행 코스</h2>${controls?`<div class="row"><button class="secondary" data-place-action="add">${icon('plus')}장소 추가</button><button class="secondary" data-place-action="import">${icon('upload')}일정 일괄 가져오기</button></div>`:''}<div class="day-navigation" aria-label="여행 일차">${groupItinerary(places,trip).map(d=>`<a href="#trip/${encodeURIComponent(g)}/${encodeURIComponent(t)}/course" data-scroll-day="day-${d.day||'pending'}">${escape(d.label)}</a>`).join('')}</div>${groupItinerary(places,trip).map(day=>`<section class="itinerary-day" id="day-${day.day||'pending'}"><h3>${escape(day.label)}</h3>${day.places.length?`<ol class="course-stops">${day.places.map(p=>`<li><p class="schedule-time">${escape(p.startTime||'시간 미정')}${p.endTime?' ~ '+escape(p.endTime):''}</p><h3><a href="${placeLink(p)}">${escape(p.name)}</a></h3>${badge(p)}${p.description?`<p class="place-description">${escape(p.description)}</p>`:''}${/^https:\/\/(ko|en)\.wikipedia\.org\/wiki\//.test(p.sourceUrl||'')?`<a class="source-credit" href="${escape(p.sourceUrl)}" target="_blank" rel="noopener noreferrer">위키백과 참고 · CC BY-SA</a>`:''}${p.note?`<p class="schedule-note">${escape(p.note)}</p>`:''}${mission(p)}${controls?`<div class="row"><button class="secondary" data-place-action="edit" data-place-id="${escape(p.id)}" aria-label="${escape(p.name)} 장소 수정">${icon('pencil')}장소·시간 수정</button><button class="place-remove secondary" data-place-action="remove" data-place-id="${escape(p.id)}" aria-label="${escape(p.name)} 장소 삭제">${icon('trash-2')}장소 삭제</button></div>`:''}</li>`).join('')}</ol>`:'<p class="muted">아직 등록한 일정이 없어요.</p>'}</section>`).join('')}${!places.length?empty:''}${controls?invitePanel():''}`;
+      content=`<h2 id="trip-panel-title">여행 코스</h2>${controls?`<div class="row"><button class="secondary" data-place-action="add">${icon('plus')}장소 추가</button><button class="secondary" data-place-action="import">${icon('upload')}일정 일괄 가져오기</button></div>`:''}<div class="day-navigation" aria-label="여행 일차">${groupItinerary(itinerary,trip).map(d=>`<a href="#trip/${encodeURIComponent(g)}/${encodeURIComponent(t)}/course" data-scroll-day="day-${d.day||'pending'}">${escape(d.label)}</a>`).join('')}</div>${groupItinerary(itinerary,trip).map(day=>`<section class="itinerary-day" id="day-${day.day||'pending'}"><h3>${escape(day.label)}</h3>${day.places.length?`<ol class="course-stops">${day.places.map(p=>`<li><p class="schedule-time">${escape(p.startTime||'시간 미정')}${p.endTime?' ~ '+escape(p.endTime):''}</p><h3>${p.kind==='note'?escape(p.name):`<a href="${placeLink(p)}">${escape(p.name)}</a>`}</h3>${p.kind==='note'?'<span class="badge">일반 일정</span>':badge(p)}${p.description?`<p class="place-description">${escape(p.description)}</p>`:''}${p.googlePlaceId?`<div data-place-reference="${escape(p.id)}" class="place-reference"></div>`:''}${p.note?`<p class="schedule-note">${escape(p.note)}</p>`:''}${p.kind==='note'?'':mission(p)}${controls?`<div class="row"><button class="secondary" data-place-action="edit" data-place-id="${escape(p.id)}" aria-label="${escape(p.name)} 장소 수정">${icon('pencil')}장소·시간 수정</button><button class="place-remove secondary" data-place-action="remove" data-place-id="${escape(p.id)}" aria-label="${escape(p.name)} 장소 삭제">${icon('trash-2')}장소 삭제</button></div>`:''}</li>`).join('')}</ol>`:'<p class="muted">아직 등록한 일정이 없어요.</p>'}</section>`).join('')}${!places.length?empty:''}${controls?invitePanel():''}`;
     }else if(tab==='stamps'){
-      content=`<h2 id="trip-panel-title">내 스탬프 ${done.size}/${places.length}</h2><div class="stamp-grid">${places.map((p,index)=>`<a class="stamp-tile ${done.has(p.id)?'is-done':!closed && places.find(item=>!done.has(item.id))?.id===p.id?'is-next':''}" href="${placeLink(p)}"><span class="clay-seal" aria-hidden="true">${done.has(p.id)?`<span>${escape(p.mission?.stampName||p.name)}</span>`:!closed && places.find(item=>!done.has(item.id))?.id===p.id?icon("camera"):String(index+1).padStart(2,"0")}</span><strong>${escape(p.name)}</strong><small>${done.has(p.id)?'완료':'미완료'}</small></a>`).join('')}</div>${places.length?'':empty}<h3>멤버별 진행</h3><ul class="members">${members.map(m=>`<li class="${m.id===getUser()?.uid?'is-me':''}"><strong>${escape(m.displayName)}${m.id===getUser()?.uid?' (나)':''}</strong>스탬프 ${summaries.get(m.id)?.size||0}/${places.length}</li>`).join('')}</ul>`;
+      content=`<h2 id="trip-panel-title">내 스탬프 ${shownDone.size}/${shown.length}</h2>${dayFilters('stamps')}<div class="stamp-grid">${shown.map((p,index)=>`<a class="stamp-tile ${done.has(p.id)?'is-done':!closed && shown.find(item=>!done.has(item.id))?.id===p.id?'is-next':''}" href="${placeLink(p)}"><span class="clay-seal" aria-hidden="true">${done.has(p.id)?`<span>${escape(p.mission?.stampName||p.name)}</span>`:!closed && shown.find(item=>!done.has(item.id))?.id===p.id?icon("camera"):String(index+1).padStart(2,"0")}</span><strong>${escape(p.name)}</strong><small>${done.has(p.id)?'완료':'미완료'}</small></a>`).join('')}</div>${places.length?'':empty}<h3>멤버별 진행</h3><ul class="members">${members.map(m=>`<li class="${m.id===getUser()?.uid?'is-me':''}"><strong>${escape(m.displayName)}${m.id===getUser()?.uid?' (나)':''}</strong>스탬프 ${memberDone(m.id)}/${shown.length}</li>`).join('')}</ul>`;
     }else if(tab==='memory'){
       content=await memories.render(context,group,trip,places,members);
     }else if(tab==='stamp'){
@@ -90,7 +95,7 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
       if(!p || !places.some(place=>place.id===p.id))throw Error('없는 장소');
       content=`<div class="place-photo">${cover()}</div><h2 id="trip-panel-title">${escape(p.mission?.stampName||p.name)}</h2>${badge(p)}${mission(p)}<p>${mapLink(p)}</p>${closed?'<p>종료된 여행이에요. 스탬프는 읽기만 할 수 있어요.</p>':photoForm()}<a href="${base}/stamps">스탬프판으로</a>`;
     }else{
-      content=`<h2 id="trip-panel-title">여행 관리</h2><p>그룹 멤버 ${members.length}/10명</p><p>${closed?'종료된 여행이에요. 기존 기록을 계속 볼 수 있어요.':'그룹에서 초대 링크를 발급하고 참여 현황을 확인할 수 있어요.'}</p><a class="button" href="#group/${escape(g)}">초대 링크·참여 관리</a><h3>참여 현황</h3><ul class="members">${members.map(m=>`<li><strong>${escape(m.displayName)}${m.role==='owner'?' (리더)':''}</strong>스탬프 ${summaries.get(m.id)?.size||0}/${places.length}</li>`).join('')}</ul>`;
+      content=`<h2 id="trip-panel-title">여행 관리</h2><p>그룹 멤버 ${members.length}/10명</p><p>${closed?'종료된 여행이에요. 기존 기록을 계속 볼 수 있어요.':'그룹에서 초대 링크를 발급하고 참여 현황을 확인할 수 있어요.'}</p><a class="button" href="#group/${escape(g)}">초대 링크·참여 관리</a><h3>참여 현황</h3><ul class="members">${members.map(m=>`<li><strong>${escape(m.displayName)}${m.role==='owner'?' (리더)':''}</strong>스탬프 ${memberDone(m.id)}/${shown.length}</li>`).join('')}</ul>`;
     }
     if(tab==='manage' && group.isOwner && !closed)content+='<hr><p>종료하면 사진·스탬프는 읽기 전용이 되고 기존 기록은 계속 볼 수 있어요.</p><button class="danger" data-trip-action="end">여행 종료</button>';
     if(!current(context))return;
@@ -101,7 +106,8 @@ export function createTripViews({app,api,db,photoStorage,current,getUser,call,pe
     if(closed){const age=trip.closedAt?.seconds?Math.max(0,Math.floor((Date.now()/1000-trip.closedAt.seconds)/86400)):null;
       track('past_trip_open',{group_id:g,trip_id:t,role:group.isOwner?'leader':'member',trip_status:'ended',days_since_end_bucket:age===null?'unknown':age===0?'0':age<=7?'1-7':age<=30?'8-30':'31+'});
     }
-    placeEditor.mount(context,group,trip,places);
+    placeEditor.mount(context,group,trip,itinerary);
+    if(tab==='course')for(const node of app.querySelectorAll?.('[data-place-reference]')||[])void call('lookupPlaceInfo',{groupId:g,tripId:t,placeId:node.dataset.placeReference}).then(result=>{if(current(context)&&node.isConnected)showPlaceReference(node,result);}).catch(()=>{if(node.isConnected)node.textContent='장소 소개를 불러오지 못했어요.';});
     if(api.onSnapshot){
       let initial=JSON.stringify([trip.placeIds,trip.itineraryRevision||0]);
       stopPlaces=api.onSnapshot(api.doc(db,...root),{includeMetadataChanges:true},snapshot=>{

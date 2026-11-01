@@ -62,6 +62,12 @@ try{
  await page.screenshot({path:'test-results/itinerary-upload-preview-390.png',fullPage:true});
  await editor.getByRole('button',{name:'검토한 일정 반영',exact:true}).click();await editor.waitFor({state:'detached'});
  await page.locator('#day-2').getByRole('heading',{name:'제주 새 장소',exact:true}).waitFor();assert.equal(await page.getByRole('heading',{name:'성산일출봉',exact:true}).count(),1);
+ await page.getByRole('button',{name:'장소 추가',exact:true}).click();editor=page.getByRole('dialog',{name:'장소 추가',exact:true});
+ await editor.getByLabel('장소 이름',{exact:true}).fill('숙소로 이동');await editor.getByLabel('일정 유형',{exact:true}).selectOption('note');await editor.getByLabel('일차',{exact:true}).selectOption('2');await editor.getByRole('button',{name:'장소 추가하기',exact:true}).click();await editor.waitFor({state:'detached'});
+ await page.getByRole('heading',{name:'숙소로 이동',exact:true}).waitFor();
+ await page.getByRole('link',{name:'지도',exact:true}).click();await page.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();await page.locator('.day-navigation a[href$="/day-2"]').click();await page.getByRole('heading',{name:'여행 지도',exact:true}).waitFor();assert.equal(await page.locator('.map-pin').count(),1);
+ await page.getByRole('link',{name:'스탬프',exact:true}).click();await page.locator('.day-navigation a[href$="/day-1"]').click();await page.getByRole('heading',{name:'내 스탬프 0/1',exact:true}).waitFor();assert.equal(await page.locator('.stamp-tile').count(),1);
+ await page.getByRole('link',{name:'코스',exact:true}).click();await page.getByRole('heading',{name:'숙소로 이동',exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>!!([...document.querySelectorAll('.itinerary-day')].at(-1)?.compareDocumentPosition(document.querySelector('.invite-section'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);
  await page.getByRole('button',{name:'초대 링크 보기',exact:true}).click();await page.getByLabel('그룹 초대 링크',{exact:true}).waitFor();const invite=await page.getByLabel('그룹 초대 링크',{exact:true}).inputValue();
  await page.getByRole('button',{name:'초대 링크 보기',exact:true}).click();assert.equal(await page.getByLabel('그룹 초대 링크',{exact:true}).inputValue(),invite);

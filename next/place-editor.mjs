@@ -1,5 +1,5 @@
 import {icon} from './icons.mjs';
-import {scheduleFields,importMarkup,mountImport} from './itinerary-editor.mjs';
+import {scheduleFields,importMarkup,mountImport,showPlaceReference} from './itinerary-editor.mjs';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function inactiveForm(form){return !!form.querySelector?.('fieldset:disabled,button[type="submit"]:disabled,button:not([type]):disabled,input[type="submit"]:disabled');}
 export function createPlaceEditor({app,call,current,getUser,perform,storage,refresh}){
@@ -13,7 +13,7 @@ export function createPlaceEditor({app,call,current,getUser,perform,storage,refr
     let pending,error='';
     try{pending=JSON.parse(storage.getItem(key(s))||'null');if(pending && (typeof pending.name!=='string' || !/^[A-Za-z0-9_-]{16,128}$/.test(pending.requestId)))throw Error('invalid');}
     catch{error='이 기기의 이전 추가 요청을 확인하지 못했어요. 연결과 저장 공간을 확인해주세요.';}
-    s.pending=pending;
+    s.pending=pending;s.googlePlaceId=pending?.place?.googlePlaceId||'';
     show(`<h2 id="place-editor-title">장소 추가</h2><p>새 장소는 모두의 도장판에 추가돼요.</p>${error?`<p role="alert">${error}</p>`:`<form id="trip-place-add"><label>장소 이름<input name="name" maxlength="100" required autocomplete="off" value="${esc(pending?.name||'')}" ${pending?'readonly':''}></label><p class="muted">${pending?'결과를 확인하지 못한 같은 요청을 다시 확인해요.':'기존에 모은 도장은 그대로 유지돼요.'}</p><button type="submit">${icon('plus')}${pending?'같은 장소 다시 추가':'장소 추가하기'}</button><p id="place-editor-status" role="status"></p></form>`}<button type="button" class="secondary" data-place-action="cancel">닫기</button>`);
     const form=dialog.querySelector('form');if(form){form.querySelector('button').insertAdjacentHTML('beforebegin',scheduleFields(pending?.place||{},s.trip));wireLookup(s,form);if(pending)lock(form);}
   }
@@ -23,32 +23,32 @@ export function createPlaceEditor({app,call,current,getUser,perform,storage,refr
     let timer;
     form.addEventListener('input',event=>{
       if(event.target.name!=='name'||event.target.readOnly)return;
-      form.elements.description.value='';s.sourceUrl='';clearTimeout(timer);
+      s.googlePlaceId='';clearTimeout(timer);
       timer=setTimeout(async()=>{
         const name=form.elements.name.value.trim(),info=form.querySelector('.place-info-status');if(!name||!valid(s)||!form.isConnected)return;
         info.textContent='장소 설명을 찾고 있어요…';
-        try{const result=await call('lookupPlaceInfo',{groupId:s.context.groupId,name,destination:s.trip.destination});if(!valid(s)||!form.isConnected||form.elements.name.disabled||form.elements.name.value.trim()!==name||form.elements.description.value.trim())return;form.elements.description.value=result.description||'';s.sourceUrl=result.sourceUrl||'';info.textContent=result.description?'위키백과 참고 설명 · 장소가 맞는지 확인해주세요.':'검색된 설명이 없어요. 직접 설명을 남길 수 있어요.';}
+        try{const result=await call('lookupPlaceInfo',{groupId:s.context.groupId,name,destination:s.trip.destination});if(!valid(s)||!form.isConnected||form.elements.name.disabled||form.elements.name.value.trim()!==name )return;s.googlePlaceId=result.placeId||'';showPlaceReference(info,result);}
         catch{if(form.isConnected)info.textContent='설명을 가져오지 못했어요. 직접 입력해도 괜찮아요.';}
       },800);
     });
   }
-  const fields=form=>({name:form.elements.name.value.trim(),day:Number(form.elements.day.value)||null,startTime:form.elements.startTime.value,endTime:form.elements.endTime.value,note:form.elements.note.value,description:form.elements.description.value});
+  const fields=form=>({kind:form.elements.kind.value,name:form.elements.name.value.trim(),day:Number(form.elements.day.value)||null,startTime:form.elements.startTime.value,endTime:form.elements.endTime.value,note:form.elements.note.value,description:form.elements.description.value});
   function edit(s,id){
     const place=s.places.find(p=>p.id===id);if(!place)return;
     const storageKey=key(s)+':edit:'+id;let pending;
     try{pending=JSON.parse(storage.getItem(storageKey)||'null');}catch{throw Error('이 기기의 이전 수정 요청을 확인하지 못했어요.');}
-    s.editing={place,storageKey,pending};s.sourceUrl=place.sourceUrl||'';
+    s.editing={place,storageKey,pending};s.sourceUrl='';s.googlePlaceId=place.googlePlaceId||'';
     const value=pending?.place||place;
     show(`<h2 id="place-editor-title">장소·시간 수정</h2><p>기존 사진과 완료한 스탬프는 그대로 유지돼요.</p><form id="trip-place-edit"><label>장소 이름<input name="name" required maxlength="100" value="${esc(value.name)}"></label>${scheduleFields(value,s.trip)}<button type="submit">${pending?'같은 수정 다시 저장':'변경 저장'}</button><p id="place-editor-status" role="status"></p></form><button type="button" class="secondary" data-place-action="cancel">닫기</button>`);
     const form=dialog.querySelector('form');wireLookup(s,form);
-    if(pending)for(const control of form.querySelectorAll('input,select,textarea'))control.disabled=true;
+    if(pending)lock(form);
   }
   function importSchedule(s){
     const storageKey=key(s)+':import';let pending;
     try{pending=JSON.parse(storage.getItem(storageKey)||'null');}catch{throw Error('이 기기의 이전 가져오기 요청을 확인하지 못했어요.');}
     show(`<h2 id="place-editor-title">시간표·장소 가져오기</h2><form id="trip-itinerary-import">${importMarkup()}<p>같은 이름의 기존 장소가 하나이면 연결해 갱신해요. 기존 사진·완료는 유지되고, 없는 장소만 추가돼요. 기존 일정은 자동 삭제하지 않아요.</p><button type="submit">${pending?'같은 요청 다시 반영':'검토한 일정 반영'}</button><p id="place-editor-status" role="status"></p></form><button type="button" class="secondary" data-place-action="cancel">닫기</button>`);
     const editor=mountImport(dialog.querySelector('.itinerary-import'),{trip:()=>s.trip,existing:s.places,valid:()=>valid(s),analyze:data=>call('analyzeItinerary',{...coordinates(s),...data}),lookup:name=>call('lookupPlaceInfo',{groupId:s.context.groupId,name,destination:s.trip.destination})});
-    s.importing={storageKey,pending,editor};if(pending){editor.set(pending.entries);for(const node of dialog.querySelectorAll('input,select,textarea,[data-import],[data-remove]'))node.disabled=true;}
+    s.importing={storageKey,pending,editor};if(pending){editor.set(pending.entries);lock(dialog.querySelector('form'));}
   }
   function confirmation(s,impact,changed=false){
     s.impact=impact;
@@ -93,7 +93,7 @@ export function createPlaceEditor({app,call,current,getUser,perform,storage,refr
       perform(async()=>{
         s.mutating=true;
         try{
-          if(!operation.pending){operation.pending=editing?{...coordinates(s),placeId:operation.place.id,revision:operation.place.revision||0,requestId:crypto.randomUUID(),place:{...fields(form),sourceUrl:s.sourceUrl||'',order:operation.place.order||0}}:{...coordinates(s),revision:s.trip.itineraryRevision||0,requestId:crypto.randomUUID(),entries:operation.editor.read()};storage.setItem(operation.storageKey,JSON.stringify(operation.pending));}
+          if(!operation.pending){operation.pending=editing?{...coordinates(s),placeId:operation.place.id,revision:operation.place.revision||0,requestId:crypto.randomUUID(),place:{...fields(form),sourceUrl:'',googlePlaceId:s.googlePlaceId||'',order:operation.place.order||0}}:{...coordinates(s),revision:s.trip.itineraryRevision||0,requestId:crypto.randomUUID(),entries:operation.editor.read()};storage.setItem(operation.storageKey,JSON.stringify(operation.pending));}
           lock(form);await call(editing?'editTripPlace':'applyTripItinerary',operation.pending);storage.removeItem(operation.storageKey);
           if(valid(s)){close();refresh();}
         }catch(error){
@@ -107,13 +107,14 @@ export function createPlaceEditor({app,call,current,getUser,perform,storage,refr
     perform(async()=>{
       s.mutating=true;
       try{
-        if(!s.pending){const pending={name,place:{...fields(form),sourceUrl:s.sourceUrl||''},requestId:crypto.randomUUID()};storage.setItem(key(s),JSON.stringify(pending));s.pending=pending;}
+        if(!s.pending){const pending={name,place:{...fields(form),sourceUrl:'',googlePlaceId:s.googlePlaceId||''},requestId:crypto.randomUUID()};storage.setItem(key(s),JSON.stringify(pending));s.pending=pending;s.googlePlaceId=pending?.place?.googlePlaceId||'';}
         form.elements.name.readOnly=true;
         lock(form);
         await call('addTripPlace',{...coordinates(s),requestId:s.pending.requestId,place:s.pending.place||{name:s.pending.name}});
         storage.removeItem(key(s));
         if(valid(s)){close();refresh();}
       }catch(error){
+        if(['functions/invalid-argument','functions/aborted','functions/failed-precondition'].includes(error.code)){storage.removeItem(key(s));s.pending=null;unlock(form);form.elements.name.readOnly=false;}
         if(valid(s) && dialog){const status=dialog.querySelector('#place-editor-status');if(status)status.textContent='추가 결과를 확인하지 못했어요. 입력을 보존했으니 다시 시도해주세요.';form.querySelector('button[type="submit"]').textContent=s.pending?'같은 장소 다시 추가':'장소 추가하기';}
         throw error;
       }finally{s.mutating=false;}

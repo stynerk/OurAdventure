@@ -6,9 +6,9 @@
 |---|---|---|
 | 시간표·장소 일괄 업로드와 AI 분석 | 신규 여행과 기존 코스에서 원문/파일 입력 → 수정 가능한 일차·시간·장소 초안 → 확인 반영. 텍스트/CSV/JSON 규칙 가져오기 제공. PDF/PNG/JPEG/WebP/DOCX/XLSX는 서버 AI 파일 입력 경로 준비 | **AI 키·모델 미설정. 실제 문서 AI 추출은 미활성/미검증. 성공으로 표시하지 않음** |
 | 초대 위치 | 그룹 여행 목록 및 여행 코스 아래로 이동 | 실제 사용자 사용성 |
-| 일차별 일정 | day/startTime/endTime/note/order 저장, 날짜별 섹션·이동 칩·시간순 정렬 | 예전 기록은 날짜가 없으므로 ‘일정 미정’. 기존 일정의 자동 날짜 추정·강제 이관 없음 |
+| 일차별 일정 | day/startTime/endTime/note/order 저장, 날짜별 섹션·이동 칩·시간순 정렬 | PM #29에 맞춰 날짜 필드가 없는 예전 기록은 화면에서 1일차로 표시. 신규 초안의 명시적 날짜 미정은 별도 표시. 원본 DB 강제 이관 없음 |
 | 초대 링크 유지 | getGroupInvite는 기존 링크 재사용. createGroupInvite는 확인 후 명시적 재발급. 서버만 읽는 secret에 복구용 토큰 저장 | 이전 해시만 남은 링크는 계속 유효하지만 원문 재표시 불가. UI에서 설명하고 재발급을 강제하지 않음 |
-| 장소 수정·설명 | 같은 장소 ID로 이름·일차·시간·메모·설명 수정. 설명이 비어 있으면 위키백과 일치 결과 조회, 출처 연결. 못 찾으면 직접 입력 | Google Places 연결은 미구현. 위키백과가 지역 상점·모든 명소를 포함하지 않음. 실제 검색 품질·네트워크 확인 필요 |
+| 장소 수정·설명 | 같은 장소 ID로 이름·일차·시간·메모·설명 수정. Google Places 일치 결과의 분류·주소·원문 요약 소개 카드 준비. 조회한 소개는 현재 화면에서만 표시하며 place ID만 저장. 직접 입력 설명은 별도로 저장 | **Google Places 키·활성화 미확인. 실제 장소 검색은 미활성/미검증. 다른 출처로 대체하지 않음** |
 
 ## 데이터·실패 처리
 
@@ -29,9 +29,19 @@
 
 ## 검증
 
-- npm test: 52개 통과. 규칙 추출·일차·시간 검증·AI 미설정 거부·모의 PDF 입력/응답 검증·설명 출처와 불일치 제외 포함.
-- 기존 서버 통합 54개(Storage12 + 그룹29 + 공동방13), 실제 SDK·기존 브라우저·30개 화면·리포트/PNG 회귀 통과. AI 응답 테스트는 대역이며 실 추출 품질 검증이 아니다.
+- npm test: 52개 통과. 규칙 추출·일차·시간 검증·AI 미설정 거부·모의 PDF 입력/응답 검증·Google Places 일치 결과/소개 비저장 포함.
+- 서버 통합 55개 통과(그룹 모델 30, Storage 12, 기존 규칙 13). 일반 일정/스탬프 분리 포함. 실제 SDK·기존 브라우저·30개 화면·리포트/PNG 회귀 통과. AI·Google Places 응답 테스트는 대역이며 실 추출·검색 품질 검증이 아니다.
 - 신규 브라우저 흐름: Google 에뮬레이터 팝업 → 여행 → 날짜/시간 수정 → CSV 파일 업로드 → 초안 수정/병합 → 날짜별 코스, 코스 아래 초대 및 동일 링크 재조회, 320/390px 잘림 없음, 새로고침 없이 완료. 실패 중 무한 로딩 복구도 유지.
 - 실기기 Google OAuth·AI 실제 파일 추출·Google Places 검색 품질은 이번 에뮬레이터 통과로 대체하지 않는다.
 
-참고: [OpenAI 파일 입력](https://developers.openai.com/api/docs/guides/file-inputs), [MediaWiki TextExtracts](https://www.mediawiki.org/wiki/Extension:TextExtracts). 예시 파일과 계정은 합성 자료이며 실제 여행 문서·사진·개인 계정을 커밋하지 않는다.
+참고: [OpenAI 파일 입력](https://developers.openai.com/api/docs/guides/file-inputs), [Google Places Text Search](https://developers.google.com/maps/documentation/places/web-service/text-search), [Places 표시·보관 정책](https://developers.google.com/maps/documentation/places/web-service/policies). 예시 파일과 계정은 합성 자료이며 실제 여행 문서·사진·개인 계정을 커밋하지 않는다.
+
+## PM #29 후속 반영
+
+최신 [PM 피드백 PR #29](https://github.com/stynerk/OurAdventure/pull/29)를 확인해 다음을 추가했다.
+
+- 일반 일정(kind:note)은 일차·시간·메모를 유지하되 지도 핀·스탬프·스탬프 총수에서 제외하고 서버 사진 확정을 거부한다. 사진이 있는 기존 장소를 일반 일정으로 바꾸지 못한다.
+- 지도와 스탬프에도 일차 필터를 제공한다. 코스의 모든 일정과 스탬프용 장소 목록을 구분한다.
+- 위키백과 대체안을 제거했다. Google Places의 분류·주소·editorialSummary는 원문 전체를 현재 화면의 별도 소개 카드로 표시하고 Google Maps 및 공급자 출처를 붙인다. 소개 내용은 DB·캐시에 저장하거나 AI로 바꾸지 않는다.
+- GOOGLE_PLACES_API_KEY 비밀과 ENABLE_PLACES_INFO=true를 설정하면 lookupPlaceInfo에만 키를 바인딩한다. 키/요금/약관·기본 공개 약관/개인정보 처리방침·실제 검색 품질 확인 후 활성화한다. 미설정이면 검색 준비 상태를 안내하며 AI 생성 설명으로 메우지 않는다.
+- Places 키가 없어 문서에서 읽은 장소를 Google 매칭하는 실동작까지 완료하지 못했다. 문서 AI 추출 및 장소 매칭은 키 연결 후 실제 파일 검증이 남는다.

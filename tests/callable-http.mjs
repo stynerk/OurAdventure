@@ -8,6 +8,7 @@ import {createRequire} from 'node:module';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)throw new Error('Run only inside demo Auth and Firestore emulators');
+for(const key of ['OPENAI_API_KEY','OPENAI_MODEL','GOOGLE_PLACES_API_KEY','ENABLE_ITINERARY_AI','ENABLE_PLACES_INFO'])delete process.env[key];
 process.env.GCLOUD_PROJECT='demo-our-adventure';
 if(process.env.FIREBASE_STORAGE_EMULATOR_HOST)process.env.PHOTO_STORAGE_BUCKET='demo-our-adventure.firebasestorage.app';
 process.env.ENABLE_INDIVIDUAL_PILOT='true'; // Explicit test-only Phase 1C coverage.

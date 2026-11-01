@@ -9,8 +9,8 @@ test('pasted timetable preserves days, times, order and uncertain time warning',
 test('CSV quoted commas, nested JSON and legacy unscheduled places are preserved',()=>{
  const csv=parseItinerary('일차,시작,장소,메모\n2,09:00,"바다, 카페","아침, 휴식"',trip);assert.equal(csv.entries[0].name,'바다, 카페');assert.equal(csv.entries[0].day,2);
  assert.equal(parseItinerary('{"days":[{"day":3,"places":[{"name":"부산역"}]}]}',trip).entries[0].day,3);
- const days=groupItinerary([{id:'old',name:'기존 장소'},{id:'new',name:'새 장소',day:2,startTime:'10:00'}],trip);
- assert.equal(days.length,4);assert.equal(days.at(-1).day,null);assert.equal(days[1].places[0].id,'new');assert.equal(days.at(-1).places[0].id,'old');
+ const days=groupItinerary([{id:'old',name:'기존 장소'},{id:'unknown',name:'일정 미정',day:null},{id:'new',name:'새 장소',day:2,startTime:'10:00'}],trip);
+ assert.equal(days.length,4);assert.equal(days.at(-1).day,null);assert.equal(days[1].places[0].id,'new');assert.equal(days[0].places[0].id,'old');assert.equal(days.at(-1).places[0].id,'unknown');
 });
 test('server rejects out-of-range days and invalid times without silently correcting them',()=>{
  for(const p of [{day:4},{day:-1},{day:1.5},{startTime:'25:00'},{startTime:'16:00',endTime:'16:00'}])assert.throws(()=>normalizeStop({name:'장소',...p},trip));
@@ -25,8 +25,9 @@ test('AI import refuses missing configuration, sends PDF through bounded non-sto
  assert.equal(body.store,false);assert.equal(body.input[0].content[1].type,'input_file');assert.equal(r.entries[0].day,2);
  await assert.rejects(analyzeDocument({text:'x'},{apiKey:'test',model:'test',fetchImpl:async()=>({ok:true,json:async()=>({status:'completed',output:[]})})}));
 });
-test('place descriptions only use matching reference results and include source attribution',async()=>{
- const fetchImpl=async()=>({ok:true,json:async()=>({query:{pages:{1:{title:'부산역',extract:'부산역 설명',fullurl:'https://ko.wikipedia.org/wiki/부산역'}}}})});
- assert.equal((await lookupPlace('부산역','부산',{fetchImpl})).sourceUrl,'https://ko.wikipedia.org/wiki/부산역');
- assert.equal((await lookupPlace('숙소 미정','부산',{fetchImpl})).state,'not-found');
+test('place introduction only uses matching Google Places results and reference content is not stored as editable description',async()=>{
+ const fetchImpl=async()=>({ok:true,json:async()=>({places:[{id:'test-place-id',displayName:{text:'부산역'},editorialSummary:{text:'부산역 설명'},googleMapsUri:'https://maps.google.com/maps?cid=123'}]})});
+ const result=await lookupPlace('부산역','부산',{apiKey:'test',fetchImpl});assert.equal(result.referenceSummary,'부산역 설명');assert.equal(result.description,undefined);assert.equal(result.placeId,'test-place-id');
+ assert.equal((await lookupPlace('숙소 미정','부산',{apiKey:'test',fetchImpl})).state,'not-found');
+ assert.equal((await lookupPlace('부산역','부산',{apiKey:'',fetchImpl})).state,'unconfigured');
 });
