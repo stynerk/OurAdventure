@@ -1,6 +1,6 @@
 import {icon} from './icons.mjs';
 import {celebrateStamp} from './ui.mjs';
-import {makePhotoAttempt,savePhotoAttempt,validatePhoto,lineBucket,uploadBucket} from './photo-upload.mjs';
+import {makePhotoAttempt,savePhotoAttempt,validatePhoto,photoFailureMessage,lineBucket,uploadBucket} from './photo-upload.mjs';
 import {countBucket} from './analytics.mjs';
 import {readPhotoDraft,storePhotoDraft,removePhotoDraft,clearPhotoDrafts} from './photo-drafts.mjs';
 export const photoForm=(mode='stamp')=>`<form id="photo-stamp"><fieldset><legend class="sr-only">${mode==='free'?'장소 없이 자유 기록 남기기':'사진으로 내 스탬프 남기기'}</legend><div class="photo-tools"><button type="button" class="camera-button" data-file-trigger="camera">${icon('camera')}사진 찍기</button><button type="button" class="secondary album-button" data-file-trigger="gallery" aria-label="앨범에서 사진 선택">${icon('image')}<span>앨범</span></button></div><label class="file-label"><span class="sr-only">사진 촬영</span><input class="file-input" aria-label="사진 촬영" type="file" name="camera" accept="image/jpeg,image/png,image/webp" capture="environment"></label><label class="file-label"><span class="sr-only">사진 선택</span><input class="file-input" aria-label="사진 선택" type="file" name="gallery" accept="image/jpeg,image/png,image/webp"></label><div id="photo-preview"></div><label>한 줄 느낌 (선택)<textarea name="feeling" rows="2" maxlength="60" placeholder="오늘의 느낌을 60자 안으로 남겨주세요"></textarea></label></fieldset><button type="submit">${icon('stamp')}${mode==='free'?'자유 기록 저장':'사진 저장하고 스탬프 받기'}</button><p id="photo-status" role="status" aria-live="polite"></p><p class="photo-form-hint">JPEG·PNG·WebP · 5MiB 이하</p></form>`;
@@ -28,7 +28,7 @@ export function createPhotoViews({app,api,photoStorage,getUser,current,call,perf
     perform(async()=>{
       const attempt=draft.attempt;
       try{
-        try{await storePhotoDraft(state.key,attempt);}catch{throw Error('사진과 저장 요청을 이 기기에 보관하지 못했어요. 브라우저 저장 공간을 확인한 뒤 다시 시도해주세요.');}
+        try{await storePhotoDraft(state.key,attempt);}catch{const error=Error('기기 임시 저장 실패');error.code='photo/draft-unavailable';throw error;}
         const result=await savePhotoAttempt(attempt,{
           upload:async pending=>{
             const start=performance.now(),ref=api.ref(photoStorage,`groups/${pending.groupId}/trips/${pending.tripId}/uploads/${pending.uid}/${pending.uploadId}`);
@@ -47,9 +47,10 @@ export function createPhotoViews({app,api,photoStorage,getUser,current,call,perf
       }catch(error){
         try{await storePhotoDraft(state.key,attempt);}catch{}
         if(!state.free && getUser()?.uid===state.uid)track('stamp_complete_fail',{...state.common,reason:!navigator.onLine?'offline':error.details?.reason==='ended'?'ended':attempt.stage==='upload'?'upload':'save',retry:attempt.tries>1});
-        if(visible(state)){status('저장하지 못했어요. 사진과 느낌은 유지돼요. 같은 요청으로 다시 시도해주세요.');app.querySelector('#photo-stamp button[type=submit]').textContent='같은 사진 다시 저장';}
-        if(error.code==='functions/invalid-argument'){try{await removePhotoDraft(state.key);}catch{}draft.attempt=null;if(visible(state)){app.querySelector('#photo-stamp fieldset').disabled=false;status(error.message+' 사진과 느낌을 확인한 뒤 다시 선택해주세요.');}}
-        throw error;
+        if(visible(state)){status(photoFailureMessage(error,attempt.stage));app.querySelector('#photo-stamp button[type=submit]').textContent='같은 사진 다시 저장';}
+        if(error.code==='functions/invalid-argument'){try{await removePhotoDraft(state.key);}catch{}draft.attempt=null;if(visible(state)){app.querySelector('#photo-stamp fieldset').disabled=false;status(photoFailureMessage(error,attempt.stage)+' 사진과 느낌을 확인한 뒤 다시 선택해주세요.');}}
+        // The app-wide banner must not receive SDK messages containing paths.
+        throw Error(photoFailureMessage(error,attempt.stage));
       }
     });
   });
