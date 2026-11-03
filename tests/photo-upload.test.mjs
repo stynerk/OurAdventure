@@ -1,7 +1,32 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {makePhotoAttempt,savePhotoAttempt,validatePhoto,lineBucket,uploadBucket,MAX_PHOTO_BYTES} from '../next/photo-upload.mjs';
+import {makePhotoAttempt,savePhotoAttempt,validatePhoto,photoFailureMessage,lineBucket,uploadBucket,MAX_PHOTO_BYTES} from '../next/photo-upload.mjs';
+import {photoProductionChecks} from '../scripts/check-photo-production.mjs';
 import {createAnalytics} from '../next/analytics.mjs';
 const input={uid:'a',groupId:'g',tripId:'t',placeId:'p',file:{size:123,type:'image/png'},feeling:''};
+
+test('production preflight catches missing cross-service IAM that emulators cannot enforce',()=>{
+  const config={projectNumber:'123',bindings:[{role:'roles/firebasestorage.serviceAgent',members:['serviceAccount:service-123@gcp-sa-firebasestorage.iam.gserviceaccount.com']}],bucket:{cors:[{origin:['https://stynerk.github.io'],method:['GET','HEAD']}]},storageRules:'allow get: if firestore.exists(/databases/(default)/documents/groups/g);',finalizerState:'ACTIVE'};
+  assert.equal(photoProductionChecks(config)[0].passed,false);
+  const grant={role:'roles/firebaserules.firestoreServiceAgent',members:['serviceAccount:service-123@gcp-sa-firebasestorage.iam.gserviceaccount.com']};
+  assert.ok(photoProductionChecks({...config,bindings:[...config.bindings,grant]}).every(c=>c.passed));
+  assert.equal(photoProductionChecks({...config,bindings:[{...grant,members:['serviceAccount:service-999@gcp-sa-firebasestorage.iam.gserviceaccount.com']} ]})[0].passed,false);
+  assert.equal(photoProductionChecks({...config,bindings:[{...grant,condition:{expression:'false'}}]})[0].passed,false);
+});
+
+test('storage permission denial is identified before finalization and same request retries without duplicates',async()=>{
+  const attempt=makePhotoAttempt(input);let blocked=true,finalized=0;
+  const deps={upload:async()=>{if(blocked)throw Object.assign(Error('PRIVATE/path'),{code:'storage/unauthorized'});},finalize:async()=>{finalized++;return {completed:true};}};
+  await assert.rejects(savePhotoAttempt(attempt,deps),error=>{assert.match(photoFailureMessage(error,attempt.stage),/^사진 업로드 실패:/);assert.doesNotMatch(photoFailureMessage(error,attempt.stage),/PRIVATE/);return true;});
+  assert.equal(finalized,0);assert.equal(attempt.uploaded,false);const id=attempt.requestId;
+  blocked=false;await savePhotoAttempt(attempt,deps);await savePhotoAttempt(attempt,deps);assert.equal(finalized,1);assert.equal(attempt.requestId,id);
+});
+
+test('photo errors distinguish upload, server confirmation, ended trips and local draft storage',()=>{
+  assert.match(photoFailureMessage({code:'storage/retry-limit-exceeded'},'upload'),/^사진 업로드 실패:.*대기 시간/);
+  assert.match(photoFailureMessage({code:'functions/internal',message:'PRIVATE'},'save'),/^서버 확정 실패:/);
+  assert.match(photoFailureMessage({details:{reason:'ended'}},'save'),/종료된 여행/);
+  assert.match(photoFailureMessage({code:'photo/draft-unavailable'},'upload'),/^기기 임시 저장 실패:/);
+});
 test('photo upload failure preserves input and identity; no finalize or completion occurs before upload succeeds',async()=>{
   const attempt=makePhotoAttempt({...input,feeling:'남긴 느낌'});let uploaded=0,finalized=0;
   const deps={upload:async()=>{if(++uploaded===1)throw Error('offline');},finalize:async()=>{finalized++;return {completed:true};}};

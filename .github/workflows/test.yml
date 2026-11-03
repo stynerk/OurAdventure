@@ -24,4 +24,5 @@ jobs:
       - run: npm run test:integration
       - run: npm run test:callable-client
       - run: npx playwright install --with-deps chromium
+      - run: npm run test:photos
       - run: npm run test:navigation

@@ -219,10 +219,23 @@ try {
   await owner.getByLabel('한 줄 느낌 (선택)',{exact:true}).fill('테스트 사진의 한 줄 느낌');
   await auditUi(owner,'stamp-detail');
   await owner.screenshot({path:'test-results/photo-selected-mobile.png',fullPage:true});
+  // P0: emulate the production Storage permission failure before any bytes or
+  // finalization are sent. Emulators do not enforce the cross-service IAM role.
+  let prematureFinalizations=0;const countFinalize=request=>{if(request.method()==='POST'&&request.url().endsWith('/finalizePhoto'))prematureFinalizations++;};owner.on('request',countFinalize);
+  await owner.route('**/v0/b/**',async route=>{if(route.request().method()==='GET')await route.fulfill({status:403,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({error:{code:403,message:'Permission denied.'}})});else await route.continue();});
+  await owner.getByRole('button',{name:'사진 저장하고 스탬프 받기',exact:true}).click();
+  await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).waitFor();
+  assert.match(await owner.locator('#photo-status').textContent(),/^사진 업로드 실패:.*storage\/unauthorized/);
+  await owner.waitForFunction(()=>document.querySelector('#message')?.textContent.startsWith('사진 업로드 실패:'));
+  assert.doesNotMatch(await owner.locator('#message').textContent(),/groups\/|uploads\/|Firebase Storage/);
+  assert.equal(prematureFinalizations,0);assert.equal((await db.collection(photoRoot+'/posts').get()).size,0);assert.equal((await db.collection(photoRoot+'/completions').get()).size,0);
+  assert.equal(await owner.getByLabel('한 줄 느낌 (선택)',{exact:true}).inputValue(),'테스트 사진의 한 줄 느낌');assert.equal(await owner.locator('#photo-preview img').count(),1);
+  await owner.screenshot({path:'test-results/p0-photo-upload-permission-failure-390.png',fullPage:true});
+  await owner.unroute('**/v0/b/**');owner.off('request',countFinalize);
   let firstFinalize,releaseFinalize;const finalizeSeen=new Promise(resolve=>{firstFinalize=resolve;}),gate=new Promise(resolve=>{releaseFinalize=resolve;});
   let requestBody,finalizeCount=0;
   await owner.route('**/finalizePhoto',async route=>{if(route.request().method()!=='POST'){await route.continue();return;}finalizeCount++;requestBody=route.request().postDataJSON().data;firstFinalize();await gate;await route.abort('failed');});
-  await owner.getByRole('button',{name:'사진 저장하고 스탬프 받기',exact:true}).click();
+  await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).click();
   await Promise.race([finalizeSeen,new Promise((_,reject)=>{const timer=setTimeout(async()=>{console.error('Photo stage:',await owner.locator('#photo-status').textContent());await owner.screenshot({path:'test-results/photo-stage-failure.png',fullPage:true});reject(Error('Photo did not reach finalization within 20s'));},20000);finalizeSeen.then(()=>clearTimeout(timer));})]);
   await owner.locator('#photo-stamp').evaluate(form=>{for(let i=0;i<3;i++)form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});
   assert.equal(finalizeCount,1);assert.equal((await db.collection(photoRoot+'/posts').get()).size,0);assert.equal((await db.collection(photoRoot+'/completions').get()).size,0);
@@ -232,13 +245,16 @@ try {
   assert.equal((await readPhoto(peer,objectPath)).code,'storage/unauthorized');
   await owner.screenshot({path:'test-results/photo-awaiting-confirmation-mobile.png',fullPage:true});
   releaseFinalize();await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).waitFor();await owner.unroute('**/finalizePhoto');
+  assert.match(await owner.locator('#photo-status').textContent(),/^서버 확정 실패:/);
+  await owner.waitForFunction(()=>document.querySelector('#message')?.textContent.startsWith('서버 확정 실패:'));
+  await owner.screenshot({path:'test-results/p0-photo-confirmation-failure-390.png',fullPage:true});
   const beforeReloadEvents=await owner.evaluate(()=>window.__photoEvents||[]);
   await owner.reload();await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).waitFor();
   assert.equal(await owner.getByLabel('한 줄 느낌 (선택)',{exact:true}).inputValue(),'테스트 사진의 한 줄 느낌');assert.equal(await owner.locator('#photo-preview img').count(),1);
   let finalizationReply;
   await owner.route('**/finalizePhoto',async route=>{if(route.request().method()!=='POST'){await route.continue();return;}assert.deepEqual(route.request().postDataJSON().data,requestBody);const response=await route.fetch();finalizationReply=await response.json();await route.abort('failed');});
   await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).click();
-  await owner.waitForFunction(()=>document.querySelector('#photo-status')?.textContent.startsWith('저장하지 못했어요') && !document.querySelector('#photo-stamp button')?.disabled);
+  await owner.waitForFunction(()=>document.querySelector('#photo-status')?.textContent.startsWith('서버 확정 실패:') && !document.querySelector('#photo-stamp button')?.disabled);
   assert.equal((await db.collection(photoRoot+'/posts').get()).size,1,JSON.stringify(finalizationReply));
   await owner.unroute('**/finalizePhoto');await owner.getByRole('button',{name:'같은 사진 다시 저장',exact:true}).click();
   await owner.getByText('사진과 스탬프가 저장됐어요.',{exact:true}).waitFor();
