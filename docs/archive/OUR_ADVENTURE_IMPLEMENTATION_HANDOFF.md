@@ -100,12 +100,12 @@
 ## 6. 참고 및 개발 요청
 
 - 상세 PRD: [Phase 1 Shared Adventure](./PHASE1_SHARED_ADVENTURE_SPEC.md)
-- 기존 앱: [root index.html](../index.html)
+- 기존 앱: [root index.html](../../index.html)
 - 기획 Draft PR: https://github.com/stynerk/OurAdventure/pull/2
 
 ### Our Adventure 개발 프로젝트에 보낼 시작 요청
 
-> OurAdventure GitHub 저장소에서 `docs/OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md`와 `docs/PHASE1_SHARED_ADVENTURE_SPEC.md`, 기존 `index.html`을 읽고 Shared Adventure Phase 1 MVP를 구현해줘.
+> OurAdventure GitHub 저장소에서 `docs/archive/OUR_ADVENTURE_IMPLEMENTATION_HANDOFF.md`와 `docs/archive/PHASE1_SHARED_ADVENTURE_SPEC.md`, 기존 `index.html`을 읽고 Shared Adventure Phase 1 MVP를 구현해줘.
 > **리더만 Firebase Google 로그인 필수**, **참여자는 로그인 UI 없이 초대 링크 + 별칭으로 참여**하고 내부적으로 Firebase Anonymous Authentication을 사용하도록 해.
 > Firestore에는 방별 owner/member 권한, shared/individual 진행 상태, 완료·제출을 저장해. 익명 참가자는 방을 생성/관리할 수 없고 초대 링크나 닉네임만으로 권한 상승할 수 없도록 실제 보안 규칙/서버 로직으로 강제해.
 > 기존 공개 경주 사이트는 보존하고 별도 경로에 구축해. 코스 생성/미션 편집은 Phase 2, 익명 참가자 교차기기 복구는 이번 범위 밖이야. 신규 그룹은 사진·글 공유 기록과 리더 출력까지 필요하며 PRD v1.1 0절의 단계/인원/미결정 정책을 먼저 읽어줘.

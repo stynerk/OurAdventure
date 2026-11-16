@@ -1,12 +1,12 @@
 # QA — 인수인계 검증 및 남은 실행 검증
 
-> 2026-10-23: 생성 재시도·참여 재진입의 새 구현 및 실행 결과는 [통합 기록](engineering/INTEGRATION_20261023.md)을 따른다. 기존 PR #3의 통과 기록을 이번 버전으로 승계하지 않는다.
+> 2026-10-23: 생성 재시도·참여 재진입의 새 구현 및 실행 결과는 [통합 기록](../engineering/INTEGRATION_20261023.md)을 따른다. 기존 PR #3의 통과 기록을 이번 버전으로 승계하지 않는다.
 
 기준: 2026-10-19, 공개 프로토타입 main 00e78ef / 신규 기획 048c4c1.
 
 ## 2026-10-20 재개 점검 — 브랜치 검증과 신규 미실행 항목
 
-기존 아래 항목은 최초 main 인수 스냅샷이다. 별도 [Draft PR #3](https://github.com/stynerk/OurAdventure/pull/3)의 인증·그룹 기반 구현과 분리한다. head `1db524fc`의 [CI](https://github.com/stynerk/OurAdventure/actions/runs/39347040711)는 npm test 및 test:integration 성공. 상세 로컬 결과/제한은 브랜치 docs/engineering/QA_PHASE1_FOUNDATION.md 참조. 이번 점검은 기록 열람이며 실행 재검증이 아니다. 표준 Functions emulator 차단·실제 OAuth/기기/운영 미검증을 유지한다. 사진 게시판·캐시·리더 출력의 통과 증거는 없다.
+기존 아래 항목은 최초 main 인수 스냅샷이다. 별도 [Draft PR #3](https://github.com/stynerk/OurAdventure/pull/3)의 인증·그룹 기반 구현과 분리한다. head `1db524fc`의 [CI](https://github.com/stynerk/OurAdventure/actions/runs/39347040711)는 npm test 및 test:integration 성공. 상세 로컬 결과/제한은 브랜치 docs/archive/QA_PHASE1_FOUNDATION.md 참조. 이번 점검은 기록 열람이며 실행 재검증이 아니다. 표준 Functions emulator 차단·실제 OAuth/기기/운영 미검증을 유지한다. 사진 게시판·캐시·리더 출력의 통과 증거는 없다.
 
 실제 Engineering/Product/UX·QA 통합 반론 후 정리한 추가 계획(미실행):
 
@@ -69,4 +69,4 @@ P1=기록 신뢰성/주요 흐름 문제, P2=일반 기능·사용성 문제. �
 
 ## Engineering 추가 검증 (2026-10-20)
 
-개발 PR #3에서 root를 보존한 인증·그룹·참여 기반을 구현/로컬 검증했다. [별도 기록](engineering/QA_PHASE1_FOUNDATION.md)을 참조한다. 운영 배포·최신1A 공유 기록/출력 완성·출시 승인을 뜻하지 않는다.
+개발 PR #3에서 root를 보존한 인증·그룹·참여 기반을 구현/로컬 검증했다. [별도 기록](QA_PHASE1_FOUNDATION.md)을 참조한다. 운영 배포·최신1A 공유 기록/출력 완성·출시 승인을 뜻하지 않는다.

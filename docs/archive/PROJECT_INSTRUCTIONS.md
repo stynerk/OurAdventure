@@ -1,4 +1,4 @@
-> **2026-10-19 인계 갱신:** 최신 공개 버전과 그룹 확장 기준은 [docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md), 역할별 인계는 [docs/HANDOFF.md](docs/HANDOFF.md), 검증 상태는 [docs/QA.md](docs/QA.md)를 먼저 읽는다. 아래의 여행 전 지침·일정은 역사 문맥이며 현재 개발 우선순위나 운영정보로 재사용하지 않는다. 최신 기획 원문도 docs/에 보존했다.
+> **2026-10-19 인계 갱신:** 최신 공개 버전과 그룹 확장 기준은 [docs/archive/PROJECT_CONTEXT.md](PROJECT_CONTEXT.md), 역할별 인계는 [docs/archive/HANDOFF.md](HANDOFF.md), 검증 상태는 [docs/archive/QA.md](QA.md)를 먼저 읽는다. 아래의 여행 전 지침·일정은 역사 문맥이며 현재 개발 우선순위나 운영정보로 재사용하지 않는다. 최신 기획 원문도 docs/에 보존했다.
 
 # ChatGPT Project Instructions — OurAdventure
 
@@ -81,7 +81,7 @@
 
 ## 2026-10-05 경주 현지 코스
 
-상세 시간표는 [GYEONGJU_ITINERARY.md](./GYEONGJU_ITINERARY.md)를 따른다. 서울 출발·이동·귀경은 앱에서 제외한다.
+상세 시간표는 [docs/reference/GYEONGJU_ITINERARY.md](../reference/GYEONGJU_ITINERARY.md)를 따른다. 서울 출발·이동·귀경은 앱에서 제외한다.
 
 - 금요일: 점심·숙소 짐 보관 → 대릉원·황리단길 → 첨성대 → 월성·석빙고 → 저녁 → 동궁과 월지 → 숙소.
 - 토요일: 불국사 → 석굴암 → 점심 → 민속공예촌 공예 체험 → 보문호 휴식 → 저녁 → 월정교 → 숙소.

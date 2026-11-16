@@ -18,7 +18,7 @@
 
 ## 검증과 증거
 
-[실행 로그·화면 자료](stack-integration/). 단위 44개(Analytics 포함), Storage12·그룹27·공동방13 = 서버 통합52개, 실제 SDK/브라우저/PNG·30개 뷰포트 검사가 모두 통과했다. 에뮬레이터 검증이며 물리 기기·실제 Google OAuth·운영 GA 수신·운영 Functions 검증과 구분한다.
+[실행 로그·화면 자료](stack-integration). 단위 44개(Analytics 포함), Storage12·그룹27·공동방13 = 서버 통합52개, 실제 SDK/브라우저/PNG·30개 뷰포트 검사가 모두 통과했다. 에뮬레이터 검증이며 물리 기기·실제 Google OAuth·운영 GA 수신·운영 Functions 검증과 구분한다.
 
 기존 루트 앱 코드는 main과 바뀌지 않았고, public 패키징은 서버·로컬 설정을 제외한다. 결제·새 API 키·유료 AI 호출을 하지 않는다.
 

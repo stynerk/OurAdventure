@@ -14,8 +14,8 @@
 | 신규 제안 | 와이어프레임·설계를 위한 권고. 사용자 정책 승인과 구분 |
 | 미결정 | 외부 파일럿·비용·보관 약속 전에 별도 결정 필요 |
 
-기준 문서: [기존 PRD](https://github.com/stynerk/OurAdventure/blob/main/docs/PHASE1_SHARED_ADVENTURE_SPEC.md), [제품 계약](https://github.com/stynerk/OurAdventure/blob/main/docs/PHASE1A_PRODUCT_CONTRACT.md), [인수인계](https://github.com/stynerk/OurAdventure/blob/main/docs/HANDOFF.md), [Firebase 기록](https://github.com/stynerk/OurAdventure/blob/main/docs/FIREBASE_SETUP.md).
-연결 산출물: [와이어프레임 명세](PHASE1_WIREFRAMES.md) · [화면 검토용 HTML](wireframes/index.html).
+기준 문서: [기존 PRD](PHASE1_SHARED_ADVENTURE_SPEC.md), [제품 계약](PHASE1A_PRODUCT_CONTRACT.md), [인수인계](HANDOFF.md), [Firebase 기록](../tech/FIREBASE_SETUP.md).
+연결 산출물: [와이어프레임 명세](PHASE1_WIREFRAMES.md) · [화면 검토용 HTML](../wireframes/index.html).
 
 ## 2. 문제와 제품 가치
 

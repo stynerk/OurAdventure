@@ -4,7 +4,7 @@
 
 ## 2026-10-05 경주 현지 코스
 
-상세 시간표는 [GYEONGJU_ITINERARY.md](./GYEONGJU_ITINERARY.md)를 따른다. 서울 출발·이동·귀경은 앱에서 제외한다.
+상세 시간표는 [docs/reference/GYEONGJU_ITINERARY.md](./GYEONGJU_ITINERARY.md)를 따른다. 서울 출발·이동·귀경은 앱에서 제외한다.
 
 - 금요일: 점심·숙소 짐 보관 → 대릉원·황리단길 → 첨성대 → 월성·석빙고 → 저녁 → 동궁과 월지 → 숙소.
 - 토요일: 불국사 → 석굴암 → 점심 → 민속공예촌 공예 체험 → 보문호 휴식 → 저녁 → 월정교 → 숙소.

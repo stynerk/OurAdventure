@@ -24,4 +24,4 @@ PR #21 `5f0b9a8` 위 `engineering/place-edit`. 디자인 가이드 v2의 색·�
 
 ## 검증 자료
 
-[추가·삭제 확인 스크린샷과 실행 로그](place-edit/) · [QA B10·B11 후속 결과](../QA_RESULTS_V2.md). 실제 SDK·Auth/Firestore/Storage 에뮬레이터와 합성 사진·별칭으로 검사한다. 실기기와 운영 OAuth·Storage·GA는 별도 확인이며, 이 PR에서 머지·배포·결제·권한 변경은 수행하지 않는다.
+[추가·삭제 확인 스크린샷과 실행 로그](place-edit) · [QA B10·B11 후속 결과](../QA_RESULTS_V2.md). 실제 SDK·Auth/Firestore/Storage 에뮬레이터와 합성 사진·별칭으로 검사한다. 실기기와 운영 OAuth·Storage·GA는 별도 확인이며, 이 PR에서 머지·배포·결제·권한 변경은 수행하지 않는다.
