@@ -1,6 +1,28 @@
+Issue로 이전됨(#36~#48)
+
+T0~T12의 작업 원장은 아래 GitHub Issue다. 이 문서는 2026-10-28까지의 범위·완료 조건·진행 현황을 보존한 기록이며 이후 상태는 Issue에서 확인한다. 원문의 T13~T15, 사용자 결정 및 MVP 제외 항목은 이번 이전 범위 밖으로 보존한다. 이관 근거와 별도 Issue로 만들지 않은 항목은 [#35](https://github.com/stynerk/OurAdventure/issues/35)에 기록했다.
+
+| 티켓 | Issue | 이전 시 상태 (2026-11-17) |
+|---|---|---|
+| T0 | [#36](https://github.com/stynerk/OurAdventure/issues/36) | 열림 |
+| T1 | [#37](https://github.com/stynerk/OurAdventure/issues/37) | 열림 |
+| T2 | [#38](https://github.com/stynerk/OurAdventure/issues/38) | 완료·닫힘 |
+| T3 | [#39](https://github.com/stynerk/OurAdventure/issues/39) | 완료·닫힘 |
+| T4 | [#40](https://github.com/stynerk/OurAdventure/issues/40) | 열림 |
+| T5 | [#41](https://github.com/stynerk/OurAdventure/issues/41) | 열림 |
+| T6 | [#42](https://github.com/stynerk/OurAdventure/issues/42) | 완료·닫힘 |
+| T7 | [#43](https://github.com/stynerk/OurAdventure/issues/43) | 완료·닫힘 |
+| T8 | [#44](https://github.com/stynerk/OurAdventure/issues/44) | 열림 |
+| T9 | [#45](https://github.com/stynerk/OurAdventure/issues/45) | 완료·닫힘 |
+| T10 | [#46](https://github.com/stynerk/OurAdventure/issues/46) | 완료·닫힘 |
+| T11 | [#47](https://github.com/stynerk/OurAdventure/issues/47) | 열림 |
+| T12 | [#48](https://github.com/stynerk/OurAdventure/issues/48) | 열림 |
+
+---
+
 # MVP 작업 목록 — 그룹 스탬프 투어
 
-작성일: 2026-10-26 · 담당: PM(Claude) · 구현: Codex · 기준: [PRD v2](product/PRD.md), [AI 코스 구성 가이드](product/AI_COURSE_GUIDE.md), [v2 목업](https://claude.ai/artifact/55N2ouuNnoAtBgRrXJ7XBZ)
+작성일: 2026-10-26 · 담당: PM(Claude) · 구현: Codex · 기준: [PRD v2](../product/PRD.md), [AI 코스 구성 가이드](../product/AI_COURSE_GUIDE.md), [v2 목업](https://claude.ai/artifact/55N2ouuNnoAtBgRrXJ7XBZ)
 
 규칙: 티켓 1개 = PR 1개. 각 PR 설명에 티켓 번호와 통과한 AC를 적는다. 머지는 사용자 승인.
 착수 조건: PRD v2(PR #5)와 목업을 사용자가 승인한 뒤. 그 전 작업은 스파이크로 표시한다.
@@ -39,7 +61,7 @@
 |---|---|---|---|---|
 | T10 | 여행 종료·리포트·지난 여행 열람(읽기 전용) | F6, F7 | AC-6a, AC-7a | T9 |
 | T11 | 인스타 이미지 PNG: 피드 1080×1350 / 스토리 1080×1920, 템플릿 2종(스탬프판·사진 그리드) — 이미지 에셋 포함 | F6 | AC-6b, AC-6c, AC-6d | T10 |
-| T13 | 데이터 트래킹: [명세](ANALYTICS_SPEC.md)의 이벤트·공통 파라미터 구현, 금지 값 필터, 테스트에서 이벤트 검사 | PRD v2 8장 | 퍼널 이벤트가 DebugView에 순서대로 보이고, 금지 파라미터가 전송되지 않음 | T3부터 화면 티켓과 함께, GA 연결 승인 |
+| T13 | 데이터 트래킹: [명세](../ANALYTICS_SPEC.md)의 이벤트·공통 파라미터 구현, 금지 값 필터, 테스트에서 이벤트 검사 | PRD v2 8장 | 퍼널 이벤트가 DebugView에 순서대로 보이고, 금지 파라미터가 전송되지 않음 | T3부터 화면 티켓과 함께, GA 연결 승인 |
 | T12 | QA: PM이 체크리스트 작성 → Codex가 iOS Safari·Android Chrome 실기기 실행·결과 보고 | PRD v2 8장 | 체크리스트 전 항목 결과 기록, 차단 이슈 0 | T11 |
 
 ## 이후 (MVP 제외)
