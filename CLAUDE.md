@@ -27,3 +27,17 @@
 - `main`에서 `index.html`, `assets/**`, `next/**`, `scripts/prepare-pages.mjs`, `.github/workflows/pages.yml`을 바꾸는 병합은 GitHub Pages 배포를 일으킨다. 이런 PR은 `release-ready`로 두고 HJ가 병합한다.
 - Firebase 요금제 전환, 유료 AI·지도 API 호출은 `owner-decision`으로 HJ에게 올린다.
 - 기존 경주 프로토타입(루트 `index.html`)과 로컬 저장 키는 보존한다.
+
+## 문서 지도
+
+| 무엇 | 위치 |
+|---|---|
+| 현재 제품 기준 | [PRD v2](docs/product/PRD.md), [AI 코스 가이드](docs/product/AI_COURSE_GUIDE.md) |
+| QA | [QA 체크리스트 v2](docs/qa/QA_CHECKLIST_V2.md) |
+| 기술 설정·스파이크 | `docs/tech/` |
+| 구현·검증 증거 | `docs/engineering/` (기존 경로 보존) |
+| 참조 자료 | `docs/reference/` |
+| 지난 기준·인수인계 | `docs/archive/` |
+| 결정·인수인계·시행착오 | `docs/team/` |
+
+구조 전환 중에는 제품 기획·개발을 시작하지 않는다. 재개는 onemorestep 제출(2026-11-25) 뒤 HJ가 정한다. `.worktrees/service`는 Tony의 작업 트리이며, `.worktrees/test-tools`는 #33의 HJ 결정 전까지 그대로 둔다.

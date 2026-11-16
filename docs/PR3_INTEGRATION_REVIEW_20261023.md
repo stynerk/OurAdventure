@@ -11,8 +11,8 @@ PR #3의 재사용 가능한 기반을 최신 main 명세에 연결한다. 이�
 | main | `bca3f94d9765eea0938b91a2c1f0b0b7653679b2` |
 | PR #3 head | `1db524fc00ba2ad2465fe9cd933fd05e5b9cc8b0` |
 | 공통 조상 | `0eaac1902d1a5dc74f030749fd127b2882e4a266` |
-| 최신 제품 기준 | main의 `docs/PHASE1_PRD.md` v1.3, 특히 FR-01/02/06/08/10 및 10·11절 |
-| 승인 범위의 근거 | main의 `docs/PHASE1_SHARED_ADVENTURE_SPEC.md` 0절 |
+| 최신 제품 기준 | main의 `docs/archive/PHASE1_PRD.md` v1.3, 특히 FR-01/02/06/08/10 및 10·11절 |
+| 승인 범위의 근거 | main의 `docs/archive/PHASE1_SHARED_ADVENTURE_SPEC.md` 0절 |
 | 증거의 범위 | 원격 코드·문서·PR 상태 대조, 문서 3방향 병합 재현. 애플리케이션 테스트 재실행 없음 |
 
 [PR #3](https://github.com/stynerk/OurAdventure/pull/3) · [기존 CI](https://github.com/stynerk/OurAdventure/actions/runs/39347040711) · [고정 PRD](https://github.com/stynerk/OurAdventure/blob/bca3f94d9765eea0938b91a2c1f0b0b7653679b2/docs/PHASE1_PRD.md)
@@ -25,9 +25,9 @@ GitHub compare 기준 두 브랜치는 분기되어 있으며, PR head에는 공
 
 | 파일 | 재현 결과 | 해결 기준 / 담당 |
 |---|---|---|
-| `docs/FIREBASE_SETUP.md` | 양쪽 독립 추가(add/add), 충돌 블록 1개 | main의 관찰 날짜·실제 설정·Spark·미설정/미승인 기록 보존. head의 로컬 실행·패키징·롤백 절차는 별도 Engineering 문서로 분리하거나 구분된 절에 통합 / Engineer |
-| `docs/HANDOFF.md` | 양쪽 변경, 자동 병합 가능 | 병합 뒤 최신 정책·다음 담당·구현 상태 의미 검토 / PM+Engineer |
-| `docs/QA.md` | 양쪽 변경, 자동 병합 가능 | CI·로컬 보고·실환경 미검증 구분 보존 / QA |
+| `docs/tech/FIREBASE_SETUP.md` | 양쪽 독립 추가(add/add), 충돌 블록 1개 | main의 관찰 날짜·실제 설정·Spark·미설정/미승인 기록 보존. head의 로컬 실행·패키징·롤백 절차는 별도 Engineering 문서로 분리하거나 구분된 절에 통합 / Engineer |
+| `docs/archive/HANDOFF.md` | 양쪽 변경, 자동 병합 가능 | 병합 뒤 최신 정책·다음 담당·구현 상태 의미 검토 / PM+Engineer |
+| `docs/archive/QA.md` | 양쪽 변경, 자동 병합 가능 | CI·로컬 보고·실환경 미검증 구분 보존 / QA |
 | 나머지 PR 추가/변경 | 고정 트리 비교에서 추가 양쪽 충돌 후보 없음 | 최신 main을 보존하며 변경별 검토. 전체 병합 성공이나 동작 통과를 의미하지 않음 / Engineer |
 
 main의 Firebase 문서에는 실제 프로젝트가 기록되어 있다. head의 “실제 프로젝트 ID가 없다”, “Firestore 생성/provider 설정 필요” 같은 과거 안내를 현재 사실로 덮어쓰지 않는다. 이번 검토에서는 Firebase 콘솔을 열거나 설정 상태를 실시간 재확인하지 않았다.

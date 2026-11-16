@@ -1,6 +1,6 @@
 # QA 체크리스트 — 그룹 스탬프 투어 MVP
 
-작성: PM(Claude) · 실행: Codex · 기준: [PRD v2](PRD_V2.md) AC, [MVP 작업 목록](MVP_TICKETS.md) T12
+작성: PM(Claude) · 실행: Codex · 기준: [PRD v2](../product/PRD.md) AC, [MVP 작업 목록](../MVP_TICKETS.md) T12
 
 실행 환경: iOS Safari(최신), Android Chrome(최신), 데스크톱 Chrome. 기기 2대 이상(리더 1 + 멤버 1).
 결과 표기: ✅ 통과 · ❌ 실패(이슈 링크) · ⏭ 해당 없음. 각 항목에 기기·날짜를 적는다.

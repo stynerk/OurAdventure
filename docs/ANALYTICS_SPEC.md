@@ -1,6 +1,6 @@
 # 데이터 트래킹 명세 — Firebase Analytics
 
-작성일: 2026-10-27 · 담당: PM(Claude) · 구현: Codex · 기준: [PRD v2](PRD_V2.md) 8장 성공 지표
+작성일: 2026-10-27 · 담당: PM(Claude) · 구현: Codex · 기준: [PRD v2](product/PRD.md) 8장 성공 지표
 
 도구: Google Analytics for Firebase(GA4) 웹 SDK, `/next` 앱에서 `logEvent`로 보낸다.
 목적: 파일럿 성공 지표를 측정하고, 막히는 단계(퍼널 이탈)를 찾는다. 광고·리마케팅에는 쓰지 않는다.

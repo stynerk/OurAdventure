@@ -10,7 +10,7 @@ Windows, Node 24.20.0, Java 21, demo Auth/Firestore/Storage, Playwright Chromium
 
 ## 결과표
 
-아래 파일의 테스트 이름 또는 `PASS QA …` 로그가 근거다. 새 스크린샷·관찰값·실행 로그·의존성 조사는 [QA 증거 폴더](engineering/qa-v2/)에 보관한다.
+아래 파일의 테스트 이름 또는 `PASS QA …` 로그가 근거다. 새 스크린샷·관찰값·실행 로그·의존성 조사는 [QA 증거 폴더](engineering/qa-v2)에 보관한다.
 
 ### A. 로그인·그룹
 
@@ -34,7 +34,7 @@ Windows, Node 24.20.0, Java 21, demo Auth/Firestore/Storage, Playwright Chromium
 | B8 | ❌ | [관찰값](engineering/qa-v2/observations.json): 경주·부산·제주·서울 각각에서 AI 생성 진입이 없어 문구 4회 품질 검증을 수행할 수 없음. 스파이크/고정 문구를 현재 앱 생성 결과로 취급하지 않음 | 기능 연결 후 4도시 실제 생성·위험 표현·운영정보 단정 검토 필요 |
 | B9 | ❌ | [groups-browser.mjs](https://github.com/stynerk/OurAdventure/blob/c64b599/tests/groups-browser.mjs) `QA FINDING B2/B3/B6/B7/B8/B9`, [관찰값](engineering/qa-v2/observations.json): 목적지 변경 시 이전 수동 장소가 남음. 추천/AI 결과의 목적지별 상태 초기화도 미구현 | 초기화·이전 비동기 응답 폐기 구현 후 재검증 |
 | B10 | ✅ | [브라우저 검증](../tests/place-edit-browser.mjs) `PASS T15 AC-2c`: 리더 코스 탭에서 추가, 멤버의 열린 도장판 실시간 1/2→1/3, 리더 2/3·기존 완료 보존. 응답 유실·새로고침 후 같은 요청 재시도로 중복 없음. [서버 통합](../tests/group-model.integration.test.mjs) 기존 add retry 테스트 | 실기기·운영 실시간 연결은 후속 |
-| B11 | ✅ | [브라우저 검증](../tests/place-edit-browser.mjs) `PASS T15 AC-2d`: 2명·3장 영향 안내, 취소 시 유지, 사진 없는 장소 즉시 삭제, 4장으로 변하면 재확인 후 삭제. [서버 통합](../tests/group-model.integration.test.mjs) T15 3개 테스트와 [실제 Storage 검증](../tests/photo-storage.integration.test.mjs): 위조·미확인·오래된 확인 거부, 종료·비리더 거부, 동시 업로드 직렬화. [추가/삭제 캡처·로그](engineering/place-edit/) | 사진·한 줄은 추억에 보존하고 장소만 코스·도장판에서 제외. 원본 수정·삭제는 계속 작성자만 가능 |
+| B11 | ✅ | [브라우저 검증](../tests/place-edit-browser.mjs) `PASS T15 AC-2d`: 2명·3장 영향 안내, 취소 시 유지, 사진 없는 장소 즉시 삭제, 4장으로 변하면 재확인 후 삭제. [서버 통합](../tests/group-model.integration.test.mjs) T15 3개 테스트와 [실제 Storage 검증](../tests/photo-storage.integration.test.mjs): 위조·미확인·오래된 확인 거부, 종료·비리더 거부, 동시 업로드 직렬화. [추가/삭제 캡처·로그](engineering/place-edit) | 사진·한 줄은 추억에 보존하고 장소만 코스·도장판에서 제외. 원본 수정·삭제는 계속 작성자만 가능 |
 
 ### C. 초대·참여
 

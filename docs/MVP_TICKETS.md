@@ -1,6 +1,6 @@
 # MVP 작업 목록 — 그룹 스탬프 투어
 
-작성일: 2026-10-26 · 담당: PM(Claude) · 구현: Codex · 기준: [PRD v2](PRD_V2.md), [AI 코스 구성 가이드](AI_COURSE_GUIDE.md), [v2 목업](https://claude.ai/artifact/55N2ouuNnoAtBgRrXJ7XBZ)
+작성일: 2026-10-26 · 담당: PM(Claude) · 구현: Codex · 기준: [PRD v2](product/PRD.md), [AI 코스 구성 가이드](product/AI_COURSE_GUIDE.md), [v2 목업](https://claude.ai/artifact/55N2ouuNnoAtBgRrXJ7XBZ)
 
 규칙: 티켓 1개 = PR 1개. 각 PR 설명에 티켓 번호와 통과한 AC를 적는다. 머지는 사용자 승인.
 착수 조건: PRD v2(PR #5)와 목업을 사용자가 승인한 뒤. 그 전 작업은 스파이크로 표시한다.

@@ -1,8 +1,8 @@
 # AI 코스 구성 가이드 (하이브리드) — 기획 초안
 
-작성일: 2026-10-26 · 담당: 기획(Claude) · 상태: 사용자 검토용. [PRD v2](PRD_V2.md) F2의 상세 기준이다.
+작성일: 2026-10-26 · 담당: 기획(Claude) · 상태: 사용자 검토용. [PRD v2](PRD.md) F2의 상세 기준이다.
 
-근거: Codex의 [경주 AI 핸드오버](engineering/GYEONGJU_AI_HANDOFF.md)와 [경주 코스 참조 JSON](../development/reference/gyeongju-course.json).
+근거: Codex의 [경주 AI 핸드오버](../tech/GYEONGJU_AI_HANDOFF.md)와 [경주 코스 참조 JSON](../../development/reference/gyeongju-course.json).
 경주 콘텐츠는 2026-10 가족여행용 계획이며 실제 방문 기록이나 현재 운영 정보가 아니다.
 
 ## 1. 경주 사례에서 가져올 것
