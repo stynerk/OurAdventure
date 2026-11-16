@@ -2,7 +2,7 @@
 
 기준일: 2026-10-26. 담당: 개발 구현. 상태: 검토 제안, 실제 유료 호출·배포 미실행.
 
-근거: [MVP 작업 목록](../MVP_TICKETS.md), [PRD v2](../product/PRD.md), [AI 코스 가이드](../product/AI_COURSE_GUIDE.md), [QA 체크리스트](../qa/QA_CHECKLIST_V2.md). 기획 문서는 수정하지 않는다. 이 문서는 구현 측 검토이며 공급자 선택·Blaze 전환·유료 호출·배포 승인을 대신하지 않는다.
+근거: [MVP 작업 목록 보관본](../archive/MVP_TICKETS.md), [PRD v2](../product/PRD.md), [AI 코스 가이드](../product/AI_COURSE_GUIDE.md), [QA 체크리스트](../qa/QA_CHECKLIST_V2.md). 기획 문서는 수정하지 않는다. 이 문서는 구현 측 검토이며 공급자 선택·Blaze 전환·유료 호출·배포 승인을 대신하지 않는다.
 
 ## 1. 최신 인계 확인과 정정
 
