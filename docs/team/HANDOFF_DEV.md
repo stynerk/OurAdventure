@@ -1,12 +1,12 @@
 ﻿# 개발PM 인수인계 — Our Adventure
 
-마지막 갱신: 2026-11-17, #35 독립 QA·CI 통과 및 PR #49 병합 완료 (Cap)
+마지막 갱신: 2026-11-17, #33 test-tools 보존 예외 확정 및 Issue 종료 (Cap)
 
 ## 지금 상태
 
 | Issue | 상태 | 브랜치·작업 트리 | 담당 |
 |---|---|---|---|
-| [#33](https://github.com/stynerk/OurAdventure/issues/33) | test-tools만 HJ 결정 대기, 그 외 정리 완료 | 본 폴더 main, 백업 backup/2026-11-16-local | Cap |
+| [#33](https://github.com/stynerk/OurAdventure/issues/33) | HJ가 인증·운영 파일 보존을 위한 test-tools 유지 예외 확정, 완료 종료 | 본 폴더 main, 백업 backup/2026-11-16-local | Cap |
 | [#34](https://github.com/stynerk/OurAdventure/issues/34) | 서비스PM 승인·독립 QA·CI 통과 후 PR #32 병합 및 Issue 종료 | main, issue-34 작업 트리 제거 완료 | implementer / qa / Cap |
 | [#35](https://github.com/stynerk/OurAdventure/issues/35) | 서비스PM 승인·독립 QA·CI 통과 후 PR #49 병합, Issue 종료 | main, issue-35 작업 트리 제거 완료 | implementer / qa / Cap |
 
@@ -14,7 +14,7 @@
 - T0~T12 13개를 GitHub Issue #36~#48로 이전했다. 번호 대응과 완료 근거는 [이전 결과](https://github.com/stynerk/OurAdventure/issues/35) 및 [원문 보관본](../archive/MVP_TICKETS.md)에 남겼다. 모든 이전 Issue에 상태 라벨을 붙이지 않았으며 이번 이관으로 제품 구현을 시작하지 않는다.
 - 완료·닫힘 6개: T2 [#38](https://github.com/stynerk/OurAdventure/issues/38), T3 [#39](https://github.com/stynerk/OurAdventure/issues/39), T6 [#42](https://github.com/stynerk/OurAdventure/issues/42), T7 [#43](https://github.com/stynerk/OurAdventure/issues/43), T9 [#45](https://github.com/stynerk/OurAdventure/issues/45), T10 [#46](https://github.com/stynerk/OurAdventure/issues/46). 열림 7개: T0 [#36](https://github.com/stynerk/OurAdventure/issues/36), T1 [#37](https://github.com/stynerk/OurAdventure/issues/37), T4 [#40](https://github.com/stynerk/OurAdventure/issues/40), T5 [#41](https://github.com/stynerk/OurAdventure/issues/41), T8 [#44](https://github.com/stynerk/OurAdventure/issues/44), T11 [#47](https://github.com/stynerk/OurAdventure/issues/47), T12 [#48](https://github.com/stynerk/OurAdventure/issues/48).
 - `docs/archive/MVP_TICKETS.md`는 이전 작업 목록의 이력 보관본이다. 원문 단계·범위·AC·선행·진행 기록을 유지하고 이동에 필요한 상대 링크만 수정했다. T13~T15, 사용자 결정 및 MVP 제외 항목은 이번 13개 Issue 생성 범위 밖으로 원문에 보존했다.
-- Tony의 `.worktrees/service`와 `.worktrees/test-tools`는 변경하지 않는다. test-tools는 #33 자동 승인 검토의 삭제 거절 후 HJ 결정 전까지 원위치 보존한다. 기존 미커밋 184개 파일은 백업 `934c28bd862abf2e686429ddb824fa7808ca2c6f`에 보존되어 있다.
+- Tony의 `.worktrees/service`와 `.worktrees/test-tools`는 변경하지 않는다. HJ가 인증·운영 파일 보존을 위해 test-tools를 그대로 두기로 최종 결정했다. 폴더에 손대지 않고 #33에 완료 예외 댓글을 남긴 뒤 completed로 닫았다. 기존 미커밋 184개 파일은 백업 `934c28bd862abf2e686429ddb824fa7808ca2c6f`에 보존되어 있다.
 
 ## 티켓 상태의 근거와 경계
 
@@ -41,12 +41,12 @@
 
 1. 구조 전환 #34·#35는 완료했다. 열린 T0/T1/T4/T5/T8/T11/T12는 구현·검증을 시작하지 않고 서비스PM의 재개 지시를 기다린다.
 2. 미완료 티켓의 ready 라벨은 제품 재개 때 Tony가 지정한다. 기획·개발 재개는 11-25 뒤 HJ가 정한다.
-3. #33 test-tools는 HJ 결정 전 유지하며 `.claude/agents/` 내보내기는 합의된 별도 후속이다. 제품 개발·배포는 시작하지 않는다.
+3. #33은 보존 예외로 완료됐다. test-tools는 계속 손대지 않으며 `.claude/agents/` 내보내기는 합의된 별도 후속이다. 제품 개발·배포는 시작하지 않는다.
 
 ## 서비스PM 기술 보고
 
 - 된 것: T0~T12 작업 원장 이전과 원문 보관·역참조 수정 후 서비스PM 승인·독립 QA·CI 성공을 확인해 PR #49를 merge commit으로 병합했다. #35 종료·main 갱신·작업 트리 정리를 마쳤다.
-- 안 된 것: 열린 티켓의 구현/검증과 #33 test-tools 결정은 대기다.
+- 안 된 것: 열린 티켓의 구현/검증은 재개 지시 대기다. #33의 남은 결정은 없다.
 - 위험: 병합된 구현과 미검증 운영·실기기 AC를 구분했다. 과거 기록을 현재 완료로 확대하지 않는다.
 - 서비스PM이 정해야 할 것: HJ 재개 결정 후 미완료 티켓의 착수 시점.
 - 다음 작업: 재개 지시 대기. 제품 개발·배포는 시작하지 않는다.
